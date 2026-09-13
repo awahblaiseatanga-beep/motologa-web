@@ -1,49 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { fetchGarage, fetchGarageMembers, fetchDepartments } from '../lib/api';
 import { Garage, GarageMember, Department, SubscriptionStatus } from '../types';
 import { OwnerDashboard } from '../screens/OwnerDashboard';
 import { QueueScreen } from '../screens/QueueScreen';
-import { IntakeScreen } from './IntakeScreen';
-import { CheckoutScreen } from './CheckoutScreen';
-import { WorkersScreen } from './WorkersScreen';
+import { OnboardingGateway } from '../screens/OnboardingGateway';
 import { MotologaLogo } from './MotologaLogo';
 import {
   ShieldAlert,
   CreditCard,
   LogOut,
   RefreshCw,
-  LayoutDashboard,
-  Layers,
-  Wrench,
-  PlusCircle,
-  Receipt,
-  Users,
   AlertTriangle,
   Building2,
   CheckCircle2,
-  Sparkles,
-  ExternalLink,
-  ChevronRight
+  Sparkles
 } from 'lucide-react';
 
 interface RoleRouterProps {
   userId: string;
   userEmail?: string;
   onSignOut: () => void;
-  // Shared state & methods passed from App
-  jobs: any[];
-  deferredRepairs: any[];
-  workers: any[];
-  todayRevenue: number;
-  onUpdateJob: (updatedJob: any) => void;
-  onJobReleased: (job: any, finalFee: number) => void;
-  onAddJob: (newJob: any) => Promise<void>;
-  onAddDeferredRepair: (repair: any, jobId: string) => Promise<void>;
-  onAddWorker: (name: string, pinCode: string, colorBadge: string, phone?: string, role?: string, specialty?: string) => Promise<void>;
-  onDeleteWorker: (workerId: string) => Promise<void>;
-  onUpdatePin: (workerId: string, newPin: string) => Promise<void>;
-  onToggleStatus: (workerId: string, status: any) => void;
 }
 
 // 1. Subscription Suspended Screen for Workers / HODs
@@ -209,32 +185,13 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
   userId,
   userEmail,
   onSignOut,
-  jobs,
-  deferredRepairs,
-  workers,
-  todayRevenue,
-  onUpdateJob,
-  onJobReleased,
-  onAddJob,
-  onAddDeferredRepair,
-  onAddWorker,
-  onDeleteWorker,
-  onUpdatePin,
-  onToggleStatus,
 }) => {
   const [loading, setLoading] = useState(true);
   const [garage, setGarage] = useState<Garage | null>(null);
   const [membership, setMembership] = useState<GarageMember | null>(null);
   const [department, setDepartment] = useState<Department | null>(null);
-  const [role, setRole] = useState<'owner' | 'worker'>('owner');
-  const [isHod, setIsHod] = useState(false);
+  const [role, setRole] = useState<'owner' | 'hod' | 'worker' | null>(null);
   const [showBillingModal, setShowBillingModal] = useState(false);
-
-  // Active view inside RoleRouter
-  // Owner tabs: 'owner_dashboard' | 'intake' | 'queue' | 'checkout' | 'workers'
-  // HOD tabs: 'queue' | 'intake' | 'checkout'
-  // Worker tabs: 'queue'
-  const [currentView, setCurrentView] = useState<string>('owner_dashboard');
 
   const loadRoleData = async () => {
     setLoading(true);
@@ -249,8 +206,6 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
       if (ownerGarage) {
         setGarage(ownerGarage);
         setRole('owner');
-        setIsHod(false);
-        setCurrentView('owner_dashboard');
         setLoading(false);
         return;
       }
@@ -270,26 +225,15 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
         setMembership(memberData);
         setGarage(memberData.garages || null);
         setDepartment(memberData.departments || null);
-        setRole(memberData.role || 'worker');
-        setIsHod(Boolean(memberData.is_hod));
-        setCurrentView('queue');
+        setRole(memberData.role as 'owner' | 'hod' | 'worker');
         setLoading(false);
         return;
       }
 
-      // Fallback: If no garage record exists yet, check if there's any default garage or create one
-      const { data: anyGarage } = await supabase
-        .from('garages')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (anyGarage) {
-        setGarage(anyGarage);
-        setRole('owner'); // Default to owner view for single-garage test setups
-      }
+      setRole(null); // No garage, OnboardingGateway will handle
     } catch (e) {
       console.error('RoleRouter load error:', e);
+      setRole(null);
     } finally {
       setLoading(false);
     }
@@ -310,13 +254,18 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
     );
   }
 
-  const isPastDue = garage?.subscription_status === 'past_due';
+  // ONBOARDING GATEWAY - No Garage Member data
+  if (!role || !garage) {
+    return <OnboardingGateway userId={userId} onSignOut={onSignOut} />;
+  }
+
+  const isPastDue = garage.subscription_status === 'past_due';
 
   // 1. SUBSCRIPTION LOCKDOWN FOR WORKERS & HODS
-  if (isPastDue && role === 'worker') {
+  if (isPastDue && role !== 'owner') {
     return (
       <SubscriptionSuspended
-        garageName={garage?.name}
+        garageName={garage.name}
         onSignOut={onSignOut}
       />
     );
@@ -331,16 +280,16 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-white font-extrabold text-sm tracking-wide">
-                {garage?.name || 'MOTOLOGA WORKSHOP'}
+                {garage.name || 'MOTOLOGA WORKSHOP'}
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                 role === 'owner'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  : isHod
+                  : role === 'hod'
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                   : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
               }`}>
-                {role === 'owner' ? 'Owner / Admin' : isHod ? `HOD • ${department?.name || 'Dept'}` : `Technician`}
+                {role === 'owner' ? 'Owner / Admin' : role === 'hod' ? `HOD • ${department?.name || 'Dept'}` : `Technician`}
               </span>
             </div>
             {department && (
@@ -386,223 +335,37 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
     </header>
   );
 
-  // 2. OWNER LAYOUT (Management + Floor Operations)
-  if (role === 'owner') {
-    return (
-      <div className="min-h-screen bg-[#0E2829] text-stone-100 flex flex-col">
-        {renderHeader()}
-
-        {/* Owner Navigation Tabs */}
-        <div className="bg-stone-900/60 border-b border-stone-800/80 px-4">
-          <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-2 text-xs font-semibold">
-            <button
-              onClick={() => setCurrentView('owner_dashboard')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition whitespace-nowrap ${
-                currentView === 'owner_dashboard'
-                  ? 'bg-[#34D399] text-stone-950 font-bold'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Owner Command Center
-            </button>
-
-            <span className="h-4 w-px bg-stone-800 mx-1" />
-
-            <button
-              onClick={() => setCurrentView('queue')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition whitespace-nowrap ${
-                currentView === 'queue'
-                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <Wrench className="w-4 h-4" />
-              Floor Queue
-            </button>
-
-            <button
-              onClick={() => setCurrentView('intake')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition whitespace-nowrap ${
-                currentView === 'intake'
-                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4" />
-              Car Intake
-            </button>
-
-            <button
-              onClick={() => setCurrentView('checkout')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition whitespace-nowrap ${
-                currentView === 'checkout'
-                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <Receipt className="w-4 h-4" />
-              Checkout & WhatsApp
-            </button>
-
-            <button
-              onClick={() => setCurrentView('workers')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition whitespace-nowrap ${
-                currentView === 'workers'
-                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              Technician PINs
-            </button>
-          </div>
-        </div>
-
-        {/* Owner View Container */}
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-          {currentView === 'owner_dashboard' && garage && (
-            <OwnerDashboard
-              garage={garage}
-              jobs={jobs}
-              deferredRepairs={deferredRepairs}
-              onNavigate={(view) => setCurrentView(view)}
-            />
-          )}
-
-          {currentView === 'queue' && (
-            <QueueScreen
-              jobs={jobs}
-              deferredRepairs={deferredRepairs}
-              onUpdateJob={onUpdateJob}
-              onNavigateToCheckout={() => setCurrentView('checkout')}
-              userRole="owner"
-              garageId={garage?.id || ''}
-            />
-          )}
-
-          {currentView === 'intake' && (
-            <IntakeScreen
-              onJobCreated={onAddJob}
-              onNavigateToQueue={() => setCurrentView('queue')}
-              availableMechanics={workers.map((w) => w.name)}
-            />
-          )}
-
-          {currentView === 'checkout' && (
-            <CheckoutScreen
-              jobs={jobs}
-              todayRevenue={todayRevenue}
-              onUpdateJob={onUpdateJob}
-              onJobReleased={onJobReleased}
-              onAddDeferredRepair={onAddDeferredRepair}
-            />
-          )}
-
-          {currentView === 'workers' && (
-            <WorkersScreen
-              workers={workers}
-              onAddWorker={onAddWorker}
-              onDeleteWorker={onDeleteWorker}
-              onUpdatePin={onUpdatePin}
-              onToggleStatus={onToggleStatus}
-              onNavigateToQueue={() => setCurrentView('queue')}
-            />
-          )}
-        </main>
-
-        {showBillingModal && garage && (
-          <OwnerBillingModal
-            garage={garage}
-            onClose={() => setShowBillingModal(false)}
-            onStatusUpdated={(newStatus) => {
-              setGarage((prev) => prev ? { ...prev, subscription_status: newStatus } : prev);
-            }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // 3. HOD LAYOUT (Head of Department)
-  if (role === 'worker' && isHod) {
-    return (
-      <div className="min-h-screen bg-[#0E2829] text-stone-100 flex flex-col">
-        {renderHeader()}
-
-        {/* HOD Specific Navigation */}
-        <div className="bg-stone-900/60 border-b border-stone-800/80 px-4">
-          <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-2 text-xs font-semibold">
-            <button
-              onClick={() => setCurrentView('queue')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition ${
-                currentView === 'queue'
-                  ? 'bg-[#34D399] text-stone-950 font-bold'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <Wrench className="w-4 h-4" />
-              Department Floor & Roster
-            </button>
-
-            <button
-              onClick={() => setCurrentView('intake')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 transition ${
-                currentView === 'intake'
-                  ? 'bg-amber-600/30 text-amber-300 border border-amber-500/40'
-                  : 'text-stone-300 hover:bg-stone-800'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4" />
-              New Job Intake
-            </button>
-          </div>
-        </div>
-
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-          {currentView === 'queue' && (
-            <QueueScreen
-              jobs={jobs}
-              deferredRepairs={deferredRepairs}
-              onUpdateJob={onUpdateJob}
-              onNavigateToCheckout={() => setCurrentView('checkout')}
-              userRole="hod"
-              departmentId={department?.id}
-              departmentName={department?.name}
-              garageId={garage?.id || ''}
-            />
-          )}
-
-          {currentView === 'intake' && (
-            <IntakeScreen
-              onJobCreated={onAddJob}
-              onNavigateToQueue={() => setCurrentView('queue')}
-              availableMechanics={workers.map((w) => w.name)}
-            />
-          )}
-        </main>
-      </div>
-    );
-  }
-
-  // 4. STANDARD WORKER LAYOUT (Technician / Mechanic)
   return (
     <div className="min-h-screen bg-[#0E2829] text-stone-100 flex flex-col">
       {renderHeader()}
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        <QueueScreen
-          jobs={jobs}
-          deferredRepairs={deferredRepairs}
-          onUpdateJob={onUpdateJob}
-          onNavigateToCheckout={() => {}}
-          userRole="worker"
-          departmentId={department?.id}
-          departmentName={department?.name}
-          garageId={garage?.id || ''}
-          currentUserId={userId}
-        />
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col">
+        {role === 'owner' && (
+          <OwnerDashboard
+            garage={garage}
+          />
+        )}
+
+        {(role === 'worker' || role === 'hod') && (
+          <QueueScreen
+            userRole={role}
+            departmentId={department?.id}
+            departmentName={department?.name}
+            garageId={garage.id}
+            currentUserId={userId}
+          />
+        )}
       </main>
+
+      {showBillingModal && (
+        <OwnerBillingModal
+          garage={garage}
+          onClose={() => setShowBillingModal(false)}
+          onStatusUpdated={(newStatus) => {
+            setGarage((prev) => prev ? { ...prev, subscription_status: newStatus } : prev);
+          }}
+        />
+      )}
     </div>
   );
 };

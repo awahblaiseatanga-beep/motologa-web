@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Job, WorkerProfile, DeferredRepair, WorkerStatus } from '../types';
+import { Job, DeferredRepair } from '../types';
 
 export const uploadMedia = async (jobId: string, file: Blob, type: string) => {
   const fileName = `${jobId}-${Date.now()}-${type}.jpeg`;
@@ -30,18 +30,18 @@ export const uploadMedia = async (jobId: string, file: Blob, type: string) => {
 };
 
 // Map DB Job to UI Job
-const mapDbJobToUiJob = (dbJob: any, mechanicName: string = 'Unassigned'): Job => {
+const mapDbJobToUiJob = (dbJob: any): Job => {
   let uiStatus: Job['status'] = 'Diagnosis';
   if (dbJob.status === 'active') uiStatus = 'In Repair';
   if (dbJob.status === 'ready') uiStatus = 'Ready/Released';
-  // If intake, it acts as Diagnosis or Awaiting Approval. Let's just use Diagnosis.
 
   return {
     id: dbJob.id,
     licensePlate: dbJob.plate,
-    customerPhone: '', // Not in schema
-    vehicleModel: '', // Not in schema
-    mechanicAssigned: mechanicName,
+    customerPhone: '', 
+    vehicleModel: '', 
+    assigned_to: dbJob.assigned_to,
+    assigned_to_profile: dbJob.assigned_to_profile,
     status: uiStatus,
     createdAt: new Date(dbJob.created_at || Date.now()).getTime(),
     partSource: 'Garage Stock',
@@ -55,68 +55,13 @@ const mapDbJobToUiJob = (dbJob: any, mechanicName: string = 'Unassigned'): Job =
   };
 };
 
-export const fetchMechanicById = async (mechanicId: string): Promise<WorkerProfile | null> => {
-  const { data, error } = await supabase.from('mechanics').select(`*`).eq('id', mechanicId).single();
-  if (error || !data) return null;
-  return {
-    id: data.id,
-    name: data.name,
-    role: data.role || 'Apprentice',
-    specialty: data.specialty || '',
-    phone: data.phone || '',
-    description: '',
-    image: '',
-    isVerified: true,
-    status: 'active' as WorkerStatus,
-    completedJobs: 0,
-    rating: 5,
-    createdAt: Date.now(),
-    pinCode: data.pin_code,
-    colorBadge: data.color_badge,
-  };
-};
-
-export const fetchMechanics = async (garageIdArg: string) => {
-  const { data, error } = await supabase.from('mechanics').select('*').eq('garage_id', garageIdArg);
-  
-  if (error) {
-    console.error("fetchMechanics error", error);
-    return [];
-  }
-  return data || [];
-};
-
-export const createMechanic = async (garageId: string, name: string, pinCode: string, colorBadge: string, phone?: string, role?: string, specialty?: string) => {
-  const { data, error } = await supabase.from('mechanics').insert({
-    garage_id: garageId,
-    name,
-    pin_code: pinCode,
-    color_badge: colorBadge,
-    phone,
-    role,
-    specialty
-  }).select().single();
-  if (error || !data) throw new Error(error?.message || "Failed to create mechanic");
-  return data;
-};
-
-export const deleteMechanic = async (mechanicId: string) => {
-  const { data, error } = await supabase.from('mechanics').delete().eq('id', mechanicId).select().single();
-  if (error || !data) throw new Error(error?.message || "Failed to delete mechanic");
-};
-
-export const updateMechanicPin = async (mechanicId: string, pinCode: string) => {
-  const { data, error } = await supabase.from('mechanics').update({ pin_code: pinCode }).eq('id', mechanicId).select().single();
-  if (error || !data) throw new Error(error?.message || "Failed to update mechanic PIN");
-};
-
 export const fetchJobsForGarage = async (garageId: string) => {
   const { data, error } = await supabase
     .from('jobs')
     .select(`
       *,
       job_media(*),
-      mechanics(name)
+      assigned_to_profile:garage_members!assigned_to(full_name)
     `)
     .eq('garage_id', garageId);
 
@@ -125,28 +70,28 @@ export const fetchJobsForGarage = async (garageId: string) => {
     return [];
   }
 
-  return data.map((d: any) => mapDbJobToUiJob(d, d.mechanics?.name));
+  return data.map((d: any) => mapDbJobToUiJob(d));
 };
 
-export const fetchJobsForMechanic = async (mechanicId: string) => {
+export const fetchJobsForMechanic = async (mechanicUserId: string) => {
   const { data, error } = await supabase
     .from('jobs')
     .select(`
       *,
       job_media(*),
-      mechanics!inner(name)
+      assigned_to_profile:garage_members!assigned_to(full_name)
     `)
-    .eq('mechanic_id', mechanicId);
+    .eq('assigned_to', mechanicUserId);
 
   if (error) {
     console.error('Error fetching jobs', error);
     return [];
   }
 
-  return data.map((d: any) => mapDbJobToUiJob(d, d.mechanics.name));
+  return data.map((d: any) => mapDbJobToUiJob(d));
 };
 
-export const createJob = async (job: Partial<Job>, garageId: string, mechanicId: string) => {
+export const createJob = async (job: Partial<Job>, garageId: string, assignedToUserId: string) => {
   let dbStatus = 'intake';
   if (job.status === 'In Repair') dbStatus = 'active';
   if (job.status === 'Ready/Released') dbStatus = 'ready';
@@ -155,7 +100,7 @@ export const createJob = async (job: Partial<Job>, garageId: string, mechanicId:
     .from('jobs')
     .insert({
       garage_id: garageId,
-      mechanic_id: mechanicId,
+      assigned_to: assignedToUserId, // Strict UUID
       plate: job.licensePlate || 'UNKNOWN',
       status: dbStatus,
       labor_fee: job.laborFeeFcfa || 0,
@@ -304,10 +249,10 @@ export const updateMemberDepartment = async (memberId: string, departmentId: str
   return data;
 };
 
-export const updateMemberHod = async (memberId: string, isHod: boolean) => {
+export const updateMemberRole = async (memberId: string, nextRole: 'owner' | 'hod' | 'worker') => {
   const { data, error } = await supabase
     .from('garage_members')
-    .update({ is_hod: isHod })
+    .update({ role: nextRole })
     .eq('id', memberId)
     .select()
     .single();
@@ -319,7 +264,7 @@ export const updateMemberHod = async (memberId: string, isHod: boolean) => {
 export const removeMemberFromDepartment = async (memberId: string) => {
   const { data, error } = await supabase
     .from('garage_members')
-    .update({ department_id: null, is_hod: false })
+    .update({ department_id: null, role: 'worker' })
     .eq('id', memberId)
     .select()
     .single();
@@ -331,8 +276,8 @@ export const removeMemberFromDepartment = async (memberId: string) => {
 export const joinGarageMember = async (
   garageId: string,
   userId: string,
-  departmentId: string,
-  role: 'worker' = 'worker',
+  departmentId: string | null,
+  role: 'owner' | 'hod' | 'worker' = 'worker',
   email?: string,
   fullName?: string
 ) => {
@@ -341,7 +286,6 @@ export const joinGarageMember = async (
     user_id: userId,
     role,
     department_id: departmentId || null,
-    is_hod: false,
   };
   if (email) payload.email = email;
   if (fullName) payload.full_name = fullName;
@@ -370,4 +314,3 @@ export const updateGarageSubscription = async (
   if (error || !data) throw new Error(error?.message || 'Failed to update subscription status');
   return data;
 };
-

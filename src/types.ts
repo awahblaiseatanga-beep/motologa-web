@@ -26,7 +26,8 @@ export interface Job {
   licensePlate: string;
   customerPhone: string;
   vehicleModel: string;
-  mechanicAssigned: string;
+  assigned_to: string;
+  assigned_to_profile?: { full_name: string };
   status: JobStatus;
   createdAt: number;
   timeElapsedMinutes?: number;
@@ -96,7 +97,6 @@ export const DEFERRED_COMPONENTS = [
   'Battery Replacement / Batterie',
   'Tires Replacement / Pneumatiques'
 ];
-export const MECHANICS_LIST = ['Jean', 'Paul', 'Michel', 'Ibrahim', 'Unassigned'];
 
 export function sanitizeCameroonPhone(phone: string): string {
   let cleaned = phone.replace(/\D/g, '');
@@ -133,9 +133,8 @@ export interface GarageMember {
   id: string;
   garage_id: string;
   user_id: string;
-  role: 'owner' | 'worker';
+  role: 'owner' | 'hod' | 'worker';
   department_id: string | null;
-  is_hod: boolean;
   email?: string;
   full_name?: string;
   created_at?: string;

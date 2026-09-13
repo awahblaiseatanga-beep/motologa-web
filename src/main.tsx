@@ -1,5 +1,5 @@
-import React, {StrictMode, Component, ReactNode} from 'react';
-import {createRoot} from 'react-dom/client';
+import React, { Component, ReactNode, StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
@@ -8,25 +8,26 @@ interface ErrorBoundaryProps {
 }
 
 interface ErrorBoundaryState {
+  hasError: boolean;
   error: Error | null;
 }
 
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null };
-  
   constructor(props: ErrorBoundaryProps) {
     super(props);
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error };
+    return { hasError: true, error };
   }
 
   render() {
-    if (this.state.error) {
+    if (this.state.hasError) {
       return (
-        <div style={{ color: 'red', padding: '20px' }}>
-          <pre>{this.state.error.stack || this.state.error.toString()}</pre>
+        <div style={{ color: 'red', padding: '20px', backgroundColor: '#fff', zIndex: 9999, position: 'relative' }}>
+          <h2>Application Error</h2>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{this.state.error?.stack || this.state.error?.toString()}</pre>
         </div>
       );
     }
@@ -39,5 +40,5 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </StrictMode>,
+  </StrictMode>
 );

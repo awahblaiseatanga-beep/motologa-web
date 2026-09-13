@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Camera, Check, Plus, Wrench, ShieldCheck, Phone, Car, Gauge, Image as ImageIcon } from 'lucide-react';
-import { MECHANICS_LIST, Job, JobStatus } from '../types';
+import { Job, JobStatus, GarageMember } from '../types';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { MotologaLogo } from './MotologaLogo';
 import { VoiceRecorderField } from './VoiceRecorderField';
 
 interface IntakeScreenProps {
-  onJobCreated: (newJob: Job) => Promise<void>;
+  onJobCreated: (newJob: Job, assignedToId: string) => Promise<void>;
   onNavigateToQueue: () => void;
-  availableMechanics?: string[];
+  availableMechanics: GarageMember[];
 }
 
 const COMMON_VEHICLES = [
@@ -25,12 +25,16 @@ const COMMON_VEHICLES = [
 export const IntakeScreen: React.FC<IntakeScreenProps> = ({
   onJobCreated,
   onNavigateToQueue,
-  availableMechanics = MECHANICS_LIST,
+  availableMechanics,
 }) => {
   const [licensePlate, setLicensePlate] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [vehicleModel, setVehicleModel] = useState<string>('');
-  const [selectedMechanic, setSelectedMechanic] = useState<string>(availableMechanics[0] || 'Paul');
+  
+  // Store the UUID of the selected mechanic
+  const defaultMech = availableMechanics.length > 0 ? availableMechanics[0].user_id : '';
+  const [selectedMechanicId, setSelectedMechanicId] = useState<string>(defaultMech);
+  
   const [issueDescription, setIssueDescription] = useState<string>('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string>('');
   const [voiceNoteDuration, setVoiceNoteDuration] = useState<number>(0);
@@ -56,8 +60,8 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       licensePlate: trimmedPlate,
       customerPhone: customerPhone.startsWith('+237') ? customerPhone : `+237 ${customerPhone.trim()}`,
       vehicleModel: vehicleModel.trim() || 'Unspecified Vehicle',
-      mechanicAssigned: selectedMechanic,
-      status: (selectedMechanic === 'Unassigned' ? 'Diagnosis' : 'In Repair') as JobStatus,
+      assigned_to: selectedMechanicId,
+      status: (!selectedMechanicId ? 'Diagnosis' : 'In Repair') as JobStatus,
       createdAt: Date.now(),
       timeElapsedMinutes: 0,
       dashboardPhotoUrl: dashboardPhoto,
@@ -78,8 +82,10 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
     };
 
     try {
-      await onJobCreated(newJob);
-      setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${selectedMechanic}!`);
+      await onJobCreated(newJob, selectedMechanicId);
+      
+      const mechName = availableMechanics.find(m => m.user_id === selectedMechanicId)?.full_name || 'Technician';
+      setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${mechName}!`);
 
       // Reset inputs for next car
       setLicensePlate('');
@@ -351,19 +357,21 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                 Dispatch & Mechanic Assignment
               </label>
               <span className="text-[11px] font-bold text-slate-500">
-                Selected: <strong className="text-slate-900">{selectedMechanic}</strong>
+                Selected: <strong className="text-slate-900">
+                  {availableMechanics.find(m => m.user_id === selectedMechanicId)?.full_name || '...'}
+                </strong>
               </span>
             </div>
 
             {/* Horizontal scrolling row of touch-friendly buttons (min 48px height) */}
             <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
               {availableMechanics.map((mech) => {
-                const isSelected = selectedMechanic === mech;
+                const isSelected = selectedMechanicId === mech.user_id;
                 return (
                   <button
-                    key={mech}
+                    key={mech.user_id}
                     type="button"
-                    onClick={() => setSelectedMechanic(mech)}
+                    onClick={() => setSelectedMechanicId(mech.user_id)}
                     className={`min-h-[50px] min-w-[120px] px-4 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all border-2 shrink-0 select-none active:scale-95 shadow-sm ${
                       isSelected
                         ? 'bg-[#142F30] text-emerald-300 border-[#34D399] ring-2 ring-emerald-500/20'
@@ -375,7 +383,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                         isSelected ? 'bg-[#34D399]' : 'bg-slate-400'
                       }`}
                     ></span>
-                    <span>{mech}</span>
+                    <span>{mech.full_name || mech.email?.split('@')[0]}</span>
                     {isSelected && <Check className="w-4 h-4 text-[#34D399] ml-1 stroke-[3]" />}
                   </button>
                 );

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { Mail, Lock, Eye, EyeClosed, ArrowRight, ShieldCheck, Wrench, Sparkles } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { PinPad } from './PinPad';
 import { MotologaLogo } from './MotologaLogo';
 import { cn } from '../lib/utils';
 
@@ -12,7 +11,6 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [userType, setUserType] = useState<'owner' | 'mechanic'>('owner');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,7 +19,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
-  const [mechanics, setMechanics] = useState<{ id: string; name: string }[]>([]);
 
   // 3D Card Hover Physics
   const mouseX = useMotionValue(0);
@@ -39,29 +36,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     mouseX.set(0);
     mouseY.set(0);
   };
-
-  useEffect(() => {
-    if (userType === 'mechanic') {
-      const fetchMechanics = async () => {
-        try {
-          const { data } = await supabase.from('mechanics').select('id, name');
-          if (data && data.length > 0) {
-            setMechanics(data);
-            return;
-          }
-        } catch {
-          // Fallback below
-        }
-        setMechanics([
-          { id: 'mech-1', name: 'Jean' },
-          { id: 'mech-2', name: 'Paul' },
-          { id: 'mech-3', name: 'Michel' },
-          { id: 'mech-4', name: 'Ibrahim' },
-        ]);
-      };
-      fetchMechanics();
-    }
-  }, [userType]);
 
   const handleOwnerAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,48 +84,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleMechanicLogin = async (mechanicId: string, pin: string) => {
-    setIsLoading(true);
-    if (mechanicId.startsWith('mech-')) {
-      setIsLoading(false);
-      onLoginSuccess('mechanic', mechanicId);
-      return;
-    }
-    try {
-      const { data } = await supabase.from('mechanics').select('pin_code').eq('id', mechanicId).single();
-      setIsLoading(false);
-      if (data && data.pin_code === pin) {
-        onLoginSuccess('mechanic', mechanicId);
-      } else {
-        alert('Invalid PIN code. Please try again.');
-      }
-    } catch {
-      setIsLoading(false);
-      onLoginSuccess('mechanic', mechanicId);
-    }
-  };
-
   const handleForgotPassword = (e: React.MouseEvent) => {
     e.preventDefault();
     alert('Password Reset: Please contact your MOTOLOGA workshop administrator or check your registered email.');
   };
-
-  // If mechanic mode is chosen, display the interactive PIN pad
-  if (userType === 'mechanic') {
-    return (
-      <div className="relative min-h-screen bg-[#071718] text-white flex flex-col justify-center items-center p-4">
-        <div className="absolute top-5 left-5 z-50">
-          <button
-            onClick={() => setUserType('owner')}
-            className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider bg-stone-900/80 hover:bg-stone-800 border border-emerald-500/30 text-emerald-400 px-4 py-2.5 rounded-xl backdrop-blur-md active:scale-95 transition-all cursor-pointer shadow-lg"
-          >
-            &larr; Switch to Owner Portal
-          </button>
-        </div>
-        <PinPad mechanics={mechanics} onLogin={handleMechanicLogin} />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen w-full bg-[#051112] relative overflow-x-hidden overflow-y-auto flex items-center justify-center p-4 sm:p-6 select-none">
@@ -404,14 +340,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
                   <span className="font-bold tracking-wider uppercase">CMR Workshop OS</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setUserType('mechanic')}
-                  className="text-xs font-medium text-slate-300 hover:text-emerald-300 flex items-center gap-1 bg-[#142F30] hover:bg-[#1a3d3e] border border-emerald-500/30 px-2.5 py-1 rounded-lg transition-colors cursor-pointer active:scale-95"
-                >
-                  <Wrench className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Mechanic PIN</span>
-                </button>
               </div>
 
               {/* Logo and Header */}
@@ -645,13 +573,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     </span>
                   </label>
 
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-xs text-emerald-400/90 hover:text-emerald-300 hover:underline transition-colors cursor-pointer"
-                  >
-                    Forgot password?
-                  </button>
                 </div>
 
                 {/* Primary Submit Button */}

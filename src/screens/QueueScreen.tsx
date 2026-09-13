@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Job, DeferredRepair, GarageMember } from '../types';
 import { MechanicQueueScreen } from '../components/MechanicQueueScreen';
-import { fetchGarageMembers, removeMemberFromDepartment } from '../lib/api';
+import {
+  fetchGarageMembers,
+  removeMemberFromDepartment,
+  fetchJobsForMechanic,
+  fetchJobsForGarage,
+  fetchDeferredRepairs,
+  updateJobStatus
+} from '../lib/api';
 import {
   Wrench,
   Users,
   Building2,
   UserX,
-  ShieldCheck,
   CheckCircle2,
-  Clock,
-  Filter,
-  AlertCircle
 } from 'lucide-react';
 
 interface QueueScreenProps {
-  jobs: Job[];
-  deferredRepairs: DeferredRepair[];
-  onUpdateJob: (updatedJob: Job) => void;
-  onNavigateToCheckout: (jobId?: string) => void;
   userRole: 'owner' | 'hod' | 'worker';
   departmentId?: string;
   departmentName?: string;
@@ -27,21 +26,55 @@ interface QueueScreenProps {
 }
 
 export const QueueScreen: React.FC<QueueScreenProps> = ({
-  jobs,
-  deferredRepairs,
-  onUpdateJob,
-  onNavigateToCheckout,
   userRole,
   departmentId,
   departmentName,
   garageId,
   currentUserId,
 }) => {
-  // HOD sub-tab: 'queue' | 'roster'
+  // Data State
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [deferredRepairs, setDeferredRepairs] = useState<DeferredRepair[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
+  // HOD specific state
   const [activeHodTab, setActiveHodTab] = useState<'queue' | 'roster'>('queue');
   const [deptWorkers, setDeptWorkers] = useState<GarageMember[]>([]);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [removeStatus, setRemoveStatus] = useState<string | null>(null);
+
+  // Load Jobs independently
+  const loadJobs = async () => {
+    if (!currentUserId || !garageId) return;
+    setLoadingJobs(true);
+    try {
+      // In V5, Workers only see their assigned jobs. HODs could see all in department, but for now they see their own or garage-wide depending on future schema.
+      // Since HOD schema does not strictly map jobs to departments yet, we'll fetch assigned jobs for both for safety, OR if Owner, fetch all.
+      let fetchedJobs: Job[] = [];
+      if (userRole === 'owner') {
+        fetchedJobs = await fetchJobsForGarage(garageId);
+      } else {
+        fetchedJobs = await fetchJobsForMechanic(currentUserId);
+      }
+      
+      setJobs(fetchedJobs);
+
+      // Fetch deferred repairs associated with these jobs
+      const jobIds = fetchedJobs.map(j => j.id);
+      if (jobIds.length > 0) {
+        const repairs = await fetchDeferredRepairs(jobIds);
+        setDeferredRepairs(repairs);
+      }
+    } catch (error) {
+      console.error("Error loading localized jobs:", error);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  useEffect(() => {
+    loadJobs();
+  }, [userRole, garageId, currentUserId]);
 
   // Load Department Roster for HOD
   const loadDepartmentRoster = async () => {
@@ -64,12 +97,11 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
     }
   }, [userRole, departmentId, garageId]);
 
-  // HOD Remove worker action (sets department_id to NULL)
+  // HOD action
   const handleRemoveWorkerFromDept = async (memberId: string, memberName: string) => {
     if (!confirm(`Are you sure you want to remove ${memberName} from the ${departmentName || 'department'} roster?`)) {
       return;
     }
-
     try {
       await removeMemberFromDepartment(memberId);
       setDeptWorkers((prev) => prev.filter((m) => m.id !== memberId));
@@ -80,11 +112,24 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
     }
   };
 
-  // Filter jobs according to role:
-  // - Worker: filter to their assigned jobs (or general unassigned floor jobs)
-  // - HOD: filter to department or general floor jobs
-  // - Owner: all jobs
-  const displayedJobs = jobs;
+  // Mutate Job locally and via API
+  const handleUpdateJob = async (updatedJob: Job) => {
+    try {
+      await updateJobStatus(updatedJob.id, updatedJob.status, updatedJob.laborFeeFcfa);
+      setJobs((prev) => prev.map((j) => (j.id === updatedJob.id ? updatedJob : j)));
+    } catch (error) {
+      alert("Failed to update status. Please try again.");
+    }
+  };
+
+  const handleNavigateToCheckout = () => {
+    if (userRole === 'owner') {
+      // Typically Owner uses OwnerDashboard navigation, but for standalone QueueScreen:
+      alert("Checkout operations must be handled from the Owner Dashboard Checkout Tab.");
+    } else {
+      alert("Only Workshop Owners can process final payments and checkout via their Dashboard.");
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -186,7 +231,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
                       <div>
                         <div className="font-bold text-sm text-white flex items-center gap-2">
                           <span>{displayName}</span>
-                          {member.is_hod && (
+                          {member.role === 'hod' && (
                             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
                               HOD (Lead)
                             </span>
@@ -197,8 +242,6 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
                         </div>
                       </div>
                     </div>
-
-                    {/* Remove button: sets department_id to NULL */}
                     <button
                       onClick={() => handleRemoveWorkerFromDept(member.id, displayName)}
                       className="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
@@ -215,12 +258,16 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
         </div>
       ) : (
         /* 2. Operational Repair Queue */
-        <MechanicQueueScreen
-          jobs={displayedJobs}
-          deferredRepairs={deferredRepairs}
-          onUpdateJob={onUpdateJob}
-          onNavigateToCheckout={onNavigateToCheckout}
-        />
+        loadingJobs ? (
+          <div className="text-center py-12 text-stone-400">Loading Job Queue...</div>
+        ) : (
+          <MechanicQueueScreen
+            jobs={jobs}
+            deferredRepairs={deferredRepairs}
+            onUpdateJob={handleUpdateJob}
+            onNavigateToCheckout={handleNavigateToCheckout}
+          />
+        )
       )}
     </div>
   );

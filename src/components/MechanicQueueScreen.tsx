@@ -36,7 +36,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
 
   const filteredJobs = filterMechanic === 'All'
     ? activeJobs
-    : activeJobs.filter((j) => j.mechanicAssigned === filterMechanic);
+    : activeJobs.filter((j) => (j.assigned_to_profile?.full_name || j.assigned_to) === filterMechanic);
 
   const handlePartSourceToggle = (job: Job, source: PartSource) => {
     onUpdateJob({
@@ -204,7 +204,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                         Assigned Mechanic
                       </span>
                       <span className="font-extrabold text-slate-800 text-sm">
-                        {job.mechanicAssigned}
+                        {job.assigned_to_profile?.full_name || job.assigned_to}
                       </span>
                     </div>
                   </div>

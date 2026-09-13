@@ -102,7 +102,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     let text = `*MOTOLOGA WORKSHOP — FACTURE & REÇU DE SORTIE*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `🇨🇲 *Véhicule :* ${job.licensePlate} (${job.vehicleModel})\n`;
-    text += `👨🏾‍🔧 *Mécanicien :* ${job.mechanicAssigned}\n`;
+    text += `👨🏾‍🔧 *Mécanicien :* ${job.assigned_to_profile?.full_name || job.assigned_to}\n`;
     text += `⚙️ *Type Pièce :* ${job.partSource}\n`;
     text += `💰 *Main d'œuvre (Labor Fee) :* ${formattedFee}\n`;
     text += `📋 *Statut :* Service Terminé & Inspecté ✅\n`;
@@ -323,7 +323,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <StatusChip status={currentJob.status} size="md" />
               <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                Serviced by <strong className="text-slate-800">{currentJob.mechanicAssigned}</strong>
+                Serviced by <strong className="text-slate-800">{currentJob.assigned_to_profile?.full_name || currentJob.assigned_to}</strong>
               </span>
             </div>
           </div>
@@ -530,7 +530,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 </div>
                 <div className="flex justify-between font-medium text-xs text-slate-600">
                   <span>Assigned Technician</span>
-                  <span className="font-bold text-slate-900">{currentJob.mechanicAssigned}</span>
+                  <span className="font-bold text-slate-900">{currentJob.assigned_to_profile?.full_name || currentJob.assigned_to}</span>
                 </div>
                 <div className="flex justify-between font-medium text-xs text-slate-600">
                   <span>Parts Source</span>
