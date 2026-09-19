@@ -146,6 +146,7 @@ export interface Department {
   id: string;
   garage_id: string;
   name: string;
+  role?: string;
   description?: string;
   created_at?: string;
 }

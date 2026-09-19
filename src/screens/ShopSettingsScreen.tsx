@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Building2, MessageSquare, Image as ImageIcon, Save, CheckCircle2, AlertTriangle, Settings } from 'lucide-react';
+import { Building2, MessageSquare, Image as ImageIcon, Save, CheckCircle2, AlertTriangle, Settings, Users, PlusCircle } from 'lucide-react';
+import { provisionDepartment, fetchDepartments } from '../lib/api';
+import { Department } from '../types';
 
-export const ShopSettingsScreen: React.FC = () => {
+export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
@@ -23,12 +25,42 @@ export const ShopSettingsScreen: React.FC = () => {
   const [existingLogoUrl, setExistingLogoUrl] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   
+  // Department State
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newDeptRole, setNewDeptRole] = useState('');
+  const [deptLoading, setDeptLoading] = useState(false);
+
   // File input ref for visual manipulation
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSettings();
-  }, []);
+    loadDepartments();
+  }, [garageId]);
+
+  const loadDepartments = async () => {
+    if (!garageId) return;
+    const depts = await fetchDepartments(garageId);
+    setDepartments(depts);
+  };
+
+  const handleProvisionDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDeptName.trim() || !newDeptRole.trim()) return;
+    setDeptLoading(true);
+    try {
+      await provisionDepartment(garageId, newDeptName.trim(), newDeptRole.trim());
+      setNewDeptName('');
+      setNewDeptRole('');
+      await loadDepartments();
+      alert("Department created successfully.");
+    } catch (err: any) {
+      alert(err.message || "Failed to provision department");
+    } finally {
+      setDeptLoading(false);
+    }
+  };
 
   const fetchSettings = async () => {
     setLoading(true);
@@ -284,6 +316,98 @@ export const ShopSettingsScreen: React.FC = () => {
                   <p className="text-xs text-stone-500 mt-1">Recommended: Square PNG, transparent background</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Department Management Block */}
+        <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <Users className="w-4 h-4 text-stone-400" />
+            Manage Departments
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Inline Creation Form */}
+            <div>
+              <p className="text-xs text-stone-400 mb-4 uppercase tracking-wider font-bold border-b border-stone-800/80 pb-2">
+                Provision New Department
+              </p>
+              <form onSubmit={handleProvisionDepartment} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+                    Department Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={50}
+                    value={newDeptName}
+                    onChange={(e) => setNewDeptName(e.target.value)}
+                    placeholder="e.g. Engine Repair"
+                    className="w-full bg-stone-950/50 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+                    Role / Function
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={50}
+                    value={newDeptRole}
+                    onChange={(e) => setNewDeptRole(e.target.value)}
+                    placeholder="e.g. Diagnostics"
+                    className="w-full bg-stone-950/50 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-medium"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={deptLoading}
+                  className="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold uppercase tracking-wider text-xs rounded-xl transition border border-emerald-500/30 flex items-center justify-center gap-2"
+                >
+                  {deptLoading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-emerald-500/30 border-t-emerald-300 rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" />
+                      Add Department
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            {/* Active Departments List */}
+            <div>
+              <p className="text-xs text-stone-400 mb-4 uppercase tracking-wider font-bold border-b border-stone-800/80 pb-2">
+                Active Departments ({departments.length})
+              </p>
+              
+              {departments.length === 0 ? (
+                <div className="bg-stone-950/40 border border-stone-800 border-dashed rounded-xl p-4 text-center">
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">No departments listed</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                  {departments.map((dept) => (
+                    <div key={dept.id} className="bg-[#142F30] border border-emerald-500/20 rounded-xl p-3 flex justify-between items-center shadow-inner">
+                      <div>
+                        <p className="text-sm font-bold text-emerald-50">{dept.name}</p>
+                        {dept.role && (
+                          <p className="text-[10px] uppercase tracking-wider font-mono text-emerald-400/80 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
+                            {dept.role}
+                          </p>
+                        )}
+                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-950/50 flex items-center justify-center border border-emerald-500/20">
+                        <Users className="w-4 h-4 text-emerald-400" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

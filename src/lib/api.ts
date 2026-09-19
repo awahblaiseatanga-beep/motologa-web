@@ -223,6 +223,21 @@ export const createDepartment = async (garageId: string, name: string, descripti
   return data;
 };
 
+export const provisionDepartment = async (garageId: string, name: string, role: string) => {
+  const { data, error } = await supabase
+    .from('departments')
+    .insert({
+      garage_id: garageId,
+      name,
+      role // Explicitly bound column per DB verification
+    })
+    .select()
+    .single();
+
+  if (error || !data) throw new Error('A database constraint prevented this department creation. Please verify your inputs.');
+  return data;
+};
+
 export const deleteDepartment = async (departmentId: string) => {
   const { data, error } = await supabase
     .from('departments')

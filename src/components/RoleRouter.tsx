@@ -557,7 +557,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             ) : ownerScreen === 'daily_logs' ? (
               <OwnerDailyLogsScreen garageId={garage.id} />
             ) : ownerScreen === 'settings' ? (
-              <ShopSettingsScreen />
+              <ShopSettingsScreen garageId={garage.id} />
             ) : (
               <OwnerDashboard garage={garage} activeScreen={ownerScreen} />
             )}
