@@ -632,28 +632,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                   </div>
                 </motion.button>
 
-                {/* Minimal Divider */}
-                <div className="relative my-3 flex items-center">
-                  <div className="flex-grow border-t border-emerald-500/20" />
-                  <span className="mx-3 text-[11px] font-mono text-slate-400 uppercase tracking-widest">
-                    Quick Access
-                  </span>
-                  <div className="flex-grow border-t border-emerald-500/20" />
-                </div>
 
-                {/* Quick Demo Preview Button */}
-                <motion.button
-                  whileHover={{ scale: 1.015 }}
-                  whileTap={{ scale: 0.985 }}
-                  type="button"
-                  onClick={() => onLoginSuccess('owner')}
-                  className="w-full relative group/demo cursor-pointer"
-                >
-                  <div className="relative overflow-hidden bg-[#142F30] hover:bg-[#1a3d3e] text-white font-bold h-11 rounded-xl border border-emerald-400/40 transition-all duration-200 flex items-center justify-center gap-2 text-xs shadow-md">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span className="tracking-wide">Explore Live Demo (Owner View)</span>
-                  </div>
-                </motion.button>
               </form>
 
               {/* Bottom Toggle Note */}
