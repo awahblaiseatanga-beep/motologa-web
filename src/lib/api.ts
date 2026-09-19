@@ -246,7 +246,7 @@ export const provisionNewWorkshop = async (ownerId: string, shopName: string, ph
     .insert({
       owner_id: ownerId,
       name: shopName,
-      subscription_status: 'trialing'
+      subscription_status: 'active'
     })
     .select()
     .single();
