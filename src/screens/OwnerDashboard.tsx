@@ -232,7 +232,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
   const recordedRevenue = jobs
     .filter((j) => j.released)
     .reduce((sum, j) => sum + (j.laborFeeFcfa || 0), 0);
-  const mockBaselineRevenue = 2450000;
+  const mockBaselineRevenue = 0;
   const totalRevenue = recordedRevenue > 0 ? recordedRevenue + mockBaselineRevenue : mockBaselineRevenue;
 
   const metrics: OwnerAnalyticsMetrics = {
