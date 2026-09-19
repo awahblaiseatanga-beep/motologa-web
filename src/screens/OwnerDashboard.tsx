@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Garage, Job, DeferredRepair, Department, GarageMember } from '../types';
 import {
   fetchDepartments,
@@ -13,9 +13,12 @@ import {
   updateJobStatus,
   createDeferredRepair
 } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { IntakeScreen } from '../components/IntakeScreen';
 import { CheckoutScreen } from '../components/CheckoutScreen';
 import { MechanicQueueScreen } from '../components/MechanicQueueScreen';
+import { RosterScreen } from './RosterScreen';
+import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
 import {
   BarChart3,
   Building2,
@@ -37,7 +40,8 @@ import {
   Receipt,
   ChevronDown,
   Link2,
-  DollarSign
+  DollarSign,
+  Send
 } from 'lucide-react';
 
 export interface OwnerAnalyticsMetrics {
@@ -51,12 +55,26 @@ export interface OwnerAnalyticsMetrics {
 
 export interface OwnerDashboardProps {
   garage: Garage;
+  activeScreen?: 'analytics' | 'staff';
 }
 
-export type ManagementTab = 'analytics' | 'structure' | 'roster' | 'intake' | 'queue' | 'checkout';
+export type ManagementTab = 'analytics' | 'structure' | 'intake' | 'queue' | 'checkout';
 
-export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
-  const [activeTab, setActiveTab] = useState<ManagementTab>('analytics');
+export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeScreen = 'analytics' }) => {
+  // External layout engine drives the screen renders
+  const OWNER_TABS = useMemo(() => {
+    const tabs: TabItem[] = [
+      { id: 'analytics', label: 'Dashboard', icon: <BarChart3 className="w-5 h-5" />, color: '#34d399' },
+      { id: 'structure', label: 'Bays', icon: <Building2 className="w-5 h-5" />, color: '#f43f5e' },
+      { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5" />, color: '#10b981' },
+      { id: 'intake', label: 'Intake', icon: <PlusCircle className="w-5 h-5" />, color: '#f59e0b' },
+      { id: 'checkout', label: 'Checkout', icon: <Receipt className="w-5 h-5" />, color: '#0ea5e9' },
+    ];
+    return tabs;
+  }, []);
+
+  const currentTabIndex = OWNER_TABS.findIndex((t) => t.id === activeScreen);
+
   
   // Data State
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -75,13 +93,13 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Initial Load
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isSilent: boolean = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const [deptList, memberList, garageJobs] = await Promise.all([
         fetchDepartments(garage.id),
         fetchGarageMembers(garage.id),
-        fetchJobsForGarage(garage.id),
+        fetchJobsForGarage(garage.id)
       ]);
       setDepartments(deptList);
       setMembers(memberList);
@@ -95,7 +113,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -115,9 +133,9 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
   };
 
   const handleReleaseJob = async (job: Job, finalFee: number) => {
-    const updated = { ...job, released: true, status: 'Ready/Released' as const, laborFeeFcfa: finalFee };
-    await updateJobStatus(updated.id, 'ready', finalFee);
-    setJobs(prev => prev.map(j => j.id === job.id ? updated : j));
+    // CheckoutScreen.tsx already triggers the terminal Supabase '{ status: 'completed' }' API call. 
+    // We only need to physically drop it from the DOM locally.
+    setJobs(prev => prev.filter(j => j.id !== job.id));
   };
 
   const handleAddDeferredRepair = async (repair: DeferredRepair, jobId: string) => {
@@ -204,6 +222,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
   const handleCopyInviteLink = () => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(inviteUrl);
+      alert('Invite link copied to clipboard!');
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 3000);
     }
@@ -226,7 +245,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8 h-full overflow-y-auto">
       {/* 1. MASTER NAVIGATION SHELL */}
       <nav className="bg-stone-900/90 border border-stone-800 rounded-2xl p-2.5 backdrop-blur-md shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3 px-3 py-1">
@@ -243,72 +262,29 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
             </div>
           </div>
         </div>
-
-        {/* Right Side: Tab Controls & Operational Launchers */}
-        <div className="flex items-center flex-wrap gap-1.5">
-          <div className="flex items-center bg-stone-950 p-1 rounded-xl border border-stone-800/80">
-            {['analytics', 'structure', 'roster'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as ManagementTab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === tab
-                    ? 'bg-[#34D399] text-stone-950 shadow-sm font-black'
-                    : 'text-stone-400 hover:text-stone-200'
-                }`}
-              >
-                {tab === 'analytics' && <BarChart3 className="w-3.5 h-3.5" />}
-                {tab === 'structure' && <Building2 className="w-3.5 h-3.5" />}
-                {tab === 'roster' && <Users className="w-3.5 h-3.5" />}
-                <span className="capitalize">{tab === 'structure' ? 'Structure' : tab}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="hidden sm:block h-6 w-px bg-stone-700/80 mx-1.5 self-center" />
-
-          {/* Operational Tabs */}
-          <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800/80">
-            {[
-              { id: 'queue', icon: Wrench, label: 'Queue', color: 'text-emerald-400' },
-              { id: 'intake', icon: PlusCircle, label: 'Intake', color: 'text-amber-400' },
-              { id: 'checkout', icon: Receipt, label: 'Checkout', color: 'text-cyan-400' }
-            ].map(op => (
-              <button
-                key={op.id}
-                onClick={() => setActiveTab(op.id as ManagementTab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                   activeTab === op.id ? `bg-stone-800 text-white border border-stone-600` : `text-stone-300 hover:text-white`
-                }`}
-              >
-                <op.icon className={`w-3.5 h-3.5 ${op.color}`} />
-                <span>{op.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </nav>
 
       {/* 2. TAB RENDERER */}
-      
-      {activeTab === 'intake' && (
+
+      {activeScreen === 'intake' && (
         <div className="animate-in fade-in duration-200">
-           <IntakeScreen availableMechanics={members} onNavigateToQueue={() => setActiveTab('queue')} onJobCreated={handleCreateJob} />
+           <IntakeScreen garageId={garage.id} availableMechanics={members} onNavigateToQueue={() => {}} onJobCreated={handleCreateJob} />
         </div>
       )}
 
-      {activeTab === 'queue' && (
+      {activeScreen === 'bays' && (
          <div className="animate-in fade-in duration-200">
             <MechanicQueueScreen
               jobs={jobs}
               deferredRepairs={deferredRepairs}
               onUpdateJob={handleUpdateJob}
-              onNavigateToCheckout={() => setActiveTab('checkout')}
+              onNavigateToCheckout={() => {}}
+              onSyncBay={() => loadData(false)}
             />
          </div>
       )}
 
-      {activeTab === 'checkout' && (
+      {activeScreen === 'checkout' && (
          <div className="animate-in fade-in duration-200">
             <CheckoutScreen
                jobs={jobs}
@@ -320,7 +296,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
          </div>
       )}
 
-      {activeTab === 'analytics' && (
+      {activeScreen === 'analytics' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-gradient-to-r from-emerald-950/70 via-stone-900 to-stone-900 border border-emerald-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
             <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-40 h-40 bg-[#34D399]/10 rounded-full blur-2xl pointer-events-none" />
@@ -390,9 +366,9 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
               <div className="text-2xl font-black text-white tracking-tight">{metrics.activeJobsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-stone-300 font-medium">Currently in service</span>
-                <button onClick={() => setActiveTab('queue')} className="text-emerald-400 hover:underline font-bold text-[11px] flex items-center gap-0.5">
-                  View Queue <ArrowRight className="w-3 h-3" />
-                </button>
+                <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-0.5">
+                  See Floor View <ArrowRight className="w-3 h-3" />
+                </span>
               </div>
             </div>
 
@@ -420,8 +396,8 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
               <div className="text-2xl font-black text-white tracking-tight">{metrics.totalStaffCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-stone-300">{members.filter((m) => m.role==='hod').length} Dept Leads</span>
-                <button onClick={() => setActiveTab('roster')} className="text-sky-400 hover:underline font-bold text-[11px] flex items-center gap-0.5">
-                  Manage Roster <ArrowRight className="w-3 h-3" />
+                <button className="text-sky-400 opacity-50 cursor-not-allowed font-bold text-[11px] flex items-center gap-0.5">
+                  View Sidebar <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
             </div>
@@ -434,19 +410,12 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
                   <Building2 className="w-4 h-4 text-[#34D399]" />
                   Department Breakdown
                 </h3>
-                <button onClick={() => setActiveTab('structure')} className="text-xs font-bold text-[#34D399] hover:underline flex items-center gap-1">
-                  <span>Configure</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
               </div>
 
               {departments.length === 0 ? (
                 <div className="text-center py-10 text-stone-500 text-sm">
                   <Building2 className="w-8 h-8 mx-auto opacity-40 mb-2" />
                   <p>No departments configured yet.</p>
-                  <button onClick={() => setActiveTab('structure')} className="mt-3 px-3 py-1.5 bg-[#34D399] text-stone-950 font-bold text-xs rounded-lg">
-                    + Create First Department
-                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -511,17 +480,39 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
 
               <div className="mt-5 pt-3 border-t border-stone-800 flex justify-between items-center">
                 <span className="text-[11px] text-stone-500 font-mono">Garage ID: {garage.id.slice(0, 8)}...</span>
-                <button onClick={() => setActiveTab('queue')} className="text-xs font-bold text-[#34D399] hover:underline flex items-center gap-1.5">
-                  <span>Launch Floor Operations</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <span className="text-xs font-bold text-[#34D399] flex items-center gap-1.5">
+                  Floor Operations Ready <Check className="w-3.5 h-3.5" />
+                </span>
               </div>
             </div>
           </div>
+
+          {/* === MERGED ROSTER SECTION === */}
+          <div className="mt-8 pt-6 border-t border-stone-800 border-dashed">
+            <div className="flex flex-col gap-1 mb-6 text-center sm:text-left">
+              <h2 className="text-xl font-black flex items-center justify-center sm:justify-start gap-2 text-white">
+                <Users className="w-5 h-5 text-[#c084fc]" />
+                Staff Fleet Roster
+              </h2>
+              <p className="text-xs text-stone-400 font-medium">
+                Manage your technical crew and operating personnel seamlessly.
+              </p>
+            </div>
+            <RosterScreen
+              members={members}
+              departments={departments}
+              userRole="owner"
+              copiedLink={copiedLink}
+              onCopyInviteLink={handleCopyInviteLink}
+              onAssignDepartment={handleAssignDepartment}
+              onToggleHod={handleToggleHod}
+            />
+          </div>
+
         </div>
       )}
 
-      {activeTab === 'structure' && (
+      {activeScreen === 'structure' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-6 h-fit">
@@ -608,88 +599,6 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage }) => {
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {activeTab === 'roster' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#34D399]" />
-                Garage Staff Roster & Hierarchy
-              </h3>
-              <p className="text-xs text-stone-400">Assign staff members to departments and designate Heads of Department (HOD).</p>
-            </div>
-            <button onClick={handleCopyInviteLink} className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded-xl text-xs font-bold transition flex items-center gap-2 self-start sm:self-auto">
-              {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-emerald-400" />}
-              <span>{copiedLink ? 'Invite Link Copied!' : 'Copy Staff Invite Link'}</span>
-            </button>
-          </div>
-
-          {members.length === 0 ? (
-            <div className="bg-stone-900/40 border border-dashed border-stone-800 rounded-2xl p-12 text-center text-stone-500 space-y-4">
-              <Users className="w-12 h-12 mx-auto text-stone-600 opacity-60" />
-              <div><p className="font-bold text-stone-300 text-sm">No Garage Members Found</p></div>
-            </div>
-          ) : (
-            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl overflow-hidden shadow-xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-stone-300">
-                  <thead className="bg-stone-950 text-stone-400 uppercase font-mono tracking-wider text-[11px] border-b border-stone-800">
-                    <tr><th className="py-3.5 px-4">Staff Member</th><th className="py-3.5 px-4">Role</th><th className="py-3.5 px-4">Assigned Department</th><th className="py-3.5 px-4 text-center">HOD Status</th><th className="py-3.5 px-4 text-right">Actions</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-800/60">
-                    {[...members]
-                      .sort((a, b) => (a.department_id || 'zzzz').localeCompare(b.department_id || 'zzzz'))
-                      .map((member) => {
-                      const isMemberHod = member.role === 'hod';
-                      let roleBadgeText = 'TECHNICIAN';
-                      let roleBadgeStyles = 'bg-stone-800 text-stone-300 border-stone-700';
-
-                      if (member.role === 'owner') {
-                        roleBadgeText = 'OWNER';
-                        roleBadgeStyles = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
-                      } else if (isMemberHod) {
-                        roleBadgeText = 'HOD / LEAD';
-                        roleBadgeStyles = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-                      }
-
-                      return (
-                        <tr key={member.id} className="hover:bg-stone-800/30 transition">
-                          <td className="py-3.5 px-4">
-                            <div className="font-bold text-white text-sm">{member.full_name || member.email?.split('@')[0] || 'Worker'}</div>
-                            <div className="text-[11px] text-stone-400 font-mono">{member.email || `ID: ${member.user_id?.slice(0, 8)}...`}</div>
-                          </td>
-                          <td className="py-3.5 px-4"><span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${roleBadgeStyles}`}>{roleBadgeText}</span></td>
-                          <td className="py-3.5 px-4">
-                            <div className="relative max-w-[220px]">
-                              <select value={member.department_id || ''} onChange={(e) => handleAssignDepartment(member.id, e.target.value || null)} className="w-full bg-stone-950 border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-white appearance-none pr-8 focus:outline-none focus:border-emerald-500">
-                                <option value="">-- Unassigned --</option>
-                                {departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
-                              </select>
-                              <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 text-center">
-                            <button onClick={() => handleToggleHod(member)} className={`px-3 py-1 rounded-lg text-xs font-bold transition inline-flex items-center gap-1.5 border ${isMemberHod ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' : 'bg-stone-800/80 text-stone-400 border-stone-700 hover:text-stone-200'}`}>
-                              <Crown className={`w-3.5 h-3.5 ${isMemberHod ? 'text-amber-400' : 'text-stone-500'}`} />
-                              <span>{isMemberHod ? 'HOD Active' : 'Promote HOD'}</span>
-                            </button>
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            {member.department_id ? (
-                              <button onClick={() => handleAssignDepartment(member.id, null)} className="text-[11px] text-stone-400 hover:text-rose-400 transition">Unassign</button>
-                            ) : <span className="text-[11px] text-stone-500 italic">None</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

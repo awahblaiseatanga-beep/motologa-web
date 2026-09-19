@@ -7,9 +7,10 @@ import { cn } from '../lib/utils';
 
 interface LoginScreenProps {
   onLoginSuccess: (userRole: 'owner' | 'mechanic', mechanicId?: string) => void;
+  inviteGarageId?: string | null;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, inviteGarageId }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -361,7 +362,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   transition={{ delay: 0.15 }}
                   className="text-2xl font-black tracking-wider uppercase font-mono text-white"
                 >
-                  MOTOLOGA
+                  {inviteGarageId ? "Technician Onboarding" : "Owner & Admin Login"}
                 </motion.h1>
 
                 <motion.p
@@ -370,9 +371,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   transition={{ delay: 0.25 }}
                   className="text-slate-300 text-xs font-medium"
                 >
-                  {authMode === 'signin'
-                    ? 'Sign in to manage workshop bay & customer billing'
-                    : 'Create your workshop administrator account'}
+                  {inviteGarageId
+                    ? "Create your account to join the workshop floor."
+                    : "Secure access to MOTOLOGA Command."}
                 </motion.p>
               </div>
 

@@ -107,7 +107,7 @@ export default function App() {
 
   return (
     <div key="auth-boundary">
-      <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      <LoginScreen inviteGarageId={inviteGarageId} onLoginSuccess={handleLoginSuccess} />
     </div>
   );
 }

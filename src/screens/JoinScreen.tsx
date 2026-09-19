@@ -56,7 +56,8 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
         }
       } catch (err: any) {
         console.error('JoinScreen load error:', err);
-        setError('Unable to load garage invite details. Please confirm the invite link with your workshop manager.');
+        // Fallback for when unauthenticated users hit RLS before signup
+        setGarage({ id: garageId, name: 'the Workshop' } as Garage);
       } finally {
         setLoadingInitial(false);
       }
@@ -101,20 +102,28 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
         }
       } else {
         authUserId = signUpData.user?.id || null;
+        
+        // 1b. Explicit programmatic login post-signup to ensure RLS session exists
+        const { error: manualSignInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (manualSignInError) throw manualSignInError;
       }
 
       if (!authUserId) {
         throw new Error('Could not resolve user account ID.');
       }
 
+      // 1c. CRITICAL FIX: Flush the auth state to ensure PostgREST headers are updated
+      await supabase.auth.getSession();
+
       // 2. Insert record into `garage_members` table
       await joinGarageMember(
         garageId,
         authUserId,
         selectedDeptId,
-        'worker',
-        email.trim(),
-        fullName.trim() || undefined
+        'worker'
       );
 
       // 3. Clean invite param from URL & trigger success

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Job, DeferredRepair, GarageMember } from '../types';
 import { MechanicQueueScreen } from '../components/MechanicQueueScreen';
+import { supabase } from '../lib/supabase';
 import {
   fetchGarageMembers,
   removeMemberFromDepartment,
-  fetchJobsForMechanic,
-  fetchJobsForGarage,
   fetchDeferredRepairs,
-  updateJobStatus
+  updateJobStatus,
+  mapDbJobToUiJob
 } from '../lib/api';
 import {
   Wrench,
@@ -15,7 +15,10 @@ import {
   Building2,
   UserX,
   CheckCircle2,
+  LayoutDashboard,
+  UserCircle
 } from 'lucide-react';
+import { WorkerProfileScreen } from './WorkerProfileScreen';
 
 interface QueueScreenProps {
   userRole: 'owner' | 'hod' | 'worker';
@@ -36,28 +39,62 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
   const [jobs, setJobs] = useState<Job[]>([]);
   const [deferredRepairs, setDeferredRepairs] = useState<DeferredRepair[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
-
-  // HOD specific state
-  const [activeHodTab, setActiveHodTab] = useState<'queue' | 'roster'>('queue');
-  const [deptWorkers, setDeptWorkers] = useState<GarageMember[]>([]);
-  const [loadingRoster, setLoadingRoster] = useState(false);
-  const [removeStatus, setRemoveStatus] = useState<string | null>(null);
+  const [mechanicFilters, setMechanicFilters] = useState<string[]>([]);
+  const [activeView, setActiveView] = useState<'queue' | 'profile'>('queue');
 
   // Load Jobs independently
-  const loadJobs = async () => {
+  const loadJobs = async (isSilent: boolean = false) => {
     if (!currentUserId || !garageId) return;
-    setLoadingJobs(true);
+    if (!isSilent) setLoadingJobs(true);
     try {
-      // In V5, Workers only see their assigned jobs. HODs could see all in department, but for now they see their own or garage-wide depending on future schema.
-      // Since HOD schema does not strictly map jobs to departments yet, we'll fetch assigned jobs for both for safety, OR if Owner, fetch all.
+      // Guard clause
+      if (!currentUserId) return;
+      
+      const allMembers = await fetchGarageMembers(garageId);
       let fetchedJobs: Job[] = [];
-      if (userRole === 'owner') {
-        fetchedJobs = await fetchJobsForGarage(garageId);
+      let availableNames: string[] = [];
+      
+      // Aggressive Fetch Logging & Flat Query
+      console.log("Attempting fetch. Role:", userRole, "User ID:", currentUserId);
+      
+      // Explicit flat query safely navigating the FK link without crashing implicitly
+      let query = supabase.from('jobs').select('*, job_media(*), mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)');
+      
+      if (userRole === 'worker') {
+        query = query.eq('assigned_to', currentUserId).in('status', ['pending', 'in_progress', 'paused']);
       } else {
-        fetchedJobs = await fetchJobsForMechanic(currentUserId);
+        query = query.eq('garage_id', garageId).neq('status', 'completed');
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("SUPABASE FETCH ERROR:", error.message);
+      } else {
+        console.log("SUPABASE FETCH SUCCESS. Jobs found:", data?.length, data);
+        const mappedData = data ? data.map(d => mapDbJobToUiJob(d)) : [];
+        
+        if (userRole === 'owner') {
+          fetchedJobs = mappedData;
+          availableNames = allMembers.map(m => m.full_name || m.email?.split('@')[0] || 'Unknown');
+        } else if (userRole === 'hod') {
+          const scopedMembers = allMembers.filter(m => m.department_id === departmentId);
+          availableNames = scopedMembers.map(m => m.full_name || m.email?.split('@')[0] || 'Unknown');
+          
+          fetchedJobs = mappedData.filter(j => {
+            if (!j.assigned_to) return true;
+            const assignedMember = allMembers.find(m => m.user_id === j.assigned_to);
+            return assignedMember && assignedMember.department_id === departmentId;
+          });
+        } else {
+          fetchedJobs = mappedData;
+          availableNames = []; // Worker has no filter bar
+        }
       }
       
       setJobs(fetchedJobs);
+      const uniqueNames = Array.from(new Set(availableNames));
+      setMechanicFilters(['All', ...uniqueNames]);
 
       // Fetch deferred repairs associated with these jobs
       const jobIds = fetchedJobs.map(j => j.id);
@@ -68,7 +105,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
     } catch (error) {
       console.error("Error loading localized jobs:", error);
     } finally {
-      setLoadingJobs(false);
+      if (!isSilent) setLoadingJobs(false);
     }
   };
 
@@ -76,47 +113,15 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
     loadJobs();
   }, [userRole, garageId, currentUserId]);
 
-  // Load Department Roster for HOD
-  const loadDepartmentRoster = async () => {
-    if (!garageId || !departmentId) return;
-    setLoadingRoster(true);
-    try {
-      const allMembers = await fetchGarageMembers(garageId);
-      const filtered = allMembers.filter((m) => m.department_id === departmentId);
-      setDeptWorkers(filtered);
-    } catch (err) {
-      console.error('Failed to load department roster:', err);
-    } finally {
-      setLoadingRoster(false);
-    }
-  };
 
-  useEffect(() => {
-    if (userRole === 'hod' && departmentId) {
-      loadDepartmentRoster();
-    }
-  }, [userRole, departmentId, garageId]);
-
-  // HOD action
-  const handleRemoveWorkerFromDept = async (memberId: string, memberName: string) => {
-    if (!confirm(`Are you sure you want to remove ${memberName} from the ${departmentName || 'department'} roster?`)) {
-      return;
-    }
-    try {
-      await removeMemberFromDepartment(memberId);
-      setDeptWorkers((prev) => prev.filter((m) => m.id !== memberId));
-      setRemoveStatus(`${memberName} removed from department.`);
-      setTimeout(() => setRemoveStatus(null), 3500);
-    } catch (err: any) {
-      alert(err.message || 'Failed to remove member from department');
-    }
-  };
 
   // Mutate Job locally and via API
   const handleUpdateJob = async (updatedJob: Job) => {
     try {
-      await updateJobStatus(updatedJob.id, updatedJob.status, updatedJob.laborFeeFcfa);
+      // Child elements handle their own Mega-Submit mutations to Supabase directly now.
+      // Update local array synchronously to avoid UI delay, then manually refetch the whole architecture array bridging the gap of disabled WebSockets.
       setJobs((prev) => prev.map((j) => (j.id === updatedJob.id ? updatedJob : j)));
+      await loadJobs(true);
     } catch (error) {
       alert("Failed to update status. Please try again.");
     }
@@ -148,126 +153,51 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
           <h2 className="text-xl font-black text-white">Active Bay & Repair Queue</h2>
         </div>
 
-        {/* HOD View Tabs Switcher */}
-        {userRole === 'hod' && (
-          <div className="flex bg-stone-950 p-1 rounded-xl border border-stone-800">
-            <button
-              onClick={() => setActiveHodTab('queue')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                activeHodTab === 'queue'
-                  ? 'bg-[#34D399] text-stone-950'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>Repair Queue</span>
-            </button>
-            <button
-              onClick={() => setActiveHodTab('roster')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                activeHodTab === 'roster'
-                  ? 'bg-[#34D399] text-stone-950'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>My Department Roster ({deptWorkers.length})</span>
-            </button>
-          </div>
-        )}
       </div>
 
-      {removeStatus && (
-        <div className="bg-emerald-900/40 border border-emerald-500/40 text-emerald-300 text-xs p-3 rounded-xl flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{removeStatus}</span>
-        </div>
+      {loadingJobs ? (
+        <div className="text-center py-12 text-stone-400">Loading Job Queue...</div>
+      ) : activeView === 'queue' ? (
+        <MechanicQueueScreen
+          jobs={jobs}
+          deferredRepairs={deferredRepairs}
+          onUpdateJob={handleUpdateJob}
+          onNavigateToCheckout={handleNavigateToCheckout}
+          userRole={userRole}
+          mechanicFilters={mechanicFilters}
+          onSyncBay={() => loadJobs(false)}
+        />
+      ) : (
+        <WorkerProfileScreen currentUserId={currentUserId!} />
       )}
 
-      {/* 1. HOD "My Department Roster" Tab */}
-      {userRole === 'hod' && activeHodTab === 'roster' ? (
-        <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-800">
-            <div>
-              <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-amber-400" />
-                {departmentName || 'Department'} Technician Roster
-              </h3>
-              <p className="text-xs text-stone-400">
-                Manage technicians currently assigned to your department.
-              </p>
-            </div>
-            <span className="text-xs font-mono px-2.5 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg">
-              {deptWorkers.length} Active
-            </span>
-          </div>
-
-          {loadingRoster ? (
-            <div className="text-center py-10 text-stone-500 text-xs font-mono">
-              Loading department roster...
-            </div>
-          ) : deptWorkers.length === 0 ? (
-            <div className="text-center py-10 text-stone-500 text-sm">
-              <Users className="w-8 h-8 mx-auto opacity-40 mb-2" />
-              <p>No technicians assigned to your department yet.</p>
-              <p className="text-xs text-stone-600 mt-1">
-                The Workshop Owner can allocate technicians in the Master Roster.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-stone-800/80">
-              {deptWorkers.map((member) => {
-                const displayName = member.full_name || member.email?.split('@')[0] || 'Technician';
-
-                return (
-                  <div
-                    key={member.id}
-                    className="py-3.5 flex items-center justify-between gap-3 hover:bg-stone-800/20 px-2 rounded-xl transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-stone-800 border border-stone-700 flex items-center justify-center font-bold text-white text-xs">
-                        {displayName.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-white flex items-center gap-2">
-                          <span>{displayName}</span>
-                          {member.role === 'hod' && (
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                              HOD (Lead)
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-stone-400 font-mono">
-                          {member.email || `ID: ${member.user_id.slice(0, 8)}...`}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveWorkerFromDept(member.id, displayName)}
-                      className="px-3 py-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                      title="Remove from this department"
-                    >
-                      <UserX className="w-3.5 h-3.5" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {/* Dynamic Island Navigation for Workers */}
+      {userRole === 'worker' && currentUserId && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-stone-950/90 backdrop-blur-md border border-stone-800 rounded-full p-1.5 flex gap-1 shadow-2xl z-50 animate-in slide-in-from-bottom-8 duration-500">
+          <button
+            onClick={() => setActiveView('queue')}
+            className={`px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${
+              activeView === 'queue' 
+                ? 'bg-sky-600 text-white shadow-md' 
+                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5 shrink-0" />
+            <span className="hidden sm:inline uppercase tracking-wider text-xs">Active Bay</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveView('profile')}
+            className={`px-5 py-2.5 rounded-full flex items-center gap-2 text-sm font-bold transition-all ${
+              activeView === 'profile' 
+                ? 'bg-indigo-600 text-white shadow-md' 
+                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
+            }`}
+          >
+            <UserCircle className="w-5 h-5 shrink-0" />
+            <span className="hidden sm:inline uppercase tracking-wider text-xs">My Profile</span>
+          </button>
         </div>
-      ) : (
-        /* 2. Operational Repair Queue */
-        loadingJobs ? (
-          <div className="text-center py-12 text-stone-400">Loading Job Queue...</div>
-        ) : (
-          <MechanicQueueScreen
-            jobs={jobs}
-            deferredRepairs={deferredRepairs}
-            onUpdateJob={handleUpdateJob}
-            onNavigateToCheckout={handleNavigateToCheckout}
-          />
-        )
       )}
     </div>
   );

@@ -1,6 +1,11 @@
 import { supabase } from './supabase';
-import { Job, DeferredRepair } from '../types';
+import { Job, DeferredRepair, DeferredStatus } from '../types';
 
+// Typed interface for job_media rows
+interface DbJobMedia {
+  type: string;
+  file_url: string;
+}
 export const uploadMedia = async (jobId: string, file: Blob, type: string) => {
   const fileName = `${jobId}-${Date.now()}-${type}.jpeg`;
   const { data, error } = await supabase.storage
@@ -30,28 +35,33 @@ export const uploadMedia = async (jobId: string, file: Blob, type: string) => {
 };
 
 // Map DB Job to UI Job
-const mapDbJobToUiJob = (dbJob: any): Job => {
+export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
+  const status = dbJob.status as string;
   let uiStatus: Job['status'] = 'Diagnosis';
-  if (dbJob.status === 'active') uiStatus = 'In Repair';
-  if (dbJob.status === 'ready') uiStatus = 'Ready/Released';
+  if (status === 'active' || status === 'in_progress') uiStatus = 'In Repair';
+  if (status === 'ready' || status === 'pending_checkout') uiStatus = 'Ready/Released';
+  if (status === 'paused') uiStatus = 'Paused';
+
+  const media = (dbJob.job_media || []) as DbJobMedia[];
 
   return {
-    id: dbJob.id,
-    licensePlate: dbJob.plate,
-    customerPhone: '', 
-    vehicleModel: '', 
-    assigned_to: dbJob.assigned_to,
-    assigned_to_profile: dbJob.assigned_to_profile,
+    id: dbJob.id as string,
+    licensePlate: (dbJob.plate as string) || '',
+    customerPhone: '',
+    vehicleModel: '',
+    assigned_to: dbJob.assigned_to as string | undefined,
+    mechanic: dbJob.mechanic as { full_name?: string; email?: string } | undefined,
     status: uiStatus,
-    createdAt: new Date(dbJob.created_at || Date.now()).getTime(),
+    createdAt: new Date((dbJob.created_at as string) || Date.now()).getTime(),
     partSource: 'Garage Stock',
-    laborFeeFcfa: dbJob.labor_fee || 0,
-    released: dbJob.status === 'ready',
-    dashboardPhotoUrl: dbJob.job_media?.find((m: any) => m.type === 'intake_dash')?.file_url || '',
-    exteriorPhotoUrl: dbJob.job_media?.find((m: any) => m.type === 'intake_body')?.file_url || '',
-    oldPartPhotoUrl: dbJob.job_media?.find((m: any) => m.type === 'old_part')?.file_url || '',
-    newPartPhotoUrl: dbJob.job_media?.find((m: any) => m.type === 'new_part')?.file_url || '',
-    voiceNoteUrl: dbJob.job_media?.find((m: any) => m.type === 'voice_note')?.file_url || '',
+    laborFeeFcfa: (dbJob.labor_fee as number) || 0,
+    partsFeeFcfa: (dbJob.parts_fee as number) || 0,
+    released: status === 'ready',
+    dashboardPhotoUrl: media.find((m) => m.type === 'intake_dash')?.file_url || '',
+    exteriorPhotoUrl: media.find((m) => m.type === 'intake_body')?.file_url || '',
+    oldPartPhotoUrl: media.find((m) => m.type === 'old_part')?.file_url || '',
+    newPartPhotoUrl: media.find((m) => m.type === 'new_part')?.file_url || '',
+    voiceNoteUrl: media.find((m) => m.type === 'voice_note')?.file_url || '',
   };
 };
 
@@ -61,16 +71,17 @@ export const fetchJobsForGarage = async (garageId: string) => {
     .select(`
       *,
       job_media(*),
-      assigned_to_profile:garage_members!assigned_to(full_name)
+      mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
     `)
-    .eq('garage_id', garageId);
+    .eq('garage_id', garageId)
+    .neq('status', 'completed');
 
   if (error) {
     console.error('Error fetching jobs', error);
     return [];
   }
 
-  return data.map((d: any) => mapDbJobToUiJob(d));
+  return data.map((d: Record<string, unknown>) => mapDbJobToUiJob(d));
 };
 
 export const fetchJobsForMechanic = async (mechanicUserId: string) => {
@@ -79,28 +90,33 @@ export const fetchJobsForMechanic = async (mechanicUserId: string) => {
     .select(`
       *,
       job_media(*),
-      assigned_to_profile:garage_members!assigned_to(full_name)
+      mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
     `)
-    .eq('assigned_to', mechanicUserId);
+    .eq('assigned_to', mechanicUserId)
+    .neq('status', 'completed');
 
   if (error) {
     console.error('Error fetching jobs', error);
     return [];
   }
 
-  return data.map((d: any) => mapDbJobToUiJob(d));
+  return data.map((d: Record<string, unknown>) => mapDbJobToUiJob(d));
 };
 
 export const createJob = async (job: Partial<Job>, garageId: string, assignedToUserId: string) => {
-  let dbStatus = 'intake';
-  if (job.status === 'In Repair') dbStatus = 'active';
-  if (job.status === 'Ready/Released') dbStatus = 'ready';
+  let dbStatus = 'pending';
+  if (job.status === 'In Repair') dbStatus = 'in_progress';
+  if (job.status === 'Ready/Released') dbStatus = 'pending_checkout';
+  if (job.status === 'Paused') dbStatus = 'paused';
+
+  const finalAssignedTarget = assignedToUserId || null;
+  console.log("Submitting Job with assigned_to:", finalAssignedTarget);
 
   const { data, error } = await supabase
     .from('jobs')
     .insert({
       garage_id: garageId,
-      assigned_to: assignedToUserId, // Strict UUID
+      assigned_to: finalAssignedTarget, // Strict UUID or explicitly NULL
       plate: job.licensePlate || 'UNKNOWN',
       status: dbStatus,
       labor_fee: job.laborFeeFcfa || 0,
@@ -114,9 +130,10 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
 };
 
 export const updateJobStatus = async (jobId: string, status: string, laborFee: number = 0) => {
-  let dbStatus = 'intake';
-  if (status === 'In Repair') dbStatus = 'active';
-  if (status === 'Ready/Released') dbStatus = 'ready';
+  let dbStatus = 'pending';
+  if (status === 'In Repair') dbStatus = 'in_progress';
+  if (status === 'Ready/Released') dbStatus = 'pending_checkout';
+  if (status === 'Paused') dbStatus = 'paused';
 
   const { data, error } = await supabase
     .from('jobs')
@@ -132,7 +149,7 @@ export const fetchDeferredRepairs = async (jobIds: string[]): Promise<DeferredRe
     if(!jobIds || jobIds.length === 0) return [];
   const { data, error } = await supabase
     .from('deferred_repairs')
-    .select('*')
+    .select('id, job_id, component, target_date, status')
     .in('job_id', jobIds);
 
   if (error) {
@@ -140,13 +157,13 @@ export const fetchDeferredRepairs = async (jobIds: string[]): Promise<DeferredRe
     return [];
   }
 
-  return data.map((d: any) => ({
+  return data.map((d: { id: string; component: string; target_date: string; status: string }) => ({
     id: d.id,
     vehiclePlate: '', 
     customerPhone: '',
     componentToFix: d.component,
     targetDateString: d.target_date,
-    status: d.status,
+    status: d.status as DeferredStatus,
   }));
 };
 
@@ -169,7 +186,7 @@ export const createDeferredRepair = async (repair: DeferredRepair, jobId: string
 export const fetchGarage = async (garageId: string) => {
   const { data, error } = await supabase
     .from('garages')
-    .select('*')
+    .select('id, owner_id, name, subscription_status, trial_ends_at, created_at')
     .eq('id', garageId)
     .single();
 
@@ -180,7 +197,7 @@ export const fetchGarage = async (garageId: string) => {
 export const fetchDepartments = async (garageId: string) => {
   const { data, error } = await supabase
     .from('departments')
-    .select('*')
+    .select('id, garage_id, name, description, created_at')
     .eq('garage_id', garageId)
     .order('name', { ascending: true });
 
@@ -219,6 +236,7 @@ export const deleteDepartment = async (departmentId: string) => {
 };
 
 export const fetchGarageMembers = async (garageId: string) => {
+  // Attempt fetching with profiles join per requirement
   const { data, error } = await supabase
     .from('garage_members')
     .select(`
@@ -226,15 +244,45 @@ export const fetchGarageMembers = async (garageId: string) => {
       departments (
         id,
         name
+      ),
+      profiles (
+        full_name,
+        email
       )
     `)
     .eq('garage_id', garageId);
+
+  // If the schema lacks the 'profiles' table or relationship, fallback to safe query
+  if (error && (error.code === 'PGRST205' || error.message.includes('relationship'))) {
+    console.warn('Profiles schema not found or relation failed. Falling back to default payload.', error);
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('garage_members')
+      .select(`
+        *,
+        departments (
+          id,
+          name
+        )
+      `)
+      .eq('garage_id', garageId);
+      
+    if (fallbackError) {
+      console.error('Error fetching garage members (fallback):', fallbackError);
+      return [];
+    }
+    return fallbackData || [];
+  }
 
   if (error) {
     console.error('Error fetching garage members:', error);
     return [];
   }
-  return data || [];
+  
+  return (data || []).map((m: any) => ({
+    ...m,
+    full_name: m.profiles?.full_name || m.full_name,
+    email: m.profiles?.email || m.email,
+  }));
 };
 
 export const updateMemberDepartment = async (memberId: string, departmentId: string | null) => {
@@ -277,18 +325,17 @@ export const joinGarageMember = async (
   garageId: string,
   userId: string,
   departmentId: string | null,
-  role: 'owner' | 'hod' | 'worker' = 'worker',
-  email?: string,
-  fullName?: string
+  role: string = 'worker'
 ) => {
-  const payload: any = {
+  // Strict check-constraint fallback: only allow 'owner' or 'hod', otherwise default to 'worker'
+  const safeRole = (role === 'owner' || role === 'hod') ? role : 'worker';
+
+  const payload = {
     garage_id: garageId,
     user_id: userId,
-    role,
+    role: safeRole,
     department_id: departmentId || null,
   };
-  if (email) payload.email = email;
-  if (fullName) payload.full_name = fullName;
 
   const { data, error } = await supabase
     .from('garage_members')

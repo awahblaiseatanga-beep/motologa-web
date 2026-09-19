@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Job, DeferredRepair, DeferredTimeframe } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Job, DeferredRepair, DeferredTimeframe, JobStatus } from '../types';
 import { LicensePlateBadge } from './LicensePlateBadge';
 import { StatusChip } from './StatusChip';
 import { MotologaLogo } from './MotologaLogo';
@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Phone
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface CheckoutScreenProps {
   jobs: Job[];
@@ -56,7 +57,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const currentJob = jobs.find((j) => j.id === currentJobId) || jobs[0];
 
   // Billing state
-  const [laborFee, setLaborFee] = useState<number | ''>('');
+  const [laborFee, setLaborFee] = useState<number | ''>(currentJob?.laborFeeFcfa || '');
 
   // Deferred repair state
   const [flagDeferred, setFlagDeferred] = useState<boolean>(
@@ -68,6 +69,25 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [deferredTimeframe, setDeferredTimeframe] = useState<DeferredTimeframe>(
     (currentJob?.deferredRepair?.timeframe as DeferredTimeframe) || 'Next Month'
   );
+  const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
+  
+  // Dynamic Configuration State
+  const [currencySymbol, setCurrencySymbol] = useState<string>('FCFA');
+
+  useEffect(() => {
+    supabase.from('shop_settings').select('currency_symbol').eq('id', 1).single().then(({ data }) => {
+      if (data?.currency_symbol) setCurrencySymbol(data.currency_symbol);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (currentJob) {
+      setLaborFee(currentJob.laborFeeFcfa || '');
+      setFlagDeferred(currentJob.deferredRepair?.flagged || false);
+      setDeferredComponent(currentJob.deferredRepair?.component || DEFERRED_COMPONENTS[0]);
+      setDeferredTimeframe((currentJob.deferredRepair?.timeframe as DeferredTimeframe) || 'Next Month');
+    }
+  }, [currentJobId]); // Only hydrate on tab switch to avoid typing disruption
 
   // Modal receipt state
   const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
@@ -77,14 +97,6 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   // Synchronize when switching vehicle
   const handleSelectJob = (job: Job) => {
     setCurrentJobId(job.id);
-    setLaborFee('');
-    setFlagDeferred(job.deferredRepair?.flagged || false);
-    if (job.deferredRepair?.component) {
-      setDeferredComponent(job.deferredRepair.component);
-    }
-    if (job.deferredRepair?.timeframe) {
-      setDeferredTimeframe(job.deferredRepair.timeframe as DeferredTimeframe);
-    }
   };
 
   // Quick preset fee chips
@@ -97,14 +109,18 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   ).length;
 
   // WhatsApp Message Generator
-  const generateWhatsAppInvoiceText = (job: Job, fee: number) => {
-    const formattedFee = fee.toLocaleString() + ' FCFA';
+  const generateWhatsAppInvoiceText = (job: Job, finalLaborFee: number, finalPartsFee: number) => {
+    const totalFee = finalLaborFee + finalPartsFee;
     let text = `*MOTOLOGA WORKSHOP — FACTURE & REÇU DE SORTIE*\n`;
     text += `━━━━━━━━━━━━━━━━━━━━━\n`;
     text += `🇨🇲 *Véhicule :* ${job.licensePlate} (${job.vehicleModel})\n`;
-    text += `👨🏾‍🔧 *Mécanicien :* ${job.assigned_to_profile?.full_name || job.assigned_to}\n`;
+    text += `👨🏾‍🔧 *Mécanicien :* ${job.mechanic?.full_name || job.assigned_to}\n`;
     text += `⚙️ *Type Pièce :* ${job.partSource}\n`;
-    text += `💰 *Main d'œuvre (Labor Fee) :* ${formattedFee}\n`;
+    if (finalPartsFee > 0) {
+      text += `🛒 *Coût des Pièces (Parts) :* ${finalPartsFee.toLocaleString()} ${currencySymbol}\n`;
+    }
+    text += `💰 *Main d'œuvre (Labor) :* ${finalLaborFee.toLocaleString()} ${currencySymbol}\n`;
+    text += `🧾 *TOTAL :* ${totalFee.toLocaleString()} ${currencySymbol}\n`;
     text += `📋 *Statut :* Service Terminé & Inspecté ✅\n`;
 
     if (flagDeferred) {
@@ -121,10 +137,11 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     return text;
   };
 
-  const handleSendWhatsAppCheckout = () => {
+  const handleSendWhatsAppCheckout = async () => {
     if (!currentJob) return;
 
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
+    const partsFeeAmount = currentJob.partsFeeFcfa || 0;
 
     const updatedJob: Job = {
       ...currentJob,
@@ -134,9 +151,22 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         component: deferredComponent,
         timeframe: deferredTimeframe,
       },
+      status: 'Work Done' as JobStatus, // Or something visually terminal if rendering briefly
+      released: true,
     };
 
-    onUpdateJob(updatedJob);
+    const { error } = await supabase
+      .from('jobs')
+      .update({ 
+        status: 'completed', 
+        labor_fee: feeAmount
+      })
+      .eq('id', currentJob.id);
+
+    if (error) {
+      console.error("Failed to close job in DB:", error);
+      return; // Do not remove from UI if DB fails
+    }
 
     // If deferred repair is flagged, record it into MOTOLOGA's follow-up system
     if (flagDeferred) {
@@ -153,7 +183,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       }
     }
 
-    const messageText = generateWhatsAppInvoiceText(updatedJob, feeAmount);
+    const messageText = generateWhatsAppInvoiceText(updatedJob, feeAmount, partsFeeAmount);
     
     let cleanPhone = currentJob.customerPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('237')) cleanPhone = cleanPhone.slice(3);
@@ -176,7 +206,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const handleCopyReceipt = () => {
     if (!currentJob) return;
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
-    const text = generateWhatsAppInvoiceText(currentJob, feeAmount);
+    const partsFeeAmount = currentJob.partsFeeFcfa || 0;
+    const text = generateWhatsAppInvoiceText(currentJob, feeAmount, partsFeeAmount);
     navigator.clipboard.writeText(text);
     setCopiedInvoice(true);
     setTimeout(() => setCopiedInvoice(false), 2500);
@@ -204,7 +235,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               {todayRevenue.toLocaleString()}
             </span>
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase truncate">
-              FCFA Today
+              {currencySymbol} Today
             </span>
           </div>
         </div>
@@ -323,7 +354,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <StatusChip status={currentJob.status} size="md" />
               <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                Serviced by <strong className="text-slate-800">{currentJob.assigned_to_profile?.full_name || currentJob.assigned_to}</strong>
+                Serviced by <strong className="text-slate-800">{currentJob.mechanic?.full_name || currentJob.assigned_to}</strong>
               </span>
             </div>
           </div>
@@ -336,12 +367,42 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             </span>
           </div>
 
-          {/* MASSIVE INPUT: Total Labor Fee (FCFA) with quick-tap preset chips */}
-          <div className="space-y-2">
+          <div className="relative space-y-2 pt-2">
+            {(currentJob.status === 'Diagnosis' || currentJob.status === 'In Repair') && (
+              <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-2xl border border-slate-200 shadow-[0_0_15px_rgba(0,0,0,0.05)]">
+                <span className="bg-slate-800 text-white font-black text-sm px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2">
+                  <Wrench className="w-4 h-4 text-amber-400" />
+                  Incomplete - Waiting on Technician
+                </span>
+              </div>
+            )}
+
+            {/* Conditionally display separate part prices before total */}
+            {currentJob.partsFeeFcfa ? (
+              <div className="flex items-center justify-between pb-2 pt-1 border-b border-dashed border-slate-200 mb-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  Premium Parts Cost ({currencySymbol})
+                </label>
+                <div className="bg-stone-50 rounded px-2.5 py-1 border border-slate-200">
+                   <span className="font-extrabold font-mono text-sm text-slate-800">
+                     {currentJob.partsFeeFcfa.toLocaleString()}
+                   </span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* MASSIVE INPUT: Total Labor Fee (FCFA) with quick-tap preset chips */}
+            <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Banknote className="w-4 h-4 text-amber-500" />
-                Total Labor Fee (Main-d'œuvre FCFA)
+                Total Labor Fee ({currencySymbol})
+                {saveStatus['laborFee'] && (
+                  <span className="text-[10px] text-emerald-600 ml-2 animate-in fade-in duration-300">
+                    {saveStatus['laborFee']}
+                  </span>
+                )}
               </label>
               <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
                 Quick-Tap Presets
@@ -364,7 +425,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                   className="w-full text-3xl sm:text-4xl font-mono font-black text-slate-900 bg-transparent focus:outline-none tracking-tight text-center placeholder:text-slate-300 placeholder:font-normal"
                 />
                 <span className="font-black font-mono text-xl sm:text-2xl text-slate-400 shrink-0 ml-2">
-                  FCFA
+                  {currencySymbol}
                 </span>
               </div>
             </div>
@@ -375,7 +436,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 <button
                   key={fee}
                   type="button"
-                  onClick={() => setLaborFee(fee)}
+                  onClick={() => {
+                    setLaborFee(fee);
+                  }}
                   className={`min-h-[48px] px-2 py-2 rounded-xl font-mono font-black text-xs sm:text-sm transition-all border-2 active:scale-95 shadow-xs cursor-pointer ${
                     laborFee === fee
                       ? 'bg-[#142F30] text-amber-300 border-amber-400 ring-2 ring-amber-400/20'
@@ -436,7 +499,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 <pre className="text-[11px] sm:text-xs font-mono text-emerald-200 leading-relaxed whitespace-pre-wrap select-all">
                   {generateWhatsAppInvoiceText(
                     currentJob,
-                    typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0)
+                    typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
+                    currentJob.partsFeeFcfa || 0
                   )}
                 </pre>
               </div>
@@ -444,19 +508,20 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           </div>
 
           {/* PRIMARY CTA: A massive, full-width WhatsApp Green button: "Send WhatsApp Checkout & Release" */}
-          <div className="pt-1">
-            <button
-              id="send-whatsapp-checkout-btn"
-              type="button"
-              onClick={handleSendWhatsAppCheckout}
-              className="w-full min-h-[56px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-sm xs:text-base sm:text-lg tracking-wide flex items-center justify-center gap-2 sm:gap-3 shadow-lg border-2 border-[#1EBE5D] cursor-pointer transition-all px-3 py-3 text-center"
-            >
-              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-[2.5]" />
-              <span className="leading-tight">Send WhatsApp Checkout & Release</span>
-            </button>
-            <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
-              Direct dispatch to customer WhatsApp (+237) • Instant receipt & cloud queue clearance
-            </p>
+            <div className="pt-1">
+              <button
+                id="send-whatsapp-checkout-btn"
+                type="button"
+                onClick={handleSendWhatsAppCheckout}
+                className="w-full min-h-[56px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-sm xs:text-base sm:text-lg tracking-wide flex items-center justify-center gap-2 sm:gap-3 shadow-lg border-2 border-[#1EBE5D] cursor-pointer transition-all px-3 py-3 text-center"
+              >
+                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-[2.5]" />
+                <span className="leading-tight">Send WhatsApp Checkout & Release</span>
+              </button>
+              <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
+                Direct dispatch to customer WhatsApp (+237) • Instant receipt & cloud queue clearance
+              </p>
+            </div>
           </div>
         </div>
       ) : (
@@ -530,20 +595,26 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 </div>
                 <div className="flex justify-between font-medium text-xs text-slate-600">
                   <span>Assigned Technician</span>
-                  <span className="font-bold text-slate-900">{currentJob.assigned_to_profile?.full_name || currentJob.assigned_to}</span>
+                  <span className="font-bold text-slate-900">{currentJob.mechanic?.full_name || currentJob.assigned_to}</span>
                 </div>
                 <div className="flex justify-between font-medium text-xs text-slate-600">
                   <span>Parts Source</span>
                   <span className="font-bold text-slate-900">{currentJob.partSource}</span>
                 </div>
-                <div className="flex justify-between font-black text-sm text-slate-900 pt-2 border-t border-slate-200">
-                  <span>Total Labor Fee</span>
-                  <span className="font-mono text-emerald-700 text-base">
-                    {(typeof laborFee === 'number'
-                      ? laborFee
-                      : (currentJob.laborFeeFcfa || 0)
-                    ).toLocaleString()}{' '}
-                    FCFA
+                {/* Dynamically append Final Parts Row if it exists mapped prior to Grand Totals */}
+                {currentJob.partsFeeFcfa ? (
+                  <div className="flex justify-between font-medium text-xs text-slate-600 border-t border-slate-200 pt-1.5 mt-1.5">
+                    <span>Parts Total</span>
+                    <span className="font-mono text-slate-900 font-bold">
+                      {currentJob.partsFeeFcfa.toLocaleString()} {currencySymbol}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between font-black text-sm text-slate-900 pt-2 border-t border-slate-300">
+                  <span>Grand Total Checkout</span>
+                  <span className="font-mono text-emerald-700 text-lg sm:text-xl">
+                    {((typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0)) + (currentJob.partsFeeFcfa || 0)).toLocaleString()}{' '}
+                    {currencySymbol}
                   </span>
                 </div>
               </div>
@@ -567,7 +638,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 <pre className="text-[11px] font-mono bg-stone-900 text-emerald-300 p-2.5 rounded-lg overflow-x-auto whitespace-pre-wrap leading-tight">
                   {generateWhatsAppInvoiceText(
                     currentJob,
-                    typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0)
+                    typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
+                    currentJob.partsFeeFcfa || 0
                   )}
                 </pre>
               </div>

@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { Camera, Check, Plus, Wrench, ShieldCheck, Phone, Car, Gauge, Image as ImageIcon } from 'lucide-react';
-import { Job, JobStatus, GarageMember } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Camera, Check, Plus, Wrench, ShieldCheck, Phone, Car, Gauge, Image as ImageIcon, Users } from 'lucide-react';
+import { Job, JobStatus, GarageMember, Department } from '../types';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { MotologaLogo } from './MotologaLogo';
 import { VoiceRecorderField } from './VoiceRecorderField';
+import { fetchDepartments, fetchGarageMembers } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 interface IntakeScreenProps {
   onJobCreated: (newJob: Job, assignedToId: string) => Promise<void>;
   onNavigateToQueue: () => void;
-  availableMechanics: GarageMember[];
+  availableMechanics?: GarageMember[];
+  garageId?: string;
 }
 
 const COMMON_VEHICLES = [
@@ -25,15 +28,53 @@ const COMMON_VEHICLES = [
 export const IntakeScreen: React.FC<IntakeScreenProps> = ({
   onJobCreated,
   onNavigateToQueue,
-  availableMechanics,
+  availableMechanics = [],
+  garageId,
 }) => {
+  const [fetchedMembers, setFetchedMembers] = useState<GarageMember[]>(availableMechanics);
+  const [fetchedDepartments, setFetchedDepartments] = useState<Department[]>([]);
+  const [busyMechanicIds, setBusyMechanicIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (garageId) {
+      Promise.all([
+        fetchDepartments(garageId),
+        fetchGarageMembers(garageId),
+        supabase.from('jobs').select('assigned_to').eq('garage_id', garageId).in('status', ['pending', 'in_progress'])
+      ]).then(([depts, members, jobsRes]) => {
+        setFetchedDepartments(depts);
+        setFetchedMembers(members);
+        if (jobsRes.data) {
+          const busy = jobsRes.data.map(j => j.assigned_to).filter(Boolean);
+          setBusyMechanicIds(busy as string[]);
+        }
+      }).catch(err => console.error('Failed to fetch garage context for intake:', err));
+    }
+  }, [garageId]);
+
+  // Derived state to group staff by department ID
+  const mechanicsByDept = useMemo(() => {
+    const groups: Record<string, GarageMember[]> = {
+      unassigned: []
+    };
+    fetchedDepartments.forEach(d => groups[d.id] = []);
+    
+    fetchedMembers.forEach(member => {
+      if (member.department_id && groups[member.department_id]) {
+        groups[member.department_id].push(member);
+      } else {
+        groups.unassigned.push(member);
+      }
+    });
+    return groups;
+  }, [fetchedDepartments, fetchedMembers]);
+
   const [licensePlate, setLicensePlate] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
   const [vehicleModel, setVehicleModel] = useState<string>('');
   
-  // Store the UUID of the selected mechanic
-  const defaultMech = availableMechanics.length > 0 ? availableMechanics[0].user_id : '';
-  const [selectedMechanicId, setSelectedMechanicId] = useState<string>(defaultMech);
+  // Store the UUID of the selected mechanic ('unassigned' by default)
+  const [assignedMechanic, setAssignedMechanic] = useState<string>('');
   
   const [issueDescription, setIssueDescription] = useState<string>('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string>('');
@@ -55,13 +96,18 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       return;
     }
 
+    if (!assignedMechanic || assignedMechanic === 'unassigned') {
+      alert("STOP: You must select a mechanic before dispatching.");
+      return;
+    }
+
     const newJob: Job = {
       id: '', // UUID is assigned by Supabase backend
       licensePlate: trimmedPlate,
       customerPhone: customerPhone.startsWith('+237') ? customerPhone : `+237 ${customerPhone.trim()}`,
       vehicleModel: vehicleModel.trim() || 'Unspecified Vehicle',
-      assigned_to: selectedMechanicId,
-      status: (!selectedMechanicId ? 'Diagnosis' : 'In Repair') as JobStatus,
+      assigned_to: assignedMechanic,
+      status: 'Diagnosis' as JobStatus,
       createdAt: Date.now(),
       timeElapsedMinutes: 0,
       dashboardPhotoUrl: dashboardPhoto,
@@ -81,10 +127,15 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       released: false,
     };
 
+    console.log("Submitting Job with assigned_to:", assignedMechanic);
+    
     try {
-      await onJobCreated(newJob, selectedMechanicId);
+      // Direct hard pass with no fallbacks
+      await onJobCreated(newJob, assignedMechanic);
       
-      const mechName = availableMechanics.find(m => m.user_id === selectedMechanicId)?.full_name || 'Technician';
+      const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
+      const mechName = m?.profiles?.full_name || m?.full_name || m?.profiles?.email || m?.email || 'Unnamed Mechanic';
+      
       setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${mechName}!`);
 
       // Reset inputs for next car
@@ -349,45 +400,113 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
             </div>
           </div>
 
-          {/* DISPATCH SECTION: Horizontal scrolling row of touch-friendly buttons for Mechanic Assignment */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
+          {/* DISPATCH SECTION: Grouped by Department */}
+          <div className="space-y-4 pt-4 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Wrench className="w-4 h-4 text-emerald-600" />
                 Dispatch & Mechanic Assignment
               </label>
-              <span className="text-[11px] font-bold text-slate-500">
-                Selected: <strong className="text-slate-900">
-                  {availableMechanics.find(m => m.user_id === selectedMechanicId)?.full_name || '...'}
+              <span className="text-[11px] font-bold text-slate-500 bg-stone-100 px-2 py-1 rounded-md border border-slate-200">
+                Selected: <strong className="text-slate-900 ml-1">
+                  {assignedMechanic === 'unassigned' || !assignedMechanic
+                    ? 'Unassigned'
+                    : (() => {
+                        const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
+                        return m?.profiles?.full_name || m?.full_name || m?.profiles?.email || m?.email || 'Unnamed Mechanic';
+                      })()}
                 </strong>
               </span>
             </div>
 
-            {/* Horizontal scrolling row of touch-friendly buttons (min 48px height) */}
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
-              {availableMechanics.map((mech) => {
-                const isSelected = selectedMechanicId === mech.user_id;
+            <div className="space-y-5">
+
+
+              {/* Department Groups */}
+              {fetchedDepartments.map(dept => {
+                const membersInDept = mechanicsByDept[dept.id];
+                if (!membersInDept || membersInDept.length === 0) return null;
+                
                 return (
-                  <button
-                    key={mech.user_id}
-                    type="button"
-                    onClick={() => setSelectedMechanicId(mech.user_id)}
-                    className={`min-h-[50px] min-w-[120px] px-4 py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all border-2 shrink-0 select-none active:scale-95 shadow-sm ${
-                      isSelected
-                        ? 'bg-[#142F30] text-emerald-300 border-[#34D399] ring-2 ring-emerald-500/20'
-                        : 'bg-stone-50 hover:bg-stone-100 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full ${
-                        isSelected ? 'bg-[#34D399]' : 'bg-slate-400'
-                      }`}
-                    ></span>
-                    <span>{mech.full_name || mech.email?.split('@')[0]}</span>
-                    {isSelected && <Check className="w-4 h-4 text-[#34D399] ml-1 stroke-[3]" />}
-                  </button>
+                  <div key={dept.id} className="space-y-2.5">
+                    <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest pl-1 border-l-2 border-slate-300 ml-1">
+                      {dept.name}
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {membersInDept.map((member) => {
+                        const isBusy = busyMechanicIds.includes(member.user_id);
+                        const isSelected = assignedMechanic === member.user_id;
+                        return (
+                          <button
+                            key={member.user_id}
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                              if (isBusy) return;
+                              setAssignedMechanic(member.user_id);
+                            }}
+                            className={`min-h-[44px] px-3.5 py-1.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all border-2 active:scale-95 shadow-sm ${
+                              isBusy
+                                ? 'opacity-50 cursor-not-allowed bg-gray-200 border-gray-300 text-gray-500'
+                                : isSelected
+                                  ? 'bg-emerald-500 text-white border-emerald-600'
+                                  : 'bg-stone-50 text-slate-700 border-slate-300'
+                            }`}
+                          >
+                            {!isBusy && <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`}></span>}
+                            <span>{member.profiles?.full_name || member.full_name || member.profiles?.email || member.email || 'Unnamed Mechanic'}</span>
+                            {member.role === 'hod' && <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-amber-300/50">Lead</span>}
+                            {isBusy 
+                              ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">In Bay</span>
+                              : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">Available</span>
+                            }
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
+              
+              {/* Other/Unassigned Staff Group */}
+              {mechanicsByDept.unassigned.length > 0 && (
+                <div className="space-y-2.5">
+                  <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest pl-1 border-l-2 border-slate-300 ml-1">
+                    Unallocated Staff
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {mechanicsByDept.unassigned.map((member) => {
+                      const isBusy = busyMechanicIds.includes(member.user_id);
+                      const isSelected = assignedMechanic === member.user_id;
+                      return (
+                        <button
+                          key={member.user_id}
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => {
+                            if (isBusy) return;
+                            setAssignedMechanic(member.user_id);
+                          }}
+                          className={`min-h-[44px] px-3.5 py-1.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all border-2 active:scale-95 shadow-sm ${
+                            isBusy
+                              ? 'opacity-50 cursor-not-allowed bg-gray-200 border-gray-300 text-gray-500'
+                              : isSelected
+                                ? 'bg-emerald-500 text-white border-emerald-600'
+                                : 'bg-stone-50 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          {!isBusy && <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`}></span>}
+                          <span>{member.profiles?.full_name || member.full_name || member.profiles?.email || member.email || 'Unnamed Mechanic'}</span>
+                          {isBusy 
+                            ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">In Bay</span>
+                            : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">Available</span>
+                          }
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

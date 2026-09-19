@@ -18,7 +18,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
   id,
 }) => {
   const getStyles = () => {
-    switch (status) {
+    switch (status as string) {
       case 'Diagnosis':
         return {
           classes: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
@@ -37,6 +37,17 @@ export const StatusChip: React.FC<StatusChipProps> = ({
       case 'Ready/Released':
         return {
           classes: 'bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]',
+          icon: <CheckCircle2 className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />,
+        };
+      case 'completed':
+      case 'Work Done':
+        return {
+          classes: 'bg-green-100 text-green-800 border-green-200',
+          icon: <CheckCircle2 className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />,
+        };
+      default:
+        return {
+          classes: 'bg-slate-100 text-slate-800 border-slate-200',
           icon: <CheckCircle2 className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />,
         };
     }

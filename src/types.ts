@@ -1,6 +1,6 @@
-export type JobStatus = 'Diagnosis' | 'Awaiting Approval' | 'In Repair' | 'Ready/Released';
+export type JobStatus = 'Diagnosis' | 'Awaiting Approval' | 'In Repair' | 'Paused' | 'Work Done' | 'Ready/Released';
 
-export type PartSource = 'Garage Stock' | 'Customer-Supplied Part';
+export type PartSource = 'Customer-Supplied Part' | 'Worker Bought' | 'Garage Stock' | 'Garage Inventory';
 
 export type DeferredTimeframe = 'Next Week' | 'In 2 Weeks' | 'End of Month' | 'Next Month' | 'In 3 Months';
 
@@ -26,8 +26,8 @@ export interface Job {
   licensePlate: string;
   customerPhone: string;
   vehicleModel: string;
-  assigned_to: string;
-  assigned_to_profile?: { full_name: string };
+  assigned_to?: string;
+  mechanic?: { full_name?: string; email?: string };
   status: JobStatus;
   createdAt: number;
   timeElapsedMinutes?: number;
@@ -37,12 +37,32 @@ export interface Job {
   newPartPhotoUrl?: string;
   partSource: PartSource;
   laborFeeFcfa: number;
+  partsFeeFcfa?: number;
   deferredRepair?: DeferredRepair | { flagged: boolean; component: string; timeframe: string };
   issueDescription?: string;
   voiceNoteUrl?: string;
   voiceNoteDurationSeconds?: number;
   released: boolean;
   releasedAt?: number;
+  mechanicAssigned?: string;
+  workerCompleted?: boolean;
+  workerCompletedAt?: number;
+  inspectedByHod?: boolean;
+  inspectedAt?: number;
+  inspectedBy?: string;
+}
+
+export interface AppointmentReservation {
+  id: string;
+  vehiclePlate: string;
+  customerPhone?: string;
+  vehicleModel?: string;
+  mechanicAssigned?: string;
+  notes?: string;
+  serviceRequested?: string;
+  appointmentDate?: string;
+  appointmentTime?: string;
+  audioUrl?: string;
 }
 
 export interface GarageStats {
@@ -117,7 +137,8 @@ export interface Garage {
   id: string;
   owner_id: string;
   name: string;
-  subscription_status?: SubscriptionStatus;
+  subscription_status: string;
+  trial_ends_at: string;
   created_at?: string;
 }
 
@@ -139,4 +160,18 @@ export interface GarageMember {
   full_name?: string;
   created_at?: string;
   department?: Department;
+}
+
+export interface InventoryItem {
+  id: string;
+  garage_id: string;
+  part_name: string;
+  category?: string;
+  part_number?: string;
+  quantity_in_stock: number;
+  minimum_stock_level: number;
+  buying_price: number;
+  selling_price: number;
+  image_url?: string;
+  created_at?: string;
 }
