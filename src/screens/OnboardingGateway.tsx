@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Building2, Link as LinkIcon, ArrowRight } from 'lucide-react';
 import { MotologaLogo } from '../components/MotologaLogo';
+import { CreateWorkshopScreen } from './CreateWorkshopScreen';
 
 export const OnboardingGateway: React.FC<{
   userId: string;
   onSignOut: () => void;
-}> = ({ userId, onSignOut }) => {
+  onGarageCreated: () => void;
+}> = ({ userId, onSignOut, onGarageCreated }) => {
+  const [isCreating, setIsCreating] = useState(false);
+
+  if (isCreating) {
+    return (
+      <CreateWorkshopScreen 
+        userId={userId} 
+        onComplete={onGarageCreated} 
+        onCancel={() => setIsCreating(false)} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0E2829] flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-stone-900/90 border border-emerald-500/40 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
@@ -25,7 +39,7 @@ export const OnboardingGateway: React.FC<{
 
         <div className="space-y-4">
           <button
-            onClick={() => alert("Redirect to Create Workshop flow (Not yet implemented)")}
+            onClick={() => setIsCreating(true)}
             className="w-full relative group cursor-pointer"
           >
             <div className="absolute inset-0 bg-[#34D399] rounded-xl blur opacity-25 group-hover:opacity-50 transition-opacity" />

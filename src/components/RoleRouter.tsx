@@ -307,7 +307,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
 
   // ONBOARDING GATEWAY - No Garage Member data
   if (!role || !garage) {
-    return <OnboardingGateway userId={userId} onSignOut={onSignOut} />;
+    return <OnboardingGateway userId={userId} onSignOut={onSignOut} onGarageCreated={loadRoleData} />;
   }
 
   const isPastDue = garage.subscription_status === 'past_due';

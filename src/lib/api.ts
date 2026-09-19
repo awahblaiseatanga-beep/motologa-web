@@ -235,6 +235,53 @@ export const deleteDepartment = async (departmentId: string) => {
   return data;
 };
 
+// ==========================================
+// B2B Workspace Provisioning API
+// ==========================================
+
+export const provisionNewWorkshop = async (ownerId: string, shopName: string, phone: string, address: string) => {
+  // 1. Create Garage (Core Entity)
+  const { data: garageData, error: garageError } = await supabase
+    .from('garages')
+    .insert({
+      owner_id: ownerId,
+      name: shopName,
+      subscription_status: 'trialing'
+    })
+    .select()
+    .single();
+    
+  if (garageError || !garageData) throw new Error("A database constraint prevented the workshop from being created securely.");
+
+  // 2. Map Owner Permissions globally into membership tables
+  const { error: memberError } = await supabase
+    .from('garage_members')
+    .insert({
+      garage_id: garageData.id,
+      user_id: ownerId,
+      role: 'owner',
+      full_name: 'Workshop Administrator'
+    });
+    
+  if (memberError) throw new Error("Failed to assign root privileges securely to this workshop.");
+
+  // 3. Upsert global Shop Settings generically protecting ID cascades seamlessly
+  const { error: settingsError } = await supabase
+    .from('shop_settings')
+    .upsert({
+      id: 1, // Ensures absolute legacy compatibility internally matching local loops strictly
+      shop_name: shopName,
+      shop_address: address,
+      whatsapp_template: `Hello, this is ${shopName}. `
+    }, { onConflict: 'id' });
+
+  if (settingsError) {
+    console.error("ShopSettings initialization warning:", settingsError); // Non-fatal structurally
+  }
+
+  return garageData;
+};
+
 export const fetchGarageMembers = async (garageId: string) => {
   // Attempt fetching with profiles join per requirement
   const { data, error } = await supabase
