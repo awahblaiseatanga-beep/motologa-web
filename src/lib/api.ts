@@ -124,8 +124,8 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Insert failed: No data returned from Supabase.");
+  if (error) throw new Error("A database error occurred while creating this job.");
+  if (!data) throw new Error("Insert failed: No data returned securely from the server.");
   return data;
 };
 
@@ -142,7 +142,7 @@ export const updateJobStatus = async (jobId: string, status: string, laborFee: n
     .select()
     .single();
 
-  if (error || !data) throw new Error(error?.message || "Failed to update job status");
+  if (error || !data) throw new Error("A database error occurred while updating the job status.");
 };
 
 export const fetchDeferredRepairs = async (jobIds: string[]): Promise<DeferredRepair[]> => {
@@ -175,7 +175,7 @@ export const createDeferredRepair = async (repair: DeferredRepair, jobId: string
     status: repair.status,
   }).select().single();
 
-  if (error || !data) throw new Error(error?.message || "Failed to create deferred repair");
+  if (error || !data) throw new Error("A database structure violation prevented the deferred repair from being saved.");
   return data;
 };
 

@@ -100,21 +100,23 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
 
   const handleSavePrice = async (findingId: string) => {
     const cost = localPrices[findingId];
-    if (!cost || isNaN(Number(cost))) {
-      alert('Please enter a valid numeric cost.');
+    const parsedCost = parseFloat(cost || '0');
+
+    if (isNaN(parsedCost) || parsedCost <= 0) {
+      alert('Security Guard: Please enter a valid numerical price. Letters and generic values are blocked.');
       return;
     }
     
     try {
       const { error } = await supabase
         .from('additional_findings')
-        .update({ estimated_cost: Number(cost) })
+        .update({ estimated_cost: parsedCost })
         .eq('id', findingId);
         
       if (error) throw error;
       
       // Update local state without reloading
-      setCustomerFindings(prev => prev.map(f => f.id === findingId ? { ...f, estimated_cost: Number(cost) } : f));
+      setCustomerFindings(prev => prev.map(f => f.id === findingId ? { ...f, estimated_cost: parsedCost } : f));
     } catch (err: any) {
       alert(`Failed to save price: ${err.message}`);
     }

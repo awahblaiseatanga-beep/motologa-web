@@ -216,6 +216,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                 value={licensePlate}
                 onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
                 className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-900 font-mono font-black text-base sm:text-lg tracking-wider px-3.5 py-3 rounded-xl border-2 border-slate-300 focus:border-[#34D399] focus:ring-2 focus:ring-emerald-400/20 focus:outline-none min-h-[48px] uppercase transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                maxLength={15}
                 required
               />
             </div>
@@ -236,8 +237,9 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                 id="customer-phone-input"
                 type="tel"
                 value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="e.g. 699 45 12 88"
+                onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="e.g. 699451288"
+                maxLength={20}
                 className="flex-1 px-3 py-3 font-mono font-bold text-slate-900 text-lg focus:outline-none min-h-[48px] placeholder:text-slate-400 placeholder:font-normal"
                 required
               />
@@ -258,6 +260,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
               value={vehicleModel}
               onChange={(e) => setVehicleModel(e.target.value)}
               placeholder="e.g. Toyota Hilux 4x4 or Peugeot Partner"
+              maxLength={50}
               className="w-full px-3.5 py-3 rounded-xl border-2 border-slate-300 bg-white font-semibold text-slate-800 text-base focus:border-emerald-600 focus:outline-none min-h-[48px]"
             />
             {/* Quick common garage models in Cameroon */}
@@ -290,6 +293,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
               value={issueDescription}
               onChange={(e) => setIssueDescription(e.target.value)}
               placeholder="e.g. Engine knocking at 2000 RPM, clutch replacement, oil leak"
+              maxLength={500}
               className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 bg-white font-medium text-slate-800 text-sm focus:border-emerald-600 focus:outline-none"
             />
           </div>
