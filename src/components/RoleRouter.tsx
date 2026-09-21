@@ -13,6 +13,7 @@ import { ShopSettingsScreen } from '../screens/ShopSettingsScreen';
 import { OwnerDailyLogsScreen } from '../screens/OwnerDailyLogsScreen';
 import { createJob } from '../lib/api';
 import { MotologaLogo } from './MotologaLogo';
+import { InstallAppButton } from './InstallAppButton';
 import { AnimatedTabBar, TabItem } from './ui/animated-tab-bar';
 import {
   ShieldAlert,
@@ -399,6 +400,8 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             </button>
           )}
 
+          <InstallAppButton variant="header" />
+
           <button
             onClick={onSignOut}
             className="p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition"
@@ -544,6 +547,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                   <CreditCard className="w-3.5 h-3.5" /> Billing
                 </button>
               )}
+              <InstallAppButton variant="header" />
             </div>
           </header>
           

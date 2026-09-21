@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeClosed, ArrowRight, ShieldCheck, Wrench, Sparkles }
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MotologaLogo } from './MotologaLogo';
 import { cn } from '../lib/utils';
+import { InstallAppButton } from './InstallAppButton';
 
 interface LoginScreenProps {
   onLoginSuccess: (userRole: 'owner' | 'mechanic', mechanicId?: string) => void;
@@ -669,6 +670,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                   </p>
                 )}
               </div>
+              
+              {/* PWA Install Button */}
+              <InstallAppButton variant="login" />
             </div>
           </div>
         </motion.div>
