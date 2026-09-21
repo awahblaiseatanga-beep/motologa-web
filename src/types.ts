@@ -25,6 +25,7 @@ export interface Job {
   id: string;
   licensePlate: string;
   customerPhone: string;
+  customerName?: string;
   vehicleModel: string;
   assigned_to?: string;
   mechanic?: { full_name?: string; email?: string };
@@ -35,12 +36,15 @@ export interface Job {
   exteriorPhotoUrl?: string;
   oldPartPhotoUrl?: string;
   newPartPhotoUrl?: string;
+  generalJobPhotoUrl?: string;
   partSource: PartSource;
   laborFeeFcfa: number;
   partsFeeFcfa?: number;
   deferredRepair?: DeferredRepair | { flagged: boolean; component: string; timeframe: string };
   issueDescription?: string;
+  diagnosticNotes?: string;
   voiceNoteUrl?: string;
+  diagnosticVoiceNoteUrl?: string;
   voiceNoteDurationSeconds?: number;
   released: boolean;
   releasedAt?: number;

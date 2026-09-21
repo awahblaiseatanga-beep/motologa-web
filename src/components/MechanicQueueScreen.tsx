@@ -34,7 +34,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
   const [authorizedFindings, setAuthorizedFindings] = useState<any[]>([]);
   const [activePhotoTarget, setActivePhotoTarget] = useState<{
     jobId: string;
-    type: 'old-part' | 'new-part';
+    type: 'old-part' | 'new-part' | 'general-job';
   } | null>(null);
 
   const [completedToast, setCompletedToast] = useState<{ plate: string; id: string } | null>(null);
@@ -42,15 +42,14 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedInventoryPart, setSelectedInventoryPart] = useState<Record<string, string>>({});
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
-  const [localEdits, setLocalEdits] = useState<Record<string, { voiceNoteUrl?: string; voiceNoteDurationSeconds?: number; oldPartPhotoUrl?: string; newPartPhotoUrl?: string; partSource?: PartSource; laborFeeFcfa?: number; }>>({});
+  const [localEdits, setLocalEdits] = useState<Record<string, {
+    voiceNoteUrl?: string; 
+    diagnosticVoiceNoteUrl?: string;
+    voiceNoteDurationSeconds?: number;
+    oldPartPhotoUrl?: string; 
+    newPartPhotoUrl?: string; generalJobPhotoUrl?: string; partSource?: PartSource; laborFeeFcfa?: number; }>>({});
   const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
   const [financialConfig, setFinancialConfig] = useState<{ rate: number, symbol: string, markup: number }>({ rate: 0, symbol: 'FCFA', markup: 10 });
-
-  const fetchFindings = async (activeJobIds: string[]) => {
-    if (activeJobIds.length === 0) return;
-    const { data } = await supabase.from('additional_findings').select('id, parent_job_id, status, component, ai_diagnosis, raw_audio_url, labor_fee, part_fee').in('parent_job_id', activeJobIds).eq('status', 'customer_approved');
-    if (data) setAuthorizedFindings(data);
-  };
 
   useEffect(() => {
     supabase
@@ -75,13 +74,12 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       });
   }, []);
 
-  const activeJobs = jobs.filter((j) => !j.released);
+  // Filter out released jobs AND jobs that are merely marked complete/ready for checkout
+  const activeJobs = jobs.filter((j) => !j.released && j.status !== 'Ready/Released');
 
   const previousStatuses = React.useRef<Record<string, string>>({});
 
   useEffect(() => {
-    fetchFindings(activeJobs.map(j => j.id));
-    
     // Check for recently unpaused jobs to alert the mechanic
     activeJobs.forEach(job => {
       const oldStatus = previousStatuses.current[job.id];
@@ -133,8 +131,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       const jobEdits = localEdits[job.id] || {};
       
       const updatePayload: any = { status: 'pending_checkout' };
-      
-      // If Mechanic logged a custom labor fee, forward it. Otherwise default won't overwrite existing Checkouts natively unless specified.
+
       if (jobEdits.laborFeeFcfa !== undefined) {
          updatePayload.labor_fee = jobEdits.laborFeeFcfa;
       }
@@ -173,9 +170,10 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
         return urlStr;
       };
 
-      let finalVoiceUrl = edits.voiceNoteUrl !== undefined ? edits.voiceNoteUrl : job.voiceNoteUrl;
-      const finalVoiceDur = edits.voiceNoteDurationSeconds !== undefined ? edits.voiceNoteDurationSeconds : job.voiceNoteDurationSeconds;
-      finalVoiceUrl = await abstractUploadAndLink(finalVoiceUrl, 'voice_note');
+      // Isolate Diagnostic Voice tracking exclusively for Mechanics so Intake is untouched
+      let finalVoiceUrl = edits.diagnosticVoiceNoteUrl !== undefined ? edits.diagnosticVoiceNoteUrl : job.diagnosticVoiceNoteUrl;
+      const finalVoiceDur = edits.voiceNoteDurationSeconds !== undefined ? edits.voiceNoteDurationSeconds : job.voiceNoteDurationSeconds; 
+      finalVoiceUrl = await abstractUploadAndLink(finalVoiceUrl, 'diagnostic_voice_note');
 
       let finalOldPart = edits.oldPartPhotoUrl !== undefined ? edits.oldPartPhotoUrl : job.oldPartPhotoUrl;
       finalOldPart = await abstractUploadAndLink(finalOldPart, 'old_part');
@@ -183,14 +181,27 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       let finalNewPart = edits.newPartPhotoUrl !== undefined ? edits.newPartPhotoUrl : job.newPartPhotoUrl;
       finalNewPart = await abstractUploadAndLink(finalNewPart, 'new_part');
       
+      let finalGeneralPhoto = edits.generalJobPhotoUrl !== undefined ? edits.generalJobPhotoUrl : job.generalJobPhotoUrl;
+      finalGeneralPhoto = await abstractUploadAndLink(finalGeneralPhoto, 'general_job');
+      
+      const photoPayload: any = {};
+      if (finalOldPart && finalOldPart.startsWith('http')) photoPayload.old_part_photo_url = finalOldPart;
+      if (finalNewPart && finalNewPart.startsWith('http')) photoPayload.new_part_photo_url = finalNewPart;
+      if (finalGeneralPhoto && finalGeneralPhoto.startsWith('http')) photoPayload.general_job_photo_url = finalGeneralPhoto;
+      
+      if (Object.keys(photoPayload).length > 0) {
+        await supabase.from('jobs').update(photoPayload).eq('id', job.id);
+      }
+      
       const updated: Job = {
         ...job,
         status: 'Ready/Released',
-        issueDescription: finalNotes,
-        voiceNoteUrl: finalVoiceUrl,
+        diagnosticNotes: finalNotes,
+        diagnosticVoiceNoteUrl: finalVoiceUrl,
         voiceNoteDurationSeconds: finalVoiceDur,
         oldPartPhotoUrl: finalOldPart,
         newPartPhotoUrl: finalNewPart,
+        generalJobPhotoUrl: finalGeneralPhoto,
         partSource: edits.partSource || job.partSource,
       };
       onUpdateJob(updated); // Sync local state globally triggering parent loadJobs via queue bridge
@@ -267,7 +278,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
           </div>
           
           {onSyncBay && (
-            <button onClick={() => { onSyncBay(); fetchFindings(activeJobs.map(j => j.id)); }} className="self-start sm:self-auto px-5 py-2.5 bg-[#0E2829] hover:bg-slate-800 text-[#34D399] text-sm font-black uppercase tracking-wider rounded-xl flex items-center gap-2 transition active:scale-95 shadow-md border-2 border-[#142F30]">
+            <button onClick={() => { onSyncBay(); }} className="self-start sm:self-auto px-5 py-2.5 bg-[#0E2829] hover:bg-slate-800 text-[#34D399] text-sm font-black uppercase tracking-wider rounded-xl flex items-center gap-2 transition active:scale-95 shadow-md border-2 border-[#142F30]">
               <RefreshCw className="w-5 h-5 shrink-0" /> Refresh Jobs
             </button>
           )}
@@ -396,8 +407,25 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     </div>
                   </div>
 
+                  {/* Newly added Read-Only Customer Intake Summary */}
+                  <div className="bg-[#142F30] rounded-xl p-3 border border-emerald-900 shadow-inner">
+                    <h4 className="text-[10px] font-black uppercase text-emerald-400 tracking-wider mb-2 flex items-center gap-1.5">
+                      Customer Complaint & Intake Notes
+                    </h4>
+                    <p className="text-sm font-medium text-emerald-50 mb-3 whitespace-pre-wrap leading-relaxed">
+                      {job.issueDescription || <span className="italic text-emerald-700">No text notes recorded at intake.</span>}
+                    </p>
+                    
+                    {job.voiceNoteUrl && (
+                      <div className="bg-[#0b1c1d] rounded-lg p-2 flex items-center gap-3">
+                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest shrink-0">Intake Audio</span>
+                         <audio controls src={job.voiceNoteUrl} className="h-8 max-w-[200px]" />
+                      </div>
+                    )}
+                  </div>
+
                   {/* Diagnostic Note */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 pt-2">
                     <label
                       htmlFor={`diagnostic-note-${job.id}`}
                       className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between"
@@ -417,22 +445,22 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     <textarea
                       id={`diagnostic-note-${job.id}`}
                       rows={2}
-                      defaultValue={job.issueDescription || ''}
+                      value={localNotes[job.id] !== undefined ? localNotes[job.id] : (job.diagnosticNotes || '')}
                       onChange={(e) => setLocalNotes((prev) => ({ ...prev, [job.id]: e.target.value }))}
-                      placeholder="Diagnostic findings, mechanical faults, or repairs needed..."
+                      placeholder="Mechanic diagnostic findings, mechanical faults, or repairs needed..."
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-medium text-slate-800 text-xs sm:text-sm focus:border-emerald-600 focus:outline-none transition-all resize-y"
                     />
                   </div>
 
                   {/* Voice Intake Field (Directly under diagnostic note) */}
                   <VoiceRecorderField
-                    audioUrl={(localEdits[job.id]?.voiceNoteUrl !== undefined ? localEdits[job.id]?.voiceNoteUrl : job.voiceNoteUrl) || ''}
+                    audioUrl={(localEdits[job.id]?.diagnosticVoiceNoteUrl !== undefined ? localEdits[job.id]?.diagnosticVoiceNoteUrl : job.diagnosticVoiceNoteUrl) || ''}
                     durationSeconds={(localEdits[job.id]?.voiceNoteDurationSeconds !== undefined ? localEdits[job.id]?.voiceNoteDurationSeconds : job.voiceNoteDurationSeconds) || 0}
                     onAudioChange={(url, duration) => {
                       setLocalEdits(prev => ({
                         ...prev, [job.id]: {
                           ...prev[job.id],
-                          voiceNoteUrl: url,
+                          diagnosticVoiceNoteUrl: url,
                           voiceNoteDurationSeconds: duration
                         }
                       }));
@@ -444,27 +472,6 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     buttonId={`record-voice-note-${job.id}`}
                   />
                   
-                  {/* Mechanic Labor Input */}
-                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Labor Fee Estimate
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        defaultValue={(localEdits[job.id]?.laborFeeFcfa ?? job.laborFeeFcfa) || financialConfig.rate || ''}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : Number(e.target.value);
-                          setLocalEdits(prev => ({
-                            ...prev, [job.id]: { ...prev[job.id], laborFeeFcfa: val }
-                          }));
-                        }}
-                        placeholder="e.g. 15000"
-                        className="w-full px-3 py-2.5 bg-stone-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-800 focus:border-emerald-500 focus:outline-none transition-all"
-                      />
-                      <span className="font-bold text-xs text-slate-400 shrink-0">{financialConfig.symbol}</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* ACTION AREA: Two side-by-side buttons for "Photo: Old Part" and "Photo: New Part" */}
@@ -548,6 +555,49 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       </div>
                       {job.newPartPhotoUrl && (
                         <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 stroke-[3]" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* FULL WIDTH General Job Photo Button */}
+                  <div className="pt-2">
+                    <button
+                      id={`photo-general-job-${job.id}`}
+                      type="button"
+                      onClick={() => setActivePhotoTarget({ jobId: job.id, type: 'general-job' })}
+                      className={`w-full min-h-[50px] p-2 sm:p-2.5 rounded-xl border-2 flex items-center justify-between gap-3 transition-all active:scale-98 shadow-xs cursor-pointer ${
+                        (localEdits[job.id]?.generalJobPhotoUrl || job.generalJobPhotoUrl)
+                          ? 'bg-sky-50 border-sky-400 text-sky-950'
+                          : 'bg-stone-50 hover:bg-stone-100 border-slate-300 text-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                            (localEdits[job.id]?.generalJobPhotoUrl || job.generalJobPhotoUrl) ? 'bg-sky-600 text-white' : 'bg-slate-700 text-sky-300'
+                          }`}
+                        >
+                          {(localEdits[job.id]?.generalJobPhotoUrl || job.generalJobPhotoUrl) ? (
+                            <img
+                              src={localEdits[job.id]?.generalJobPhotoUrl || job.generalJobPhotoUrl}
+                              alt="General job"
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <Camera className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="text-left flex-1 min-w-0">
+                          <span className="text-[11px] sm:text-xs font-black block leading-tight">
+                            General Job Photo (Optional)
+                          </span>
+                          <span className="text-[10px] text-slate-500 block leading-tight mt-0.5 truncate">
+                            {job.generalJobPhotoUrl ? 'Photo Logged' : 'Use this for labor-only jobs like wiring, cleaning, or diagnostics.'}
+                          </span>
+                        </div>
+                      </div>
+                      {(localEdits[job.id]?.generalJobPhotoUrl || job.generalJobPhotoUrl) && (
+                        <Check className="w-4 h-4 text-sky-600 shrink-0 stroke-[3]" />
                       )}
                     </button>
                   </div>
@@ -652,13 +702,17 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
           title={
             activePhotoTarget.type === 'old-part'
               ? 'Capture Old Replaced Part'
-              : 'Capture New Replacement Part'
+              : activePhotoTarget.type === 'new-part'
+              ? 'Capture New Replacement Part'
+              : 'Capture General Job Photo'
           }
           category={activePhotoTarget.type}
           currentPhotoUrl={
             activePhotoTarget.type === 'old-part'
               ? jobs.find((j) => j.id === activePhotoTarget.jobId)?.oldPartPhotoUrl
-              : jobs.find((j) => j.id === activePhotoTarget.jobId)?.newPartPhotoUrl
+              : activePhotoTarget.type === 'new-part'
+              ? jobs.find((j) => j.id === activePhotoTarget.jobId)?.newPartPhotoUrl
+              : jobs.find((j) => j.id === activePhotoTarget.jobId)?.generalJobPhotoUrl
           }
           onPhotoCaptured={(url) => {
             if (activePhotoTarget) {
@@ -666,9 +720,13 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                 setLocalEdits(prev => ({
                   ...prev, [activePhotoTarget.jobId]: { ...prev[activePhotoTarget.jobId], oldPartPhotoUrl: url }
                 }));
-              } else {
+              } else if (activePhotoTarget.type === 'new-part') {
                 setLocalEdits(prev => ({
                   ...prev, [activePhotoTarget.jobId]: { ...prev[activePhotoTarget.jobId], newPartPhotoUrl: url }
+                }));
+              } else if (activePhotoTarget.type === 'general-job') {
+                setLocalEdits(prev => ({
+                  ...prev, [activePhotoTarget.jobId]: { ...prev[activePhotoTarget.jobId], generalJobPhotoUrl: url }
                 }));
               }
             }

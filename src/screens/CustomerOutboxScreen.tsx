@@ -34,7 +34,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
 
       const { data: findingsData, error } = await supabase
         .from('additional_findings')
-        .select('id, parent_job_id, status, component, ai_diagnosis, raw_audio_url, labor_fee, part_fee, created_at, ai_confidence, mechanic_audio_transcription')
+        .select('*')
         .in('parent_job_id', jobIds)
         .in('status', ['pending_approval', 'pending_customer']);
 

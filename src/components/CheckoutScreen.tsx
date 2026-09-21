@@ -21,6 +21,7 @@ import {
   Phone
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { InvoiceGenerator } from './InvoiceGenerator';
 
 interface CheckoutScreenProps {
   jobs: Job[];
@@ -93,6 +94,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
   const [copiedInvoice, setCopiedInvoice] = useState<boolean>(false);
   const [showInvoicePreview, setShowInvoicePreview] = useState<boolean>(false);
+  const [showInvoiceGenerator, setShowInvoiceGenerator] = useState<boolean>(false);
 
   // Synchronize when switching vehicle
   const handleSelectJob = (job: Job) => {
@@ -108,40 +110,17 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     (j) => (j.status === 'Diagnosis' || j.status === 'Awaiting Approval') && !j.released
   ).length;
 
-  // WhatsApp Message Generator
-  const generateWhatsAppInvoiceText = (job: Job, finalLaborFee: number, finalPartsFee: number) => {
-    const totalFee = finalLaborFee + finalPartsFee;
-    let text = `*MOTOLOGA WORKSHOP — FACTURE & REÇU DE SORTIE*\n`;
-    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `🇨🇲 *Véhicule :* ${job.licensePlate} (${job.vehicleModel})\n`;
-    text += `👨🏾‍🔧 *Mécanicien :* ${job.mechanic?.full_name || job.assigned_to}\n`;
-    text += `⚙️ *Type Pièce :* ${job.partSource}\n`;
-    if (finalPartsFee > 0) {
-      text += `🛒 *Coût des Pièces (Parts) :* ${finalPartsFee.toLocaleString()} ${currencySymbol}\n`;
-    }
-    text += `💰 *Main d'œuvre (Labor) :* ${finalLaborFee.toLocaleString()} ${currencySymbol}\n`;
-    text += `🧾 *TOTAL :* ${totalFee.toLocaleString()} ${currencySymbol}\n`;
-    text += `📋 *Statut :* Service Terminé & Inspecté ✅\n`;
-
-    if (flagDeferred) {
-      text += `\n⚠️ *RAPPEL ENTRETIEN PRÉVENTIF RECOMMANDÉ :*\n`;
-      text += `• Composant : *${deferredComponent}*\n`;
-      text += `• Échéance conseillée : *${deferredTimeframe}*\n`;
-    }
-
-    text += `\n━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `📍 *Garage MOTOLOGA* — Douala / Yaoundé\n`;
-    text += `Paiement accepté : Cash, Orange Money, MTN MoMo.\n`;
-    text += `Merci pour votre confiance et bonne route !`;
-
-    return text;
+  // Short WhatsApp Text Message for PDF attachment
+  const generateWhatsAppInvoiceText = (job: Job) => {
+    return `Hello ${job.customerName !== 'Walk-in Client' ? job.customerName : ''},\n\nYour vehicle (${job.licensePlate}) is ready for checkout. Please find your official MOTOLOGA Garage invoice attached.\n\nThank you for your business!`;
   };
 
-  const handleSendWhatsAppCheckout = async () => {
+  const [completedJobIds, setCompletedJobIds] = useState<Set<string>>(new Set());
+
+  const handleFinalizeCheckout = async () => {
     if (!currentJob) return;
 
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
-    const partsFeeAmount = currentJob.partsFeeFcfa || 0;
 
     const updatedJob: Job = {
       ...currentJob,
@@ -151,7 +130,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         component: deferredComponent,
         timeframe: deferredTimeframe,
       },
-      status: 'Work Done' as JobStatus, // Or something visually terminal if rendering briefly
+      status: 'Work Done' as JobStatus,
       released: true,
     };
 
@@ -165,13 +144,15 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
     if (error) {
       console.error("Failed to close job in DB:", error);
-      return; // Do not remove from UI if DB fails
+      return; 
     }
 
-    // If deferred repair is flagged, record it into MOTOLOGA's follow-up system
+    // Mark as completed locally so we know to drop it when the modal is closed
+    setCompletedJobIds(prev => new Set(prev).add(currentJob.id));
+
     if (flagDeferred) {
       const newFollowUp: DeferredRepair = {
-        id: '', // Handled by Supabase DB
+        id: '',
         status: 'pending' as const,
         vehiclePlate: currentJob.licensePlate,
         customerPhone: currentJob.customerPhone,
@@ -183,7 +164,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       }
     }
 
-    const messageText = generateWhatsAppInvoiceText(updatedJob, feeAmount, partsFeeAmount);
+    const messageText = generateWhatsAppInvoiceText(updatedJob);
     
     let cleanPhone = currentJob.customerPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('237')) cleanPhone = cleanPhone.slice(3);
@@ -191,26 +172,12 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     
     const waUrl = `https://wa.me/237${cleanPhone}?text=${encodeURIComponent(messageText)}`;
 
-    // Open WhatsApp link
+    // Open WhatsApp link immediately for them to attach the PDF they just saved
     try {
       window.open(waUrl, '_blank', 'noopener,noreferrer');
     } catch (e) {
       console.log('Unable to auto-open window', e);
     }
-
-    // Also trigger on-screen receipt and release
-    setShowReceiptModal(true);
-    onJobReleased(updatedJob, feeAmount);
-  };
-
-  const handleCopyReceipt = () => {
-    if (!currentJob) return;
-    const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
-    const partsFeeAmount = currentJob.partsFeeFcfa || 0;
-    const text = generateWhatsAppInvoiceText(currentJob, feeAmount, partsFeeAmount);
-    navigator.clipboard.writeText(text);
-    setCopiedInvoice(true);
-    setTimeout(() => setCopiedInvoice(false), 2500);
   };
 
   return (
@@ -465,63 +432,21 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             />
           </div>
 
-          {/* PROPER TEXT VIEW: WhatsApp Invoice Preview Accordion */}
-          <div className="pt-1 border-t border-slate-100 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-600">
-                Customer Message Preview
-              </span>
-              <button
-                id="toggle-invoice-preview-btn"
-                type="button"
-                onClick={() => setShowInvoicePreview(!showInvoicePreview)}
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer py-1 px-2 rounded-lg bg-emerald-50 border border-emerald-200"
-              >
-                <span>{showInvoicePreview ? 'Hide Text View' : 'Inspect WhatsApp Text'}</span>
-              </button>
-            </div>
-
-            {showInvoicePreview && (
-              <div className="bg-[#0E2829] rounded-xl p-3 border border-emerald-500/40 text-slate-100 space-y-2">
-                <div className="flex items-center justify-between border-b border-emerald-900/60 pb-1.5">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-300">
-                    Exact WhatsApp Text (CMR Standard):
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyReceipt}
-                    className="text-[11px] font-mono font-bold bg-[#142F30] hover:bg-emerald-950 text-[#34D399] px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1 active:scale-95"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>{copiedInvoice ? 'Copied!' : 'Copy'}</span>
-                  </button>
-                </div>
-                <pre className="text-[11px] sm:text-xs font-mono text-emerald-200 leading-relaxed whitespace-pre-wrap select-all">
-                  {generateWhatsAppInvoiceText(
-                    currentJob,
-                    typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
-                    currentJob.partsFeeFcfa || 0
-                  )}
-                </pre>
-              </div>
-            )}
+          {/* PRIMARY CTA: A massive, full-width WhatsApp Green button */}
+          <div className="pt-1 mt-6">
+            <button
+              id="send-whatsapp-checkout-btn"
+              type="button"
+              onClick={() => setShowInvoiceGenerator(true)}
+              className="w-full min-h-[56px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-sm xs:text-base sm:text-lg tracking-wide flex items-center justify-center gap-2 sm:gap-3 shadow-lg border-2 border-[#1EBE5D] cursor-pointer transition-all px-3 py-3 text-center"
+            >
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-[2.5]" />
+              <span className="leading-tight">Send Customer Invoice</span>
+            </button>
+            <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
+              Direct dispatch to customer WhatsApp (+237) • Instant receipt & cloud queue clearance
+            </p>
           </div>
-
-          {/* PRIMARY CTA: A massive, full-width WhatsApp Green button: "Send WhatsApp Checkout & Release" */}
-            <div className="pt-1">
-              <button
-                id="send-whatsapp-checkout-btn"
-                type="button"
-                onClick={handleSendWhatsAppCheckout}
-                className="w-full min-h-[56px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-sm xs:text-base sm:text-lg tracking-wide flex items-center justify-center gap-2 sm:gap-3 shadow-lg border-2 border-[#1EBE5D] cursor-pointer transition-all px-3 py-3 text-center"
-              >
-                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-[2.5]" />
-                <span className="leading-tight">Send WhatsApp Checkout & Release</span>
-              </button>
-              <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
-                Direct dispatch to customer WhatsApp (+237) • Instant receipt & cloud queue clearance
-              </p>
-            </div>
           </div>
         </div>
       ) : (
@@ -534,138 +459,21 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         </div>
       )}
 
-      {/* Official Receipt & Release Modal */}
-      {showReceiptModal && currentJob && (
-        <div
-          id="receipt-modal-overlay"
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
-        >
-          <div className="w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-2xl border-2 border-emerald-500 flex flex-col max-h-[92vh]">
-            {/* Modal Header */}
-            <div className="bg-[#0E2829] p-4 text-white flex items-center justify-between border-b border-emerald-500/30">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-6 h-6 text-[#34D399]" />
-                <div>
-                  <h3 className="font-black text-base uppercase tracking-wider">
-                    Vehicle Released
-                  </h3>
-                  <span className="text-xs text-emerald-300 font-mono">
-                    WhatsApp Message Dispatched
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowReceiptModal(false)}
-                className="text-xs font-bold bg-stone-800 hover:bg-stone-700 text-slate-300 px-3 py-1.5 rounded-lg active:scale-95"
-              >
-                Close
-              </button>
-            </div>
-
-            {/* Modal Body: Receipt print layout */}
-            <div className="p-4 space-y-3.5 overflow-y-auto flex-1 font-sans text-slate-800 text-sm">
-              <div className="text-center pb-2.5 border-b border-dashed border-slate-300 flex flex-col items-center">
-                <MotologaLogo variant="full" size="sm" className="mb-1 text-slate-900" accentColor="#059669" />
-                <span className="text-[10px] font-mono font-black uppercase tracking-widest text-slate-500">
-                  Official Workshop Receipt • CMR
-                </span>
-                <div className="my-1.5 flex justify-center">
-                  <LicensePlateBadge plate={currentJob.licensePlate} size="md" />
-                </div>
-                <p className="text-xs font-bold text-slate-600">
-                  Customer Phone: {currentJob.customerPhone}
-                </p>
-                <p className="text-[11px] text-slate-400">
-                  {new Date().toLocaleDateString('fr-FR', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
-
-              {/* Breakdown */}
-              <div className="space-y-1.5 bg-stone-50 p-3 rounded-xl border border-slate-200">
-                <div className="flex justify-between font-medium text-xs text-slate-600">
-                  <span>Vehicle Model</span>
-                  <span className="font-bold text-slate-900">{currentJob.vehicleModel}</span>
-                </div>
-                <div className="flex justify-between font-medium text-xs text-slate-600">
-                  <span>Assigned Technician</span>
-                  <span className="font-bold text-slate-900">{currentJob.mechanic?.full_name || currentJob.assigned_to}</span>
-                </div>
-                <div className="flex justify-between font-medium text-xs text-slate-600">
-                  <span>Parts Source</span>
-                  <span className="font-bold text-slate-900">{currentJob.partSource}</span>
-                </div>
-                {/* Dynamically append Final Parts Row if it exists mapped prior to Grand Totals */}
-                {currentJob.partsFeeFcfa ? (
-                  <div className="flex justify-between font-medium text-xs text-slate-600 border-t border-slate-200 pt-1.5 mt-1.5">
-                    <span>Parts Total</span>
-                    <span className="font-mono text-slate-900 font-bold">
-                      {currentJob.partsFeeFcfa.toLocaleString()} {currencySymbol}
-                    </span>
-                  </div>
-                ) : null}
-                <div className="flex justify-between font-black text-sm text-slate-900 pt-2 border-t border-slate-300">
-                  <span>Grand Total Checkout</span>
-                  <span className="font-mono text-emerald-700 text-lg sm:text-xl">
-                    {((typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0)) + (currentJob.partsFeeFcfa || 0)).toLocaleString()}{' '}
-                    {currencySymbol}
-                  </span>
-                </div>
-              </div>
-
-              {flagDeferred && (
-                <div className="bg-amber-50 p-2.5 rounded-lg border border-amber-300 text-xs space-y-0.5">
-                  <span className="font-bold text-amber-900 block">
-                    ⚠️ Future Maintenance Reminder:
-                  </span>
-                  <span className="text-amber-800">
-                    {deferredComponent} scheduled for {deferredTimeframe}
-                  </span>
-                </div>
-              )}
-
-              {/* Copyable raw invoice message */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Sent via WhatsApp:
-                </span>
-                <pre className="text-[11px] font-mono bg-stone-900 text-emerald-300 p-2.5 rounded-lg overflow-x-auto whitespace-pre-wrap leading-tight">
-                  {generateWhatsAppInvoiceText(
-                    currentJob,
-                    typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
-                    currentJob.partsFeeFcfa || 0
-                  )}
-                </pre>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="p-3 bg-stone-100 border-t border-slate-200 flex gap-2">
-              <button
-                type="button"
-                onClick={handleCopyReceipt}
-                className="flex-1 min-h-[48px] rounded-xl bg-white border border-slate-300 hover:bg-stone-50 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <Copy className="w-4 h-4 text-slate-600" />
-                <span>{copiedInvoice ? 'Copied!' : 'Copy Text'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowReceiptModal(false)}
-                className="flex-1 min-h-[48px] rounded-xl bg-[#0E2829] text-[#34D399] font-black text-sm flex items-center justify-center gap-2 active:scale-95 shadow-xs"
-              >
-                <span>Done & Return</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {showInvoiceGenerator && currentJob && (
+        <InvoiceGenerator 
+          onConfirmPrint={handleFinalizeCheckout}
+          job={{
+            ...currentJob,
+            laborFeeFcfa: typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
+          }} 
+          onClose={() => {
+            setShowInvoiceGenerator(false);
+            if (completedJobIds.has(currentJob.id)) {
+              onJobReleased(currentJob, typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0));
+            }
+          }} 
+          currencySymbol={currencySymbol} 
+        />
       )}
     </div>
   );

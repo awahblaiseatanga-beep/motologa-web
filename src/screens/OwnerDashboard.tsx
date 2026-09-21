@@ -55,7 +55,7 @@ export interface OwnerAnalyticsMetrics {
 
 export interface OwnerDashboardProps {
   garage: Garage;
-  activeScreen?: 'analytics' | 'staff';
+  activeScreen?: string;
 }
 
 export type ManagementTab = 'analytics' | 'structure' | 'intake' | 'queue' | 'checkout';

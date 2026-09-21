@@ -47,10 +47,12 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
   return {
     id: dbJob.id as string,
     licensePlate: (dbJob.plate as string) || '',
-    customerPhone: '',
-    vehicleModel: '',
+    customerPhone: (dbJob.customer_phone as string) || (dbJob.phone as string) || '',
+    customerName: (dbJob.customer_name as string) || 'Walk-in Client',
+    vehicleModel: (dbJob.vehicle_model as string) || '',
+    issueDescription: (dbJob.description as string) || (dbJob.title as string) || (dbJob.issue_description as string) || '',
     assigned_to: dbJob.assigned_to as string | undefined,
-    mechanic: dbJob.mechanic as { full_name?: string; email?: string } | undefined,
+    mechanic: (Array.isArray(dbJob.mechanic) ? dbJob.mechanic[0] : dbJob.mechanic) as { full_name?: string; email?: string } | undefined,
     status: uiStatus,
     createdAt: new Date((dbJob.created_at as string) || Date.now()).getTime(),
     partSource: 'Garage Stock',
@@ -61,7 +63,10 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
     exteriorPhotoUrl: media.find((m) => m.type === 'intake_body')?.file_url || '',
     oldPartPhotoUrl: media.find((m) => m.type === 'old_part')?.file_url || '',
     newPartPhotoUrl: media.find((m) => m.type === 'new_part')?.file_url || '',
-    voiceNoteUrl: media.find((m) => m.type === 'voice_note')?.file_url || '',
+    generalJobPhotoUrl: media.find((m) => m.type === 'general_job')?.file_url || (dbJob.general_job_photo_url as string) || '',
+    voiceNoteUrl: media.find((m) => m.type === 'intake_voice_note')?.file_url || media.find((m) => m.type === 'voice_note')?.file_url || '',
+    diagnosticVoiceNoteUrl: media.find((m) => m.type === 'diagnostic_voice_note')?.file_url || '',
+    diagnosticNotes: (dbJob.diagnostic_notes as string) || (dbJob.mechanic_notes as string) || '',
   };
 };
 
@@ -103,6 +108,27 @@ export const fetchJobsForMechanic = async (mechanicUserId: string) => {
   return data.map((d: Record<string, unknown>) => mapDbJobToUiJob(d));
 };
 
+export const fetchCompletedInvoicesToday = async (garageId: string) => {
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(`
+      *,
+      job_media(*),
+      mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
+    `)
+    .eq('garage_id', garageId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  
+  // Local filtering to guarantee daily isolation regardless of timezone indices
+  const todayLocalStr = new Date().toDateString();
+  return data
+    .filter((d: any) => new Date(d.created_at).toDateString() === todayLocalStr)
+    .map((d: Record<string, unknown>) => mapDbJobToUiJob(d));
+};
+
 export const createJob = async (job: Partial<Job>, garageId: string, assignedToUserId: string) => {
   let dbStatus = 'pending';
   if (job.status === 'In Repair') dbStatus = 'in_progress';
@@ -110,22 +136,53 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
   if (job.status === 'Paused') dbStatus = 'paused';
 
   const finalAssignedTarget = assignedToUserId || null;
-  console.log("Submitting Job with assigned_to:", finalAssignedTarget);
 
   const { data, error } = await supabase
     .from('jobs')
     .insert({
       garage_id: garageId,
-      assigned_to: finalAssignedTarget, // Strict UUID or explicitly NULL
+      assigned_to: finalAssignedTarget, 
       plate: job.licensePlate || 'UNKNOWN',
       status: dbStatus,
       labor_fee: job.laborFeeFcfa || 0,
+      vehicle_model: job.vehicleModel || 'Unspecified',
+      customer_phone: job.customerPhone || 'Unknown',
+      customer_name: job.customerName || 'Walk-in Client',
+      issue_description: job.issueDescription || '',
     })
     .select()
     .single();
 
-  if (error) throw new Error("A database error occurred while creating this job.");
+  if (error) {
+    console.error("SUPABASE INSERT ERROR MESSAGE:", error.message);
+    console.error("SUPABASE INSERT ERROR DETAILS:", error.details);
+    throw new Error(error.message || "A database error occurred while creating this job.");
+  }
   if (!data) throw new Error("Insert failed: No data returned securely from the server.");
+
+  // Async media extraction and Supabase Storage pushing
+  const uploadAndLink = async (urlStr: string | undefined, prefix: string) => {
+    if (!urlStr || (!urlStr.startsWith('data:') && !urlStr.startsWith('blob:'))) return;
+    try {
+      const res = await fetch(urlStr);
+      const blob = await res.blob();
+      const filePath = `${data.id}/${prefix}_${Date.now()}`;
+      const { error: uploadErr } = await supabase.storage.from('garage-media').upload(filePath, blob, { contentType: blob.type });
+      if (!uploadErr) {
+        const { data: pubData } = supabase.storage.from('garage-media').getPublicUrl(filePath);
+        await supabase.from('job_media').insert({ job_id: data.id, file_url: pubData.publicUrl, type: prefix });
+      }
+    } catch (e) {
+      console.warn(`Failed to upload ${prefix}:`, e);
+    }
+  };
+
+  await Promise.all([
+    uploadAndLink(job.dashboardPhotoUrl, 'intake_dash'),
+    uploadAndLink(job.exteriorPhotoUrl, 'intake_body'),
+    uploadAndLink(job.voiceNoteUrl, 'voice_note')
+  ]);
+
   return data;
 };
 

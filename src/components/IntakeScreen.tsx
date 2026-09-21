@@ -134,7 +134,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       await onJobCreated(newJob, assignedMechanic);
       
       const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
-      const mechName = m?.profiles?.full_name || m?.full_name || m?.profiles?.email || m?.email || 'Unnamed Mechanic';
+      const mechName = (m as any)?.profiles?.full_name || m?.full_name || (m as any)?.profiles?.email || m?.email || 'Unnamed Mechanic';
       
       setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${mechName}!`);
 
@@ -417,7 +417,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                     ? 'Unassigned'
                     : (() => {
                         const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
-                        return m?.profiles?.full_name || m?.full_name || m?.profiles?.email || m?.email || 'Unnamed Mechanic';
+                        return (m as any)?.profiles?.full_name || m?.full_name || (m as any)?.profiles?.email || m?.email || 'Unnamed Mechanic';
                       })()}
                 </strong>
               </span>
@@ -458,7 +458,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                             }`}
                           >
                             {!isBusy && <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`}></span>}
-                            <span>{member.profiles?.full_name || member.full_name || member.profiles?.email || member.email || 'Unnamed Mechanic'}</span>
+                            <span>{(member as any).profiles?.full_name || member.full_name || (member as any).profiles?.email || member.email || 'Unnamed Mechanic'}</span>
                             {member.role === 'hod' && <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-amber-300/50">Lead</span>}
                             {isBusy 
                               ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">In Bay</span>
@@ -500,7 +500,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                           }`}
                         >
                           {!isBusy && <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`}></span>}
-                          <span>{member.profiles?.full_name || member.full_name || member.profiles?.email || member.email || 'Unnamed Mechanic'}</span>
+                          <span>{(member as any).profiles?.full_name || member.full_name || (member as any).profiles?.email || member.email || 'Unnamed Mechanic'}</span>
                           {isBusy 
                             ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">In Bay</span>
                             : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">Available</span>

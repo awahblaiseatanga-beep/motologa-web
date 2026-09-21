@@ -5,7 +5,7 @@ interface PhotoCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  category: 'dashboard' | 'exterior' | 'old-part' | 'new-part';
+  category: 'dashboard' | 'exterior' | 'old-part' | 'new-part' | 'general-job';
   currentPhotoUrl?: string;
   onPhotoCaptured: (dataUrl: string) => void;
 }

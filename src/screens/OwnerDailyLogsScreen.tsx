@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { fetchDepartments } from '../lib/api';
-import { Department } from '../types';
+import { fetchDepartments, fetchCompletedInvoicesToday } from '../lib/api';
+import { Department, Job } from '../types';
+import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { RefreshCw, PlayCircle, Clock, Calendar, CheckCircle, FileAudio, LayoutDashboard } from 'lucide-react';
 
 interface OwnerDailyLogsScreenProps {
@@ -17,6 +18,8 @@ interface AudioLog {
 
 export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ garageId }) => {
   const [logs, setLogs] = useState<AudioLog[]>([]);
+  const [invoices, setInvoices] = useState<Job[]>([]);
+  const [viewingInvoiceJob, setViewingInvoiceJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -70,6 +73,11 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
       allLogs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
       setLogs(allLogs);
+
+      // 3. Fetch End of Day Generated Invoices separately without blocking main logs
+      const dailyInvoices = await fetchCompletedInvoicesToday(garageId);
+      setInvoices(dailyInvoices);
+      
     } catch (err) {
       console.error('Error fetching HOD logs from storage block:', err);
     } finally {
@@ -172,6 +180,53 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
             );
           })}
         </div>
+      )}
+
+      {/* TODAY'S GENERATED INVOICES SPLIT */}
+      <div className="border-t-2 border-stone-800/80 mt-6 pt-8">
+        <h2 className="text-xl font-black text-white flex items-center gap-2 mb-4">
+          <CheckCircle className="w-5 h-5 text-emerald-500" />
+          Today's Generated Invoices
+        </h2>
+        
+        {invoices.length === 0 ? (
+          <div className="bg-stone-900 border border-stone-800 rounded-xl p-8 text-center">
+             <p className="text-stone-500 text-sm font-bold">No completed invoices documented today.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+             {invoices.map((inv) => {
+               const timeStr = new Date(inv.releasedAt || inv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+               const totalAmount = (inv.laborFeeFcfa || 0) + (inv.partsFeeFcfa || 0);
+               return (
+                 <button 
+                    key={inv.id} 
+                    onClick={() => setViewingInvoiceJob(inv)}
+                    className="bg-stone-900 border border-stone-800 hover:border-emerald-500/50 rounded-xl p-4 text-left shadow-sm transition-all flex flex-col justify-between h-[120px]"
+                 >
+                   <div>
+                     <div className="flex justify-between items-start mb-1">
+                       <span className="font-extrabold text-white truncate max-w-[150px]">{inv.vehicleModel || 'Walk-in'}</span>
+                       <span className="text-xs bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold tracking-wider">{inv.licensePlate}</span>
+                     </div>
+                     <p className="text-xs text-stone-400 font-bold">Closed at {timeStr}</p>
+                   </div>
+                   <div className="flex justify-between items-end">
+                     <span className="text-emerald-500 font-black text-lg font-mono">{totalAmount.toLocaleString()} FCFA</span>
+                     <span className="text-[10px] text-stone-500 uppercase tracking-widest font-black">View</span>
+                   </div>
+                 </button>
+               );
+             })}
+          </div>
+        )}
+      </div>
+
+      {viewingInvoiceJob && (
+         <InvoiceGenerator 
+           job={viewingInvoiceJob}
+           onClose={() => setViewingInvoiceJob(null)}
+         />
       )}
     </div>
   );

@@ -8,12 +8,13 @@ if (urlMatch && keyMatch) {
   const url = urlMatch[1].trim().replace(/\"/g, '');
   const key = keyMatch[1].trim().replace(/\"/g, '');
   
-  const test = async (table) => {
+  const test = async () => {
     try {
-      const res = await fetch(`${url}/rest/v1/${table}?limit=1`, { headers: { apikey: key, Authorization: 'Bearer '+key }});
-      console.log(table, res.status, await res.text().then(t=>t.substring(0, 100)));
-    } catch(e) {}
+      const res = await fetch(`${url}/rest/v1/?apikey=${key}`);
+      const data = await res.json();
+      console.log('OPENAPI:', JSON.stringify(data).substring(0, 1500));
+    } catch(e) { console.error(e) }
   };
   
-  Promise.all([test('profile'), test('user')]);
+  Promise.all([test('jobs')]);
 }
