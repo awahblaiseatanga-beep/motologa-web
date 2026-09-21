@@ -289,6 +289,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
             <CheckoutScreen
                jobs={jobs}
                todayRevenue={totalRevenue}
+               garageName={garage.name}
                onUpdateJob={handleUpdateJob}
                onJobReleased={handleReleaseJob}
                onAddDeferredRepair={handleAddDeferredRepair}

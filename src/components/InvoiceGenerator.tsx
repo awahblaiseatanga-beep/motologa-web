@@ -7,6 +7,7 @@ import { X, Printer } from 'lucide-react';
 
 interface InvoiceGeneratorProps {
   job: Job;
+  garageName: string;
   onClose: () => void;
   currencySymbol?: string;
   onConfirmPrint?: () => void;
@@ -14,6 +15,7 @@ interface InvoiceGeneratorProps {
 
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ 
   job, 
+  garageName,
   onClose,
   currencySymbol = 'FCFA',
   onConfirmPrint
@@ -81,9 +83,9 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         {/* Live Preview Container */}
         <div className="flex-1 overflow-auto bg-stone-200 p-8 flex justify-center items-start">
           {template === 'quickfix' ? (
-            <QuickFixReceipt ref={componentRef} job={job} currencySymbol={currencySymbol} />
+            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} />
           ) : (
-            <EliteInvoice ref={componentRef} job={job} currencySymbol={currencySymbol} />
+            <EliteInvoice ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} />
           )}
         </div>
       </div>

@@ -4,10 +4,11 @@ import { Job } from '../../types';
 interface InvoiceProps {
   job: Job;
   currencySymbol?: string;
+  garageName: string;
 }
 
 export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA' }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -33,7 +34,7 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
             <p className="text-sm font-medium text-slate-500">Date: {formattedDate}</p>
           </div>
           <div className="text-right">
-            <h2 className="text-2xl font-bold text-emerald-700">MOTOLOGA GARAGE</h2>
+            <h2 className="text-2xl font-bold text-emerald-700">{garageName}</h2>
             <p className="text-sm text-slate-600 mt-1">Douala / Yaoundé</p>
             <p className="text-sm text-slate-600">contact@motologa.cm</p>
           </div>

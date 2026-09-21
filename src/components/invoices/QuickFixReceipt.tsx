@@ -4,10 +4,11 @@ import { Job } from '../../types';
 interface InvoiceProps {
   job: Job;
   currencySymbol?: string;
+  garageName: string;
 }
 
 export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA' }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -28,7 +29,7 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
     return (
       <div ref={ref} className="p-6 max-w-sm mx-auto bg-white text-black font-mono text-xs leading-loose print:w-full print:mx-0">
         <div className="text-center mb-6">
-          <h1 className="text-xl font-black uppercase mb-1">MOTOLOGA GARAGE</h1>
+          <h1 className="text-xl font-black uppercase mb-1">{garageName}</h1>
           <p className="text-[10px] uppercase text-gray-600">Official Workshop Receipt</p>
           <div className="border-b-2 border-dashed border-gray-300 my-4" />
         </div>

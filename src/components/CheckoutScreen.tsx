@@ -26,6 +26,7 @@ import { InvoiceGenerator } from './InvoiceGenerator';
 interface CheckoutScreenProps {
   jobs: Job[];
   todayRevenue: number;
+  garageName: string;
   onUpdateJob: (updatedJob: Job) => void;
   onJobReleased: (job: Job, finalFee: number) => void;
   onAddDeferredRepair?: (repair: DeferredRepair, jobId: string) => void;
@@ -35,6 +36,7 @@ interface CheckoutScreenProps {
 export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   jobs,
   todayRevenue,
+  garageName,
   onUpdateJob,
   onJobReleased,
   onAddDeferredRepair,
@@ -112,7 +114,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
   // Short WhatsApp Text Message for PDF attachment
   const generateWhatsAppInvoiceText = (job: Job) => {
-    return `Hello ${job.customerName !== 'Walk-in Client' ? job.customerName : ''},\n\nYour vehicle (${job.licensePlate}) is ready for checkout. Please find your official MOTOLOGA Garage invoice attached.\n\nThank you for your business!`;
+    return `Hello ${job.customerName !== 'Walk-in Client' ? job.customerName : ''},\n\nYour vehicle (${job.licensePlate}) is ready for checkout. Please find your official ${garageName} invoice attached.\n\nThank you for your business!`;
   };
 
   const [completedJobIds, setCompletedJobIds] = useState<Set<string>>(new Set());
@@ -461,6 +463,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
       {showInvoiceGenerator && currentJob && (
         <InvoiceGenerator 
+          garageName={garageName}
           onConfirmPrint={handleFinalizeCheckout}
           job={{
             ...currentJob,

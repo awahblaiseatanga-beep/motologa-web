@@ -7,6 +7,7 @@ import { RefreshCw, PlayCircle, Clock, Calendar, CheckCircle, FileAudio, LayoutD
 
 interface OwnerDailyLogsScreenProps {
   garageId: string;
+  garageName: string;
 }
 
 interface AudioLog {
@@ -16,7 +17,7 @@ interface AudioLog {
   audio_url: string;
 }
 
-export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ garageId }) => {
+export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ garageId, garageName }) => {
   const [logs, setLogs] = useState<AudioLog[]>([]);
   const [invoices, setInvoices] = useState<Job[]>([]);
   const [viewingInvoiceJob, setViewingInvoiceJob] = useState<Job | null>(null);
@@ -225,6 +226,7 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
       {viewingInvoiceJob && (
          <InvoiceGenerator 
            job={viewingInvoiceJob}
+           garageName={garageName}
            onClose={() => setViewingInvoiceJob(null)}
          />
       )}
