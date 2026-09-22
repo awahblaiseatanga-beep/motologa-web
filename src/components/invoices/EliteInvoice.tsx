@@ -5,13 +5,14 @@ interface InvoiceProps {
   job: Job;
   currencySymbol?: string;
   garageName: string;
+  departmentName?: string;
   documentType?: 'INVOICE' | 'ESTIMATE';
   customDescription?: string;
   customImage?: string;
 }
 
 export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -42,6 +43,11 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
           </div>
           <div className="text-right">
             <h2 className="text-2xl font-bold text-emerald-700">{garageName}</h2>
+            {(documentType === 'ESTIMATE' && departmentName) && (
+               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d97706] mt-1.5 mb-1.5 opacity-90">
+                 Additional Work Estimate From:<br/> {departmentName}
+               </p>
+            )}
             <p className="text-sm text-slate-600 mt-1">Douala / Yaoundé</p>
             <p className="text-sm text-slate-600">contact@motologa.cm</p>
           </div>

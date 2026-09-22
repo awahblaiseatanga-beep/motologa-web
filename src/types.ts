@@ -166,6 +166,8 @@ export interface GarageMember {
   full_name?: string;
   created_at?: string;
   department?: Department;
+  garages?: Garage;
+  is_hod?: boolean;
 }
 
 export interface InventoryItem {

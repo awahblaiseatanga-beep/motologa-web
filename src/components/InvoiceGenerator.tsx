@@ -8,6 +8,7 @@ import { X, Printer, Send } from 'lucide-react';
 interface InvoiceGeneratorProps {
   job: Job;
   garageName: string;
+  departmentName?: string;
   onClose: () => void;
   currencySymbol?: string;
   onConfirmPrint?: () => void;
@@ -20,6 +21,7 @@ interface InvoiceGeneratorProps {
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ 
   job, 
   garageName,
+  departmentName,
   onClose,
   currencySymbol = 'FCFA',
   onConfirmPrint,

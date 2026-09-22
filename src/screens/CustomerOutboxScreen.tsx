@@ -9,12 +9,16 @@ interface CustomerOutboxScreenProps {
   garageId: string;
   departmentId?: string;
   userRole: 'owner' | 'hod';
+  garageName?: string;
+  departmentName?: string;
 }
 
 export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
   garageId,
   departmentId,
-  userRole
+  userRole,
+  garageName,
+  departmentName
 }) => {
   const [customerFindings, setCustomerFindings] = useState<any[]>([]);
   const [localPrices, setLocalPrices] = useState<Record<string, string>>({});

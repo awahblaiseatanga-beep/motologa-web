@@ -427,7 +427,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       ) : (
         <>
           {activeTab === 'outbox' && (
-            <CustomerOutboxScreen userRole="hod" garageId={garageId} departmentId={departmentId} />
+            <CustomerOutboxScreen userRole="hod" garageId={garageId} departmentId={departmentId} garageName={membership?.garages?.name || 'MOTOLOGA GARAGE'} departmentName={effectiveDeptName} />
           )}
           
           {/* APPOINTMENTS & FUTURE RESERVATIONS TAB */}

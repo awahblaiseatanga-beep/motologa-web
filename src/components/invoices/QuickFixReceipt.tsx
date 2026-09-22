@@ -5,13 +5,14 @@ interface InvoiceProps {
   job: Job;
   currencySymbol?: string;
   garageName: string;
+  departmentName?: string;
   documentType?: 'INVOICE' | 'ESTIMATE';
   customDescription?: string;
   customImage?: string;
 }
 
 export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -38,6 +39,11 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
           <p className="text-[10px] uppercase text-gray-600">
             {documentType === 'ESTIMATE' ? 'ADDITIONAL WORK ESTIMATE' : 'Official Workshop Receipt'}
           </p>
+          {(documentType === 'ESTIMATE' && departmentName) && (
+            <p className="text-[10px] font-bold text-gray-800 uppercase mt-1">
+              From: {departmentName}
+            </p>
+          )}
           <div className="border-b-2 border-dashed border-gray-300 my-4" />
         </div>
 
