@@ -147,8 +147,7 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
       labor_fee: job.laborFeeFcfa || 0,
       vehicle_model: job.vehicleModel || 'Unspecified',
       customer_phone: job.customerPhone || 'Unknown',
-      customer_name: job.customerName || 'Walk-in Client',
-      issue_description: job.issueDescription || '',
+      description: job.issueDescription || '',
     })
     .select()
     .single();
