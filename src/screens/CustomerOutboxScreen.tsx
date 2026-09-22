@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { fetchGarageMembers, fetchJobsForGarage } from '../lib/api';
 import { GarageMember, Job } from '../types';
 import { Clock, Check, Send, AlertCircle, RefreshCw } from 'lucide-react';
+import { InvoiceGenerator } from '../components/InvoiceGenerator';
 
 interface CustomerOutboxScreenProps {
   garageId: string;
@@ -19,6 +20,9 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
   const [localPrices, setLocalPrices] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [debugLog, setDebugLog] = useState<any>({});
+  
+  // Invoice Modal State
+  const [estimatingJob, setEstimatingJob] = useState<{ finding: any; matchedJobData: Job } | null>(null);
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -123,28 +127,23 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
   };
 
   const handleSendToCustomer = async (finding: any) => {
-    try {
-      const { error } = await supabase
-        .from('additional_findings')
-        .update({ status: 'pending_customer' })
-        .eq('id', finding.id);
-        
-      if (error) throw error;
-      
-      const phone = finding.jobs.customer_phone;
-      if (phone) {
-        const cleanPhone = phone.replace(/\D/g, '');
-        const fullPhone = cleanPhone.startsWith('237') ? cleanPhone : `237${cleanPhone}`;
-        const shopName = garageId || 'Workshop';
-        const text = `Hello! This is ${shopName}. The inspection team working on your ${finding.jobs.vehicle_make} (${finding.jobs.license_plate || finding.jobs.plate}) has identified an additional required repair. Extra Cost: ${finding.estimated_cost} FCFA. Please reply YES to approve this work.`;
-        
-        window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`, '_blank');
-      }
-
-      setCustomerFindings(prev => prev.map(f => f.id === finding.id ? { ...f, status: 'pending_customer' } : f));
-    } catch (err: any) {
-      alert(`Failed to route finding to customer: ${err.message}`);
+    // Determine the matched job from loaded fetch cache
+    const jobsRef = await fetchJobsForGarage(garageId);
+    const matchedJob = jobsRef.find((j: Job) => j.id === finding.parent_job_id);
+    if (!matchedJob) {
+      alert("Error: Reference Job Not Found");
+      return;
     }
+    
+    // Synthesize a structured proxy Job object pushing the specific Add-On finding into the description core
+    const proxyJob: Job = {
+      ...matchedJob,
+      issueDescription: finding.component || finding.description || "Additional Findings / Overflows",
+      laborFeeFcfa: finding.estimated_cost || 0,
+      partsFeeFcfa: 0,
+    };
+    
+    setEstimatingJob({ finding, matchedJobData: proxyJob });
   };
 
   const handlePauseJobAndSend = async (finding: any) => {
@@ -355,6 +354,37 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
           </div>
         )}
       </div>
+      
+      {/* ESTIMATE INVOICE MODAL BOUNDARY */}
+      {estimatingJob && (
+        <InvoiceGenerator
+          job={estimatingJob.matchedJobData}
+          garageName={garageId || 'Workshop'}
+          documentType="ESTIMATE"
+          onClose={() => setEstimatingJob(null)}
+          onConfirmPrint={async () => {
+             // 1. Mark Database entry as officially Quoted/Awaiting
+             const finding = estimatingJob.finding;
+             try {
+               await supabase.from('additional_findings').update({ status: 'pending_customer' }).eq('id', finding.id);
+               setCustomerFindings(prev => prev.map(f => f.id === finding.id ? { ...f, status: 'pending_customer' } : f));
+             } catch (e) {
+               console.error("Database finding status update exception:", e);
+             }
+             
+             // 2. Dispatch the WhatsApp protocol
+             const phone = estimatingJob.matchedJobData.customerPhone || finding.jobs?.customer_phone;
+             if (phone) {
+               const cleanPhone = phone.replace(/\D/g, '');
+               const fullPhone = cleanPhone.startsWith('237') ? cleanPhone : `237${cleanPhone}`;
+               const text = `Hello, please review the attached estimate for your vehicle and reply 'APPROVED' so we can proceed.`;
+               window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`, '_blank');
+             }
+             
+             setEstimatingJob(null);
+          }}
+        />
+      )}
     </div>
   );
 };

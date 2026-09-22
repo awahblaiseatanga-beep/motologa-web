@@ -46,10 +46,10 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
 
   return {
     id: dbJob.id as string,
-    licensePlate: (dbJob.plate as string) || '',
-    customerPhone: (dbJob.customer_phone as string) || (dbJob.phone as string) || '',
-    customerName: (dbJob.customer_name as string) || 'Walk-in Client',
-    vehicleModel: (dbJob.vehicle_model as string) || '',
+    licensePlate: (dbJob.vehicles as any)?.plate || (dbJob.plate as string) || '',
+    customerPhone: (dbJob.customers as any)?.phone || (dbJob.customer_phone as string) || (dbJob.phone as string) || '',
+    customerName: (dbJob.customers as any)?.name || (dbJob.customer_name as string) || 'Walk-in Client',
+    vehicleModel: (dbJob.vehicles as any)?.model || (dbJob.vehicle_model as string) || '',
     issueDescription: (dbJob.description as string) || (dbJob.title as string) || (dbJob.issue_description as string) || '',
     assigned_to: dbJob.assigned_to as string | undefined,
     mechanic: (Array.isArray(dbJob.mechanic) ? dbJob.mechanic[0] : dbJob.mechanic) as { full_name?: string; email?: string } | undefined,
@@ -76,6 +76,8 @@ export const fetchJobsForGarage = async (garageId: string) => {
     .select(`
       *,
       job_media(*),
+      customers(name, phone),
+      vehicles(make, model, plate),
       mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
     `)
     .eq('garage_id', garageId)
@@ -95,6 +97,8 @@ export const fetchJobsForMechanic = async (mechanicUserId: string) => {
     .select(`
       *,
       job_media(*),
+      customers(name, phone),
+      vehicles(make, model, plate),
       mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
     `)
     .eq('assigned_to', mechanicUserId)
@@ -114,6 +118,8 @@ export const fetchCompletedInvoicesToday = async (garageId: string) => {
     .select(`
       *,
       job_media(*),
+      customers(name, phone),
+      vehicles(make, model, plate),
       mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
     `)
     .eq('garage_id', garageId)
