@@ -130,13 +130,19 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
     console.log("Submitting Job with assigned_to:", assignedMechanic);
     
     try {
-      // Direct hard pass with no fallbacks
-      await onJobCreated(newJob, assignedMechanic);
-      
-      const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
-      const mechName = (m as any)?.profiles?.full_name || m?.full_name || (m as any)?.profiles?.email || m?.email || 'Unnamed Mechanic';
-      
-      setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${mechName}!`);
+      if (!navigator.onLine && garageId) {
+        const { saveToOfflineQueue } = await import('../services/offlineSync');
+        await saveToOfflineQueue(newJob, assignedMechanic, garageId);
+        setToastMessage('Network disconnected. Job saved offline and will sync automatically.');
+      } else {
+        // Direct hard pass with no fallbacks
+        await onJobCreated(newJob, assignedMechanic);
+        
+        const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
+        const mechName = (m as any)?.profiles?.full_name || m?.full_name || (m as any)?.profiles?.email || m?.email || 'Unnamed Mechanic';
+        
+        setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${mechName}!`);
+      }
 
       // Reset inputs for next car
       setLicensePlate('');

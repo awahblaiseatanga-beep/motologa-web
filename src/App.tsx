@@ -4,10 +4,19 @@ import { RoleRouter } from './components/RoleRouter';
 import { LoginScreen } from './components/LoginScreen';
 import { Sparkles } from 'lucide-react';
 import { JoinScreen } from './screens/JoinScreen';
+import { syncOfflineQueue } from './services/offlineSync';
 
 export default function App() {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [session, setSession] = useState<any>(null);
+  
+  useEffect(() => {
+    const handleOnline = () => {
+      syncOfflineQueue();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
   
   const [inviteGarageId, setInviteGarageId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
