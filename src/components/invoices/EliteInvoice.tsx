@@ -16,9 +16,11 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
 
-    const formatTechName = () => {
-      const name = job.mechanic?.full_name || job.assigned_to || 'Unassigned';
-      return name.length > 20 ? 'Unknown Tech' : name;
+    const formatSenderName = () => {
+      if (documentType === 'ESTIMATE') {
+        return 'Head of Department';
+      }
+      return 'Garage Owner';
     };
 
     const formattedDate = new Date().toLocaleDateString('en-GB', {
@@ -97,7 +99,7 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
                   {customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'}
                 </td>
                 <td className="p-4 bg-white text-slate-600 text-right">
-                  Assigned Tech: {formatTechName()}
+                  Authorized By: {formatSenderName()}
                 </td>
                 <td className="p-4 bg-white font-mono text-slate-900 text-right">
                   {laborFee.toLocaleString()}

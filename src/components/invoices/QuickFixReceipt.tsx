@@ -16,9 +16,11 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
 
-    const formatTechName = () => {
-      const name = job.mechanic?.full_name || job.assigned_to || 'Unassigned';
-      return name.length > 20 ? 'Unknown Tech' : name;
+    const formatSenderName = () => {
+      if (documentType === 'ESTIMATE') {
+        return 'Head of Department';
+      }
+      return 'Garage Owner';
     };
 
     const formattedDate = new Date().toLocaleDateString('en-GB', {
@@ -61,7 +63,7 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
             </div>
           )}
           <div className="flex justify-between items-start">
-            <span className="max-w-[70%]">{customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'} (Tech: {formatTechName()})</span>
+            <span className="max-w-[70%]">{customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'} (Auth: {formatSenderName()})</span>
             <span>{laborFee.toLocaleString()}</span>
           </div>
         </div>
