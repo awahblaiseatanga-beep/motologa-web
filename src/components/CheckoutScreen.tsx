@@ -119,7 +119,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
   const [completedJobIds, setCompletedJobIds] = useState<Set<string>>(new Set());
 
-  const handleFinalizeCheckout = async () => {
+  const handleSaveInvoiceData = async () => {
     if (!currentJob) return;
 
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
@@ -146,10 +146,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
     if (error) {
       console.error("Failed to close job in DB:", error);
-      return; 
+      throw error; 
     }
 
-    // Mark as completed locally so we know to drop it when the modal is closed
     setCompletedJobIds(prev => new Set(prev).add(currentJob.id));
 
     if (flagDeferred) {
@@ -165,16 +164,22 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         onAddDeferredRepair(newFollowUp, updatedJob.id);
       }
     }
+  };
 
-    const messageText = generateWhatsAppInvoiceText(updatedJob);
+  const handleWhatsAppDispatch = () => {
+    if (!currentJob) return;
     
+    // We recreate the updatedJob context locally since the state hasn't instantly updated
+    const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
+    const updatedJob: Job = { ...currentJob, laborFeeFcfa: feeAmount };
+    
+    const messageText = generateWhatsAppInvoiceText(updatedJob);
     let cleanPhone = currentJob.customerPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('237')) cleanPhone = cleanPhone.slice(3);
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
     
     const waUrl = `https://wa.me/237${cleanPhone}?text=${encodeURIComponent(messageText)}`;
 
-    // Open WhatsApp link immediately for them to attach the PDF they just saved
     try {
       window.open(waUrl, '_blank', 'noopener,noreferrer');
     } catch (e) {
@@ -464,7 +469,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       {showInvoiceGenerator && currentJob && (
         <InvoiceGenerator 
           garageName={garageName}
-          onConfirmPrint={handleFinalizeCheckout}
+          onConfirmSave={handleSaveInvoiceData}
+          onConfirmPrint={handleWhatsAppDispatch}
           job={{
             ...currentJob,
             laborFeeFcfa: typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),

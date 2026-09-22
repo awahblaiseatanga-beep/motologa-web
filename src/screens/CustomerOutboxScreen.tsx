@@ -391,14 +391,18 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
           customDescription={estimatingJob.customDescription}
           customImage={estimatingJob.customImage}
           onClose={() => setEstimatingJob(null)}
-          onConfirmSave={async () => {
+           onConfirmSave={async () => {
              // 1. Mark Database entry as officially Quoted/Awaiting & Persist Transcription
              const finding = estimatingJob.finding;
              try {
-               await supabase.from('additional_findings').update({ status: 'pending_customer' }).eq('id', finding.id);
-               await supabase.from('jobs').update({ estimate_notes: estimatingJob.customDescription }).eq('id', finding.parent_job_id);
+               const { error: findingsErr } = await supabase.from('additional_findings').update({ status: 'pending_customer' }).eq('id', finding.id);
+               if (findingsErr) throw findingsErr;
+
+               const { error: jobsErr } = await supabase.from('jobs').update({ estimate_notes: estimatingJob.customDescription }).eq('id', finding.parent_job_id);
+               if (jobsErr) throw jobsErr;
+
                setCustomerFindings(prev => prev.map(f => f.id === finding.id ? { ...f, status: 'pending_customer' } : f));
-             } catch (e) {
+             } catch (e: any) {
                console.error("Database finding status update exception:", e);
                throw e;
              }
