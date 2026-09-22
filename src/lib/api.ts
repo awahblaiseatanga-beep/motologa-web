@@ -137,17 +137,43 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
 
   const finalAssignedTarget = assignedToUserId || null;
 
+  // 1. Relational Upsert: Customers table
+  const { data: customerRecord } = await supabase
+    .from('customers')
+    .upsert(
+      { 
+        phone: job.customerPhone || 'Unknown', 
+        name: job.customerName || 'Walk-in Client' 
+      }, 
+      { onConflict: 'phone' }
+    )
+    .select('id')
+    .single();
+
+  // 1.5. Relational Upsert: Vehicles table
+  const { data: vehicleRecord } = await supabase
+    .from('vehicles')
+    .upsert(
+      { 
+        plate: job.licensePlate || 'UNKNOWN', 
+        model: job.vehicleModel || 'Unspecified',
+        make: 'Unknown' // Derived from unspecified form state
+      }, 
+      { onConflict: 'plate' }
+    )
+    .select('id')
+    .single();
+
   const { data, error } = await supabase
     .from('jobs')
     .insert({
       garage_id: garageId,
       assigned_to: finalAssignedTarget, 
-      plate: job.licensePlate || 'UNKNOWN',
       status: dbStatus,
-      labor_fee: job.laborFeeFcfa || 0,
-      vehicle_model: job.vehicleModel || 'Unspecified',
-      customer_phone: job.customerPhone || 'Unknown',
       description: job.issueDescription || '',
+      labor_fee: job.laborFeeFcfa || 0,
+      customer_id: customerRecord?.id || null,
+      vehicle_id: vehicleRecord?.id || null
     })
     .select()
     .single();
