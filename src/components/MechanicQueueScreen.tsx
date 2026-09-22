@@ -15,7 +15,7 @@ interface MechanicQueueScreenProps {
   onUpdateRepairs?: (repairs: DeferredRepair[]) => void;
   onUpdateJob: (updatedJob: Job) => void;
   onNavigateToCheckout: (jobId?: string) => void;
-  onSyncBay?: () => void;
+  onSyncBay?: () => void | Promise<void>;
   userRole?: 'owner' | 'hod' | 'worker';
   mechanicFilters?: string[];
 }
@@ -36,8 +36,8 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
     jobId: string;
     type: 'old-part' | 'new-part' | 'general-job';
   } | null>(null);
-
   const [completedToast, setCompletedToast] = useState<{ plate: string; id: string } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedInventoryPart, setSelectedInventoryPart] = useState<Record<string, string>>({});
@@ -278,8 +278,19 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
           </div>
           
           {onSyncBay && (
-            <button onClick={() => { onSyncBay(); }} className="self-start sm:self-auto px-5 py-2.5 bg-[#0E2829] hover:bg-slate-800 text-[#34D399] text-sm font-black uppercase tracking-wider rounded-xl flex items-center gap-2 transition active:scale-95 shadow-md border-2 border-[#142F30]">
-              <RefreshCw className="w-5 h-5 shrink-0" /> Refresh Jobs
+            <button 
+              onClick={async () => { 
+                setIsSyncing(true);
+                try {
+                  await onSyncBay();
+                } finally {
+                  setTimeout(() => setIsSyncing(false), 500);
+                }
+              }} 
+              disabled={isSyncing}
+              className="self-start sm:self-auto px-5 py-2.5 bg-[#0E2829] hover:bg-slate-800 text-[#34D399] text-sm font-black uppercase tracking-wider rounded-xl flex items-center gap-2 transition active:scale-95 shadow-md border-2 border-[#142F30] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-5 h-5 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} /> Refresh Jobs
             </button>
           )}
         </div>

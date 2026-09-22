@@ -279,7 +279,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               deferredRepairs={deferredRepairs}
               onUpdateJob={handleUpdateJob}
               onNavigateToCheckout={() => {}}
-              onSyncBay={() => loadData(false)}
+              onSyncBay={async () => { await loadData(true); }}
             />
          </div>
       )}

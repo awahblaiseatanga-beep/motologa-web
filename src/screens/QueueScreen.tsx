@@ -165,7 +165,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
           onNavigateToCheckout={handleNavigateToCheckout}
           userRole={userRole}
           mechanicFilters={mechanicFilters}
-          onSyncBay={() => loadJobs(false)}
+          onSyncBay={async () => { await loadJobs(true); }}
         />
       ) : (
         <WorkerProfileScreen currentUserId={currentUserId!} />
