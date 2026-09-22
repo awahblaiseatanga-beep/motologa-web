@@ -311,7 +311,7 @@ export const provisionDepartment = async (garageId: string, name: string, role: 
     .insert({
       garage_id: garageId,
       name,
-      role // Explicitly bound column per DB verification
+      description: role
     })
     .select()
     .single();
