@@ -42,6 +42,7 @@ export interface Job {
   partsFeeFcfa?: number;
   deferredRepair?: DeferredRepair | { flagged: boolean; component: string; timeframe: string };
   issueDescription?: string;
+  estimateNotes?: string;
   diagnosticNotes?: string;
   voiceNoteUrl?: string;
   diagnosticVoiceNoteUrl?: string;
