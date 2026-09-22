@@ -38,16 +38,16 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">
               {documentType === 'ESTIMATE' ? 'ADDITIONAL WORK ESTIMATE' : 'INVOICE'}
             </h1>
+            {(documentType === 'ESTIMATE' && departmentName) && (
+               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d97706] mt-1.5 opacity-90">
+                 From: {departmentName}
+               </p>
+            )}
             <p className="text-sm font-medium text-slate-500 mt-1">Ref: {job.id.substring(0, 8).toUpperCase()}</p>
             <p className="text-sm font-medium text-slate-500">Date: {formattedDate}</p>
           </div>
           <div className="text-right">
             <h2 className="text-2xl font-bold text-emerald-700">{garageName}</h2>
-            {(documentType === 'ESTIMATE' && departmentName) && (
-               <p className="text-[11px] font-bold uppercase tracking-widest text-[#d97706] mt-1.5 mb-1.5 opacity-90">
-                 Additional Work Estimate From:<br/> {departmentName}
-               </p>
-            )}
             <p className="text-sm text-slate-600 mt-1">Douala / Yaoundé</p>
             <p className="text-sm text-slate-600">contact@motologa.cm</p>
           </div>

@@ -385,7 +385,8 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
       {estimatingJob && (
         <InvoiceGenerator
           job={estimatingJob.matchedJobData}
-          garageName={garageId || 'Workshop'}
+          garageName={garageName || garageId || 'MOTOLOGA GARAGE'}
+          departmentName={departmentName}
           documentType="ESTIMATE"
           customDescription={estimatingJob.customDescription}
           customImage={estimatingJob.customImage}

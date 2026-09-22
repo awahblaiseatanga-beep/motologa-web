@@ -132,9 +132,9 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         {/* Live Preview Container */}
         <div className="flex-1 overflow-auto bg-stone-200 p-8 flex justify-center items-start">
           {template === 'quickfix' ? (
-            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
+            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
           ) : (
-            <EliteInvoice ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
+            <EliteInvoice ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
           )}
         </div>
       </div>

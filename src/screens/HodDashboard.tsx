@@ -976,7 +976,8 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       {/* ESTIMATE MODAL */}
       {estimatingJob && (
         <InvoiceGenerator
-          garageName={"MOTOLOGA GARAGE"} 
+          garageName={garageName || 'MOTOLOGA GARAGE'}
+          departmentName={effectiveDeptName}
           job={estimatingJob}
           documentType="ESTIMATE"
           onClose={() => setEstimatingJob(null)}
