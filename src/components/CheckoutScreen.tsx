@@ -173,7 +173,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
     const updatedJob: Job = { ...currentJob, laborFeeFcfa: feeAmount };
     
-    const messageText = generateWhatsAppInvoiceText(updatedJob);
+    const baseText = generateWhatsAppInvoiceText(updatedJob);
+    const messageText = `${baseText}\n\nView and download your official document here: ${window.location.origin}/shared/document/${updatedJob.id}`;
     let cleanPhone = currentJob.customerPhone.replace(/\D/g, '');
     if (cleanPhone.startsWith('237')) cleanPhone = cleanPhone.slice(3);
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);

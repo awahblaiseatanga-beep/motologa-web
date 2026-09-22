@@ -4,6 +4,7 @@ import { RoleRouter } from './components/RoleRouter';
 import { LoginScreen } from './components/LoginScreen';
 import { Sparkles } from 'lucide-react';
 import { JoinScreen } from './screens/JoinScreen';
+import { SharedDocumentPage } from './screens/SharedDocumentPage';
 import { syncOfflineQueue } from './services/offlineSync';
 
 export default function App() {
@@ -71,6 +72,11 @@ export default function App() {
     supabase.auth.signOut();
     setSession(null);
   };
+
+  // 0. Public Document Route
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/shared/document/')) {
+    return <SharedDocumentPage key="public-route" />;
+  }
 
   if (isInitializing) {
     return (

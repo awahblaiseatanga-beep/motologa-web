@@ -413,7 +413,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
              if (phone) {
                const cleanPhone = phone.replace(/\D/g, '');
                const fullPhone = cleanPhone.startsWith('237') ? cleanPhone : `237${cleanPhone}`;
-               const text = `Hello, please review the attached estimate for your vehicle and reply 'APPROVED' so we can proceed.`;
+               const text = `Hello, please review the attached estimate for your vehicle and reply 'APPROVED' so we can proceed.\n\nView and download your official document here: ${window.location.origin}/shared/document/${estimatingJob.matchedJobData.id}`;
                window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`, '_blank');
              }
              
