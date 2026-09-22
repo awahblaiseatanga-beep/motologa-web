@@ -90,6 +90,23 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
     });
   }, [jobs]); // Rerun when jobs change
 
+  useEffect(() => {
+    // Dynamically pull in authorized additional findings for the active queue
+    if (activeJobs.length === 0) return;
+    const fetchAuthorized = async () => {
+      const activeJobIds = activeJobs.map(j => j.id);
+      const { data } = await supabase
+        .from('additional_findings')
+        .select('*')
+        .in('parent_job_id', activeJobIds)
+        .eq('status', 'customer_approved');
+      if (data) {
+        setAuthorizedFindings(data);
+      }
+    };
+    fetchAuthorized();
+  }, [jobs]); // Tie it to the jobs state so onSyncBay naturally re-triggers this
+
   const filteredJobs = filterMechanic === 'All'
     ? activeJobs
     : activeJobs.filter((j) => (j.mechanic?.full_name || j.assigned_to) === filterMechanic);
