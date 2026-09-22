@@ -45,8 +45,8 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
     setDepartments(depts);
   };
 
-  const handleProvisionDepartment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleProvisionDepartment = async (e?: React.SyntheticEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!newDeptName.trim() || !newDeptRole.trim()) return;
     setDeptLoading(true);
     try {
@@ -333,7 +333,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
               <p className="text-xs text-stone-400 mb-4 uppercase tracking-wider font-bold border-b border-stone-800/80 pb-2">
                 Provision New Department
               </p>
-              <form onSubmit={handleProvisionDepartment} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
                     Department Name
@@ -363,7 +363,8 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                   />
                 </div>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleProvisionDepartment}
                   disabled={deptLoading}
                   className="w-full py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold uppercase tracking-wider text-xs rounded-xl transition border border-emerald-500/30 flex items-center justify-center gap-2"
                 >
@@ -376,7 +377,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                     </>
                   )}
                 </button>
-              </form>
+              </div>
             </div>
 
             {/* Active Departments List */}
