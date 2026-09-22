@@ -51,6 +51,7 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
     customerName: (dbJob.customers as any)?.name || (dbJob.customer_name as string) || 'Walk-in Client',
     vehicleModel: (dbJob.vehicles as any)?.model || (dbJob.vehicle_model as string) || '',
     issueDescription: (dbJob.description as string) || (dbJob.title as string) || (dbJob.issue_description as string) || '',
+    estimateNotes: (dbJob.estimate_notes as string) || '',
     assigned_to: dbJob.assigned_to as string | undefined,
     mechanic: (Array.isArray(dbJob.mechanic) ? dbJob.mechanic[0] : dbJob.mechanic) as { full_name?: string; email?: string } | undefined,
     status: uiStatus,

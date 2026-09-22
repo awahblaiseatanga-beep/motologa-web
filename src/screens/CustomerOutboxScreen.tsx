@@ -79,10 +79,20 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
               vehicle_model: '',
               plate: matchedJob?.licensePlate || 'Unknown Plate',
               customer_phone: matchedJob?.customerPhone || '',
-              status: matchedJob?.status === 'Paused' ? 'paused' : 'in_progress'
+              status: matchedJob?.status === 'Paused' ? 'paused' : 'in_progress',
+              estimate_notes: matchedJob?.estimateNotes || ''
             }
           };
         });
+
+      // Hydrate local descriptions from database notes
+      const initialDescriptions: Record<string, string> = {};
+      validFindings.forEach(f => {
+         if (f.jobs?.estimate_notes) {
+           initialDescriptions[f.id] = f.jobs.estimate_notes;
+         }
+      });
+      setLocalDescriptions(initialDescriptions);
 
       setCustomerFindings(validFindings);
       setDebugLog({
@@ -377,10 +387,11 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
           customImage={estimatingJob.customImage}
           onClose={() => setEstimatingJob(null)}
           onConfirmSave={async () => {
-             // 1. Mark Database entry as officially Quoted/Awaiting
+             // 1. Mark Database entry as officially Quoted/Awaiting & Persist Transcription
              const finding = estimatingJob.finding;
              try {
                await supabase.from('additional_findings').update({ status: 'pending_customer' }).eq('id', finding.id);
+               await supabase.from('jobs').update({ estimate_notes: estimatingJob.customDescription }).eq('id', finding.parent_job_id);
                setCustomerFindings(prev => prev.map(f => f.id === finding.id ? { ...f, status: 'pending_customer' } : f));
              } catch (e) {
                console.error("Database finding status update exception:", e);
