@@ -588,6 +588,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           <HodDashboard
             userId={userId}
             garageId={garage.id}
+            garageName={garage.name}
             departmentId={department?.id}
             departmentName={department?.name}
             membership={membership}

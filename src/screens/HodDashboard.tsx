@@ -38,6 +38,7 @@ export interface HodDashboardProps {
   departmentId?: string;
   departmentName?: string;
   membership?: GarageMember | null;
+  garageName?: string;
   jobs?: Job[];
   deferredRepairs?: DeferredRepair[];
   onUpdateJob?: (job: Job) => void;
@@ -54,6 +55,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   departmentId,
   departmentName,
   membership,
+  garageName,
   jobs: passedJobs,
   deferredRepairs,
   onUpdateJob,
@@ -427,7 +429,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       ) : (
         <>
           {activeTab === 'outbox' && (
-            <CustomerOutboxScreen userRole="hod" garageId={garageId} departmentId={departmentId} garageName={membership?.garages?.name || 'MOTOLOGA GARAGE'} departmentName={effectiveDeptName} />
+            <CustomerOutboxScreen userRole="hod" garageId={garageId} departmentId={departmentId} garageName={garageName || 'MOTOLOGA GARAGE'} departmentName={effectiveDeptName} />
           )}
           
           {/* APPOINTMENTS & FUTURE RESERVATIONS TAB */}
