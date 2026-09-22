@@ -8,13 +8,14 @@ import { LicensePlateBadge } from '../components/LicensePlateBadge';
 import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
 import { fetchGarageMembers, fetchDepartments, createJob, mapDbJobToUiJob } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { GarageMember, Department, Job, DeferredRepair, JobStatus, AppointmentReservation } from '../types';
 import {
   Users,
   Wrench,
   PlusCircle,
   CheckCircle2,
-  Clock,
+  Calendar,
   Send,
   FileEdit,
   Check,
@@ -25,7 +26,7 @@ import {
   AlertCircle,
   RefreshCw,
   ShieldCheck,
-  Calendar,
+  Printer,
   Mic,
   Square,
   FileAudio
@@ -81,6 +82,8 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   }, []);
 
   const currentTabIndex = HOD_TABS.findIndex((t) => t.id === activeTab);
+
+  const [estimatingJob, setEstimatingJob] = useState<Job | null>(null);
 
   const [members, setMembers] = useState<GarageMember[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -877,12 +880,22 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                 {job.laborFeeFcfa.toLocaleString()} FCFA
                               </span>
                             )}
-                            <div className="flex items-center gap-1 text-stone-400 font-mono shrink-0">
-                              <Clock className="w-3.5 h-3.5 text-stone-500" />
-                              <span>{job.timeElapsedMinutes || 45}m</span>
-                            </div>
                           </div>
                         </div>
+
+                        {/* ESTIMATE BUTTON: HOD Add-on Request */}
+                        {!isReady && (
+                          <div className="pt-2 border-t border-stone-800/80 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => setEstimatingJob(job)}
+                              className="w-full h-8 sm:h-9 bg-stone-800 hover:bg-stone-700 active:scale-95 text-stone-300 rounded-lg flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer text-[11px] sm:text-xs font-bold border border-stone-700 transition"
+                            >
+                               <Printer className="w-3.5 h-3.5 text-stone-400" />
+                               <span>Send Add-on Estimate</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -956,6 +969,32 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             onTabChange={(index) => handleTabSelect(HOD_TABS[index].id as any)}
           />
         </div>
+      )}
+
+      {/* ESTIMATE MODAL */}
+      {estimatingJob && (
+        <InvoiceGenerator
+          garageName={"MOTOLOGA GARAGE"} 
+          job={estimatingJob}
+          documentType="ESTIMATE"
+          onClose={() => setEstimatingJob(null)}
+          onConfirmPrint={() => {
+            const waText = `Hello, our technicians have found additional work required on your vehicle. Please review the attached estimate and reply 'APPROVED' so we can proceed with the repair.`;
+            let cleanPhone = estimatingJob.customerPhone.replace(/\D/g, '');
+            if (cleanPhone.startsWith('237')) cleanPhone = cleanPhone.slice(3);
+            if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
+            const waUrl = `https://wa.me/237${cleanPhone}?text=${encodeURIComponent(waText)}`;
+            
+            try {
+              window.open(waUrl, '_blank', 'noopener,noreferrer');
+            } catch (e) {
+              console.log('Unable to auto-open window', e);
+            }
+            
+            // Close WITHOUT triggering any database updates, per the strict safeguard rule
+            setEstimatingJob(null);
+          }}
+        />
       )}
     </div>
   );

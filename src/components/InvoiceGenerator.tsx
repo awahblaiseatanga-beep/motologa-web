@@ -11,6 +11,7 @@ interface InvoiceGeneratorProps {
   onClose: () => void;
   currencySymbol?: string;
   onConfirmPrint?: () => void;
+  documentType?: 'INVOICE' | 'ESTIMATE';
 }
 
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ 
@@ -18,7 +19,8 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   garageName,
   onClose,
   currencySymbol = 'FCFA',
-  onConfirmPrint
+  onConfirmPrint,
+  documentType = 'INVOICE'
 }) => {
   const [template, setTemplate] = useState<'quickfix' | 'elite'>('quickfix');
   const componentRef = useRef<HTMLDivElement>(null);
@@ -76,16 +78,16 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
             className="bg-[#25D366] hover:bg-[#20bd5a] text-slate-900 font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center md:justify-start gap-2 transition-transform w-full md:w-auto active:scale-95 shadow-lg border border-[#1EBE5D]"
           >
             <Printer className="w-5 h-5 flex-shrink-0" />
-            <span className="truncate">Save PDF & Open WhatsApp</span>
+            <span className="truncate">{documentType === 'ESTIMATE' ? 'Save PDF & WhatsApp Request' : 'Save PDF & Open WhatsApp'}</span>
           </button>
         </div>
 
         {/* Live Preview Container */}
         <div className="flex-1 overflow-auto bg-stone-200 p-8 flex justify-center items-start">
           {template === 'quickfix' ? (
-            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} />
+            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} />
           ) : (
-            <EliteInvoice ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} />
+            <EliteInvoice ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} />
           )}
         </div>
       </div>

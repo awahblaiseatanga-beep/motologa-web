@@ -5,10 +5,11 @@ interface InvoiceProps {
   job: Job;
   currencySymbol?: string;
   garageName: string;
+  documentType?: 'INVOICE' | 'ESTIMATE';
 }
 
 export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE' }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -29,7 +30,9 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-slate-200 pb-8 mb-8">
           <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">INVOICE</h1>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+              {documentType === 'ESTIMATE' ? 'ADDITIONAL WORK ESTIMATE' : 'INVOICE'}
+            </h1>
             <p className="text-sm font-medium text-slate-500 mt-1">Ref: {job.id.substring(0, 8).toUpperCase()}</p>
             <p className="text-sm font-medium text-slate-500">Date: {formattedDate}</p>
           </div>
@@ -70,7 +73,7 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
               <tr className="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider">
                 <th className="p-3 font-semibold rounded-tl-lg">Description</th>
                 <th className="p-3 font-semibold text-right">Details</th>
-                <th className="p-3 font-semibold text-right rounded-tr-lg">Amount</th>
+                <th className="p-3 font-semibold text-right rounded-tr-lg">Amount ({currencySymbol})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -103,26 +106,37 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         </div>
 
         {/* Totals Section */}
-        <div className="flex justify-end gap-x-12 px-4 mb-16">
+        <div className="flex justify-end gap-x-12 px-4 mb-4">
           <div className="w-1/2 space-y-3">
             <div className="flex justify-between text-slate-600">
               <span>Subtotal</span>
-              <span className="font-mono">{total.toLocaleString()} {currencySymbol}</span>
+              <span className="font-mono">{total.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-slate-600 pb-3 border-b border-slate-200">
-              <span>Advance Deposit</span>
-              <span className="font-mono">0 {currencySymbol}</span>
-            </div>
-            <div className="flex justify-between items-center text-xl font-black text-emerald-800 pt-2">
-              <span>Remaining Balance</span>
+            {documentType !== 'ESTIMATE' && (
+              <div className="flex justify-between text-slate-600 pb-3 border-b border-slate-200">
+                <span>Advance Deposit</span>
+                <span className="font-mono">0</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center text-xl font-black text-emerald-800 pt-2 border-t border-slate-200">
+              <span>{documentType === 'ESTIMATE' ? 'ESTIMATED TOTAL' : 'Remaining Balance'}</span>
               <span className="font-mono">{total.toLocaleString()} {currencySymbol}</span>
             </div>
           </div>
         </div>
 
+        {documentType === 'ESTIMATE' && (
+          <div className="mb-10 mx-4 border-2 border-rose-500 rounded-lg p-6 bg-rose-50">
+            <p className="font-black text-rose-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span className="text-xl">!</span> ACTION REQUIRED
+            </p>
+            <p className="font-bold text-rose-900 text-sm">Please review the additional findings above. Reply <strong>'APPROVED'</strong> via WhatsApp to authorize the workshop to proceed with these repairs.</p>
+          </div>
+        )}
+
         {/* Photographic Evidence Section */}
         {(job.oldPartPhotoUrl || job.newPartPhotoUrl || job.generalJobPhotoUrl) && (
-          <div className="mb-10 print:break-inside-avoid border-t border-slate-200 pt-8 mt-12">
+          <div className={`mb-10 print:break-inside-avoid border-t border-slate-200 pt-8 ${documentType !== 'ESTIMATE' ? 'mt-12' : 'mt-4'}`}>
             <h3 className="text-lg font-bold text-slate-900 mb-4">
               Photographic Evidence / Preuves Photographiques
             </h3>
@@ -150,17 +164,19 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         )}
 
         {/* Footer & Signatures */}
-        <div className="grid grid-cols-2 gap-16 mt-20 pt-10 border-t border-slate-200">
+        <div className="grid grid-cols-2 gap-16 mt-16 pt-10 border-t border-slate-200">
           <div className="text-center">
             <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
             <p className="text-sm font-semibold text-slate-700">Authorised Signature</p>
             <p className="text-xs text-slate-500">MOTOLOGA GARAGE</p>
           </div>
-          <div className="text-center">
-            <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
-            <p className="text-sm font-semibold text-slate-700">Customer Signature</p>
-            <p className="text-xs text-slate-500">Upon reception of vehicle</p>
-          </div>
+          {documentType !== 'ESTIMATE' && (
+            <div className="text-center">
+              <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
+              <p className="text-sm font-semibold text-slate-700">Customer Signature</p>
+              <p className="text-xs text-slate-500">Upon reception of vehicle</p>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -5,10 +5,11 @@ interface InvoiceProps {
   job: Job;
   currencySymbol?: string;
   garageName: string;
+  documentType?: 'INVOICE' | 'ESTIMATE';
 }
 
 export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE' }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -30,7 +31,9 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
       <div ref={ref} className="p-6 max-w-sm mx-auto bg-white text-black font-mono text-xs leading-loose print:w-full print:mx-0">
         <div className="text-center mb-6">
           <h1 className="text-xl font-black uppercase mb-1">{garageName}</h1>
-          <p className="text-[10px] uppercase text-gray-600">Official Workshop Receipt</p>
+          <p className="text-[10px] uppercase text-gray-600">
+            {documentType === 'ESTIMATE' ? 'ADDITIONAL WORK ESTIMATE' : 'Official Workshop Receipt'}
+          </p>
           <div className="border-b-2 border-dashed border-gray-300 my-4" />
         </div>
 
@@ -64,23 +67,31 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
         <div className="border-b-2 border-dashed border-gray-300 my-4" />
 
         <div className="flex justify-between items-center text-lg font-black mb-1">
-          <span>TOTAL:</span>
+          <span>{documentType === 'ESTIMATE' ? 'EST. TOTAL' : 'TOTAL'}:</span>
           <span>
             {total.toLocaleString()} {currencySymbol}
           </span>
         </div>
         <div className="flex justify-between items-center text-sm font-bold pt-1 mb-8">
-          <span>BALANCE:</span>
+          <span>{documentType === 'ESTIMATE' ? 'ESTIMATED BALANCE' : 'BALANCE'}:</span>
           <span>
             {total.toLocaleString()} {currencySymbol}
           </span>
         </div>
+
+        {documentType === 'ESTIMATE' && (
+          <div className="mb-6 border-2 border-dashed border-black p-3 text-center">
+            <p className="font-black uppercase tracking-wider mb-2">⚠ ACTION REQUIRED</p>
+            <p className="font-bold">Please review the additional findings above. Reply 'APPROVED' via WhatsApp to authorize the workshop to proceed with these repairs.</p>
+          </div>
+        )}
 
         <div className="text-center text-[10px] space-y-1">
           <p>Thank you for your business!</p>
           <p>Powered by MOTOLOGA</p>
         </div>
       </div>
+
     );
   }
 );
