@@ -18,11 +18,12 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
 }) => {
   const [customerFindings, setCustomerFindings] = useState<any[]>([]);
   const [localPrices, setLocalPrices] = useState<Record<string, string>>({});
+  const [localDescriptions, setLocalDescriptions] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [debugLog, setDebugLog] = useState<any>({});
   
   // Invoice Modal State
-  const [estimatingJob, setEstimatingJob] = useState<{ finding: any; matchedJobData: Job } | null>(null);
+  const [estimatingJob, setEstimatingJob] = useState<{ finding: any; matchedJobData: Job; customDescription?: string; customImage?: string } | null>(null);
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -138,12 +139,12 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
     // Synthesize a structured proxy Job object pushing the specific Add-On finding into the description core
     const proxyJob: Job = {
       ...matchedJob,
-      issueDescription: finding.component || finding.description || "Additional Findings / Overflows",
+      issueDescription: localDescriptions[finding.id]?.trim() || finding.component || finding.description || "Additional Findings / Overflows",
       laborFeeFcfa: finding.estimated_cost || 0,
       partsFeeFcfa: 0,
     };
     
-    setEstimatingJob({ finding, matchedJobData: proxyJob });
+    setEstimatingJob({ finding, matchedJobData: proxyJob, customDescription: localDescriptions[finding.id]?.trim(), customImage: finding.photo_url });
   };
 
   const handlePauseJobAndSend = async (finding: any) => {
@@ -322,8 +323,19 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
                     <div className="text-sm font-black text-amber-400 my-1 bg-amber-950/20 px-3 py-2 border border-amber-500/10 rounded-lg">
                       Draft Price: {finding.estimated_cost} FCFA
                     </div>
+                    
+                    <div className="flex flex-col gap-1 my-2">
+                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Estimate Description (Transcribe voice notes/findings here)</label>
+                       <textarea
+                         value={localDescriptions[finding.id] || ''}
+                         onChange={(e) => setLocalDescriptions(prev => ({ ...prev, [finding.id]: e.target.value }))}
+                         className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm font-sans text-white focus:outline-none focus:border-emerald-500 min-h-[60px]"
+                         placeholder="Detailed breakdown of necessary repairs..."
+                       />
+                    </div>
+
                     <div className="flex gap-2 w-full mt-1">
-                      <button onClick={() => handleSendToCustomer(finding)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title="Send Quote but Mechanic keeps working on other parts of the job">
+                      <button disabled={!localDescriptions[finding.id]?.trim()} onClick={() => handleSendToCustomer(finding)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900/50 disabled:text-stone-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title="Send Quote but Mechanic keeps working on other parts of the job">
                         <Send className="w-3.5 h-3.5" /> Quote (Continue)
                       </button>
                       <button onClick={() => handlePauseJobAndSend(finding)} className="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title="Pause the ENTIRE job while waiting for customer response">
@@ -361,8 +373,10 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
           job={estimatingJob.matchedJobData}
           garageName={garageId || 'Workshop'}
           documentType="ESTIMATE"
+          customDescription={estimatingJob.customDescription}
+          customImage={estimatingJob.customImage}
           onClose={() => setEstimatingJob(null)}
-          onConfirmPrint={async () => {
+          onConfirmSave={async () => {
              // 1. Mark Database entry as officially Quoted/Awaiting
              const finding = estimatingJob.finding;
              try {
@@ -370,10 +384,12 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
                setCustomerFindings(prev => prev.map(f => f.id === finding.id ? { ...f, status: 'pending_customer' } : f));
              } catch (e) {
                console.error("Database finding status update exception:", e);
+               throw e;
              }
-             
+          }}
+          onConfirmPrint={async () => {
              // 2. Dispatch the WhatsApp protocol
-             const phone = estimatingJob.matchedJobData.customerPhone || finding.jobs?.customer_phone;
+             const phone = estimatingJob.matchedJobData.customerPhone || estimatingJob.finding?.jobs?.customer_phone;
              if (phone) {
                const cleanPhone = phone.replace(/\D/g, '');
                const fullPhone = cleanPhone.startsWith('237') ? cleanPhone : `237${cleanPhone}`;

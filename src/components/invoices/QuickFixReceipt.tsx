@@ -6,10 +6,12 @@ interface InvoiceProps {
   currencySymbol?: string;
   garageName: string;
   documentType?: 'INVOICE' | 'ESTIMATE';
+  customDescription?: string;
+  customImage?: string;
 }
 
 export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE' }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -59,7 +61,7 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
             </div>
           )}
           <div className="flex justify-between items-start">
-            <span className="max-w-[70%]">{job.diagnosticNotes || job.issueDescription || 'Labor & Services'} (Tech: {formatTechName()})</span>
+            <span className="max-w-[70%]">{customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'} (Tech: {formatTechName()})</span>
             <span>{laborFee.toLocaleString()}</span>
           </div>
         </div>

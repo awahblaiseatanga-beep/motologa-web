@@ -6,10 +6,12 @@ interface InvoiceProps {
   currencySymbol?: string;
   garageName: string;
   documentType?: 'INVOICE' | 'ESTIMATE';
+  customDescription?: string;
+  customImage?: string;
 }
 
 export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE' }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -92,7 +94,7 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
               )}
               <tr className="group">
                 <td className="p-4 bg-white font-medium text-slate-800">
-                  {job.diagnosticNotes || job.issueDescription || 'Labor & Services'}
+                  {customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'}
                 </td>
                 <td className="p-4 bg-white text-slate-600 text-right">
                   Assigned Tech: {formatTechName()}
@@ -135,12 +137,18 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         )}
 
         {/* Photographic Evidence Section */}
-        {(job.oldPartPhotoUrl || job.newPartPhotoUrl || job.generalJobPhotoUrl) && (
+        {(job.oldPartPhotoUrl || job.newPartPhotoUrl || job.generalJobPhotoUrl || customImage) && (
           <div className={`mb-10 print:break-inside-avoid border-t border-slate-200 pt-8 ${documentType !== 'ESTIMATE' ? 'mt-12' : 'mt-4'}`}>
             <h3 className="text-lg font-bold text-slate-900 mb-4">
               Photographic Evidence / Preuves Photographiques
             </h3>
             <div className="grid grid-cols-3 gap-6">
+              {customImage && (
+                <div className="flex flex-col gap-2 print:break-inside-avoid text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <img src={customImage} alt="Estimate Finding Evidence" className="w-full h-32 object-cover rounded-md shadow-sm" />
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">Reported Issue</span>
+                </div>
+              )}
               {job.oldPartPhotoUrl && (
                 <div className="flex flex-col gap-2 print:break-inside-avoid text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <img src={job.oldPartPhotoUrl} alt="Old Part Evidence" className="w-full h-32 object-cover rounded-md shadow-sm" />

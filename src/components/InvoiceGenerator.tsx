@@ -3,7 +3,7 @@ import { useReactToPrint } from 'react-to-print';
 import { Job } from '../types';
 import { QuickFixReceipt } from './invoices/QuickFixReceipt';
 import { EliteInvoice } from './invoices/EliteInvoice';
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Send } from 'lucide-react';
 
 interface InvoiceGeneratorProps {
   job: Job;
@@ -12,6 +12,9 @@ interface InvoiceGeneratorProps {
   currencySymbol?: string;
   onConfirmPrint?: () => void;
   documentType?: 'INVOICE' | 'ESTIMATE';
+  customDescription?: string;
+  customImage?: string;
+  onConfirmSave?: () => Promise<void>;
 }
 
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ 
@@ -20,17 +23,25 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   onClose,
   currencySymbol = 'FCFA',
   onConfirmPrint,
-  documentType = 'INVOICE'
+  documentType = 'INVOICE',
+  customDescription,
+  customImage,
+  onConfirmSave
 }) => {
   const [template, setTemplate] = useState<'quickfix' | 'elite'>('quickfix');
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const componentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
     documentTitle: `MOTOLOGA_Invoice_${job.id.substring(0, 8)}`,
     onAfterPrint: () => {
-      if (onConfirmPrint) onConfirmPrint();
-      else onClose();
+      // Step-2 separation: Only trigger WhatsApp automatically if it's an INVOICE mode.
+      if (documentType !== 'ESTIMATE') {
+        if (onConfirmPrint) onConfirmPrint();
+        else onClose();
+      }
     }
   });
 
@@ -73,21 +84,55 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
               </button>
             </div>
           </div>
-          <button 
-            onClick={handlePrint}
-            className="bg-[#25D366] hover:bg-[#20bd5a] text-slate-900 font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center md:justify-start gap-2 transition-transform w-full md:w-auto active:scale-95 shadow-lg border border-[#1EBE5D]"
-          >
-            <Printer className="w-5 h-5 flex-shrink-0" />
-            <span className="truncate">{documentType === 'ESTIMATE' ? 'Save PDF & WhatsApp Request' : 'Save PDF & Open WhatsApp'}</span>
-          </button>
+          {documentType === 'ESTIMATE' ? (
+             !isSaved ? (
+               <button 
+                 onClick={async () => {
+                    try {
+                      setIsSaving(true);
+                      if (onConfirmSave) await onConfirmSave();
+                      setIsSaved(true);
+                      handlePrint();
+                    } catch (e) {
+                      console.error("Failed to save and generate:", e);
+                    } finally {
+                      setIsSaving(false);
+                    }
+                 }}
+                 disabled={isSaving}
+                 className="bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center gap-2 shadow-lg transition"
+               >
+                 <Printer className="w-5 h-5 flex-shrink-0" />
+                 <span>{isSaving ? "Saving..." : "Save Estimate"}</span>
+               </button>
+             ) : (
+               <button 
+                 onClick={() => {
+                    if (onConfirmPrint) onConfirmPrint();
+                 }}
+                 className="bg-[#25D366] hover:bg-[#20bd5a] text-slate-900 font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center gap-2 shadow-lg transition animate-in zoom-in"
+               >
+                 <Send className="w-5 h-5 flex-shrink-0" />
+                 <span className="truncate">Send to Customer (WhatsApp)</span>
+               </button>
+             )
+          ) : (
+            <button 
+              onClick={handlePrint}
+              className="bg-[#25D366] hover:bg-[#20bd5a] text-slate-900 font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center md:justify-start gap-2 transition-transform w-full md:w-auto active:scale-95 shadow-lg border border-[#1EBE5D]"
+            >
+              <Printer className="w-5 h-5 flex-shrink-0" />
+              <span className="truncate">Save PDF & Open WhatsApp</span>
+            </button>
+          )}
         </div>
 
         {/* Live Preview Container */}
         <div className="flex-1 overflow-auto bg-stone-200 p-8 flex justify-center items-start">
           {template === 'quickfix' ? (
-            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} />
+            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
           ) : (
-            <EliteInvoice ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} />
+            <EliteInvoice ref={componentRef} job={job} garageName={garageName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
           )}
         </div>
       </div>
