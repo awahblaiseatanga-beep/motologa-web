@@ -47,9 +47,14 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
             <p className="text-sm font-medium text-slate-500">Date: {formattedDate}</p>
           </div>
           <div className="text-right">
-            <h2 className="text-2xl font-bold text-emerald-700">{garageName}</h2>
-            <p className="text-sm text-slate-600 mt-1">Douala / Yaoundé</p>
-            <p className="text-sm text-slate-600">contact@motologa.cm</p>
+            <h2 className="text-2xl font-bold text-emerald-700">{job.garageInfo?.name || garageName}</h2>
+            <p className="text-sm text-slate-600 mt-1">{job.garageInfo?.location || 'Location not set'}</p>
+            {(job.garageInfo?.email || job.garageInfo?.ownerEmail) && (
+              <p className="text-sm text-slate-600">{job.garageInfo.email || job.garageInfo.ownerEmail}</p>
+            )}
+            {(job.garageInfo?.phone || job.garageInfo?.ownerPhone) && (
+              <p className="text-sm text-slate-600">Phone: {job.garageInfo.phone || job.garageInfo.ownerPhone}</p>
+            )}
           </div>
         </div>
 

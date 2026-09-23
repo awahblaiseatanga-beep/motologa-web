@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useReactToPrint } from 'react-to-print';
 import { Job } from '../types';
 import { QuickFixReceipt } from './invoices/QuickFixReceipt';
-import { EliteInvoice } from './invoices/EliteInvoice';
+import { EliteInvoiceV2 } from './invoices/EliteInvoiceV2';
 import { X, Printer, Send } from 'lucide-react';
 
 interface InvoiceGeneratorProps {
@@ -33,7 +34,16 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   const [template, setTemplate] = useState<'quickfix' | 'elite'>('quickfix');
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [shopSettings, setShopSettings] = useState<any>(null);
   const componentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+       const { data } = await supabase.from('shop_settings').select('*').eq('id', 1).single();
+       if (data) setShopSettings(data);
+    };
+    fetchSettings();
+  }, []);
 
   const handlePrint = useReactToPrint({
     contentRef: componentRef,
@@ -118,12 +128,11 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
           )}
         </div>
 
-        {/* Live Preview Container */}
         <div className="flex-1 overflow-auto bg-stone-200 p-8 flex justify-center items-start">
           {template === 'quickfix' ? (
-            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
+            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} shopSettings={shopSettings} />
           ) : (
-            <EliteInvoice ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} />
+            <EliteInvoiceV2 ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} shopSettings={shopSettings} />
           )}
         </div>
       </div>

@@ -18,7 +18,8 @@ import {
   Copy,
   ExternalLink,
   ChevronDown,
-  Phone
+  Phone,
+  FileEdit
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from './InvoiceGenerator';
@@ -43,17 +44,15 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   selectedJobId,
 }) => {
   // Find ready vehicles first, otherwise active non-released vehicles
-  const readyVehicles = jobs.filter((j) => j.status === 'Ready/Released' && !j.released);
-  const activeUnreleased = jobs.filter((j) => !j.released);
-  const candidateVehicles = readyVehicles.length > 0 ? readyVehicles : activeUnreleased;
+  const candidateVehicles = jobs.filter((j) => j.status === 'Ready/Released' && !j.released);
+  const activeUnreleased = candidateVehicles;
 
   // Selected vehicle for checkout
   const [currentJobId, setCurrentJobId] = useState<string>(() => {
     if (selectedJobId && jobs.some((j) => j.id === selectedJobId)) {
       return selectedJobId;
     }
-    if (readyVehicles.length > 0) return readyVehicles[0].id;
-    if (activeUnreleased.length > 0) return activeUnreleased[0].id;
+    if (candidateVehicles.length > 0) return candidateVehicles[0].id;
     return jobs[0]?.id || '';
   });
 
@@ -61,6 +60,11 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
   // Billing state
   const [laborFee, setLaborFee] = useState<number | ''>(currentJob?.laborFeeFcfa || '');
+
+  // HOD Summary state
+  const [hodJobSummary, setHodJobSummary] = useState<string>(
+    currentJob?.hodJobSummary || currentJob?.issueDescription || ''
+  );
 
   // Deferred repair state
   const [flagDeferred, setFlagDeferred] = useState<boolean>(
@@ -86,6 +90,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   useEffect(() => {
     if (currentJob) {
       setLaborFee(currentJob.laborFeeFcfa || '');
+      setHodJobSummary(currentJob.hodJobSummary || currentJob.issueDescription || '');
       setFlagDeferred(currentJob.deferredRepair?.flagged || false);
       setDeferredComponent(currentJob.deferredRepair?.component || DEFERRED_COMPONENTS[0]);
       setDeferredTimeframe((currentJob.deferredRepair?.timeframe as DeferredTimeframe) || 'Next Month');
@@ -139,8 +144,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     const { error } = await supabase
       .from('jobs')
       .update({ 
-        status: 'completed', 
-        labor_fee: feeAmount
+        status: 'RELEASED', 
+        labor_fee: feeAmount,
+        hod_job_summary: hodJobSummary
       })
       .eq('id', currentJob.id);
 
@@ -186,6 +192,10 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     } catch (e) {
       console.log('Unable to auto-open window', e);
     }
+    
+    // Explicit UI Cleanup Request Addressed
+    setShowInvoiceGenerator(false);
+    onJobReleased(updatedJob, feeAmount);
   };
 
   return (
@@ -342,7 +352,59 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             </span>
           </div>
 
-          <div className="relative space-y-2 pt-2">
+          {/* OWNER EXECUTIVE CHECKOUT: Proof of Work & Summary Override */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-4 shadow-sm mt-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Executive Verification
+              </h4>
+              <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">
+                HOD Cleared
+              </span>
+            </div>
+
+            {/* Proof of Work Photos */}
+            {(currentJob.oldPartPhotoUrl || currentJob.newPartPhotoUrl || currentJob.generalJobPhotoUrl) && (
+              <div className="space-y-2 pb-2">
+                <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Visual Proof of Work</span>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                  {currentJob.oldPartPhotoUrl && (
+                    <div className="shrink-0 space-y-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                      <img src={currentJob.oldPartPhotoUrl} alt="Old Part" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />
+                      <span className="text-[9px] font-bold text-slate-500 block text-center uppercase tracking-wider">Old Part</span>
+                    </div>
+                  )}
+                  {currentJob.newPartPhotoUrl && (
+                    <div className="shrink-0 space-y-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                      <img src={currentJob.newPartPhotoUrl} alt="New Part" className="w-24 h-24 object-cover rounded-lg border-2 border-emerald-400/50" />
+                      <span className="text-[9px] font-bold text-emerald-600 block text-center uppercase tracking-wider">New Installed</span>
+                    </div>
+                  )}
+                  {currentJob.generalJobPhotoUrl && (
+                    <div className="shrink-0 space-y-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                      <img src={currentJob.generalJobPhotoUrl} alt="General Work" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />
+                      <span className="text-[9px] font-bold text-slate-500 block text-center uppercase tracking-wider">General</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* HOD Summary Override */}
+            <div className="space-y-2 border-t border-slate-200 pt-3">
+              <label className="text-[10px] font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> Final Invoice Summary (Edit before printing)
+              </label>
+              <textarea
+                value={hodJobSummary}
+                onChange={(e) => setHodJobSummary(e.target.value)}
+                placeholder="Adjust HOD's technical summary for the customer invoice here..."
+                className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[90px] shadow-inner"
+              />
+            </div>
+          </div>
+
+          <div className="relative space-y-2">
             {(currentJob.status === 'Diagnosis' || currentJob.status === 'In Repair') && (
               <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-2xl border border-slate-200 shadow-[0_0_15px_rgba(0,0,0,0.05)]">
                 <span className="bg-slate-800 text-white font-black text-sm px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2">
@@ -351,6 +413,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 </span>
               </div>
             )}
+
+            {/* Removed QC Block / HOD Summary UI - Successfully migrated to separate HOD review modal */}
 
             {/* Conditionally display separate part prices before total */}
             {currentJob.partsFeeFcfa ? (
@@ -440,20 +504,17 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             />
           </div>
 
-          {/* PRIMARY CTA: A massive, full-width WhatsApp Green button */}
-          <div className="pt-1 mt-6">
+          {/* CTA: Open Invoice Generator */}
+          <div className="pt-4 mb-2">
             <button
-              id="send-whatsapp-checkout-btn"
+              id="generate-invoice-btn"
               type="button"
               onClick={() => setShowInvoiceGenerator(true)}
-              className="w-full min-h-[56px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-sm xs:text-base sm:text-lg tracking-wide flex items-center justify-center gap-2 sm:gap-3 shadow-lg border-2 border-[#1EBE5D] cursor-pointer transition-all px-3 py-3 text-center"
+              className="w-full min-h-[56px] rounded-xl bg-[#142F30] hover:bg-[#1f4244] active:scale-[0.99] text-amber-400 font-black text-sm sm:text-base tracking-wide flex items-center justify-center gap-3 shadow-lg border-2 border-[#142F30] cursor-pointer transition-all px-2"
             >
-              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 stroke-[2.5]" />
-              <span className="leading-tight">Send Customer Invoice</span>
+              <FileEdit className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5] shrink-0" />
+              <span>Save Pricing & Generate Invoice</span>
             </button>
-            <p className="text-center text-[11px] text-slate-400 mt-2 font-medium">
-              Direct dispatch to customer WhatsApp (+237) • Instant receipt & cloud queue clearance
-            </p>
           </div>
           </div>
         </div>
@@ -475,7 +536,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           job={{
             ...currentJob,
             laborFeeFcfa: typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
-          }} 
+            hodJobSummary: hodJobSummary,
+            hod_job_summary: hodJobSummary
+          } as any}
           onClose={() => {
             setShowInvoiceGenerator(false);
             if (completedJobIds.has(currentJob.id)) {

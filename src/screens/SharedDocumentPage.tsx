@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Job, JobStatus } from '../types';
-import { EliteInvoice } from '../components/invoices/EliteInvoice';
+import { EliteInvoiceV2 } from '../components/invoices/EliteInvoiceV2';
 import { Printer, RefreshCw, AlertCircle } from 'lucide-react';
 
 export const SharedDocumentPage = () => {
@@ -61,6 +61,17 @@ export const SharedDocumentPage = () => {
            partsFeeFcfa: dbJob.parts_fee || 0,
            released: ['ready', 'completed'].includes(dbJob.status),
            mechanic: data.mechanic || { full_name: dbJob.assigned_to || 'Motologa Technician' },
+           garageInfo: dbJob.garages ? {
+              name: dbJob.garages.name || settingsData?.shop_name || 'MOTOLOGA GARAGE',
+              location: dbJob.garages.location,
+              phone: dbJob.garages.phone,
+              email: dbJob.garages.email,
+              ownerPhone: dbJob.garages.owner?.phone || dbJob.garages.profiles?.phone,
+              ownerEmail: dbJob.garages.owner?.email || dbJob.garages.profiles?.email,
+              brandColor: dbJob.garages.brand_color,
+              invoiceMessage: dbJob.garages.invoice_message,
+              watermarkUrl: dbJob.garages.watermark_url
+           } : undefined
         };
         
         setJob(uiJob);
@@ -120,7 +131,7 @@ export const SharedDocumentPage = () => {
       </div>
 
       <div className="w-full max-w-4xl bg-white shadow-xl overflow-hidden print:shadow-none mb-12 border border-slate-200 sm:rounded-xl">
-        <EliteInvoice 
+        <EliteInvoiceV2 
            job={job} 
            garageName={garageName} 
            currencySymbol={currencySymbol}

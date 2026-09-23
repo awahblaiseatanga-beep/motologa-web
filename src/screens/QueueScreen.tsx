@@ -41,6 +41,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [mechanicFilters, setMechanicFilters] = useState<string[]>([]);
   const [activeView, setActiveView] = useState<'queue' | 'profile'>('queue');
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>('Technician');
 
   // Load Jobs independently
   const loadJobs = async (isSilent: boolean = false) => {
@@ -51,6 +52,9 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       if (!currentUserId) return;
       
       const allMembers = await fetchGarageMembers(garageId);
+      const me = allMembers.find(m => m.user_id === currentUserId);
+      if (me) setCurrentUserDisplayName(me.full_name || me.email?.split('@')[0] || 'Technician');
+
       let fetchedJobs: Job[] = [];
       let availableNames: string[] = [];
       
@@ -61,9 +65,11 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       let query = supabase.from('jobs').select('*, job_media(*), mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)');
       
       if (userRole === 'worker') {
-        query = query.eq('assigned_to', currentUserId).in('status', ['pending', 'in_progress', 'paused']);
+        query = query.eq('assigned_to', currentUserId).eq('status', 'IN_PROGRESS');
+      } else if (userRole === 'hod') {
+        query = query.eq('garage_id', garageId).eq('status', 'COMPLETED').eq('hod_review_pending', true);
       } else {
-        query = query.eq('garage_id', garageId).neq('status', 'completed');
+        query = query.eq('garage_id', garageId).neq('status', 'COMPLETED').neq('status', 'RELEASED');
       }
       
       const { data, error } = await query;
@@ -109,8 +115,9 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
     }
   };
 
+  // Force a fresh fetch when the component mounts or the role view switches, busting local cache
   useEffect(() => {
-    loadJobs();
+    loadJobs(false);
   }, [userRole, garageId, currentUserId]);
 
 
@@ -165,6 +172,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
           onNavigateToCheckout={handleNavigateToCheckout}
           userRole={userRole}
           mechanicFilters={mechanicFilters}
+          currentUserDisplayName={currentUserDisplayName}
           onSyncBay={async () => { await loadJobs(true); }}
         />
       ) : (

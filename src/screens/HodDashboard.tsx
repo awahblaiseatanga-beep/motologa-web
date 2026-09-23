@@ -9,6 +9,7 @@ import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
 import { fetchGarageMembers, fetchDepartments, createJob, mapDbJobToUiJob } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
+import { VoiceRecorderField } from '../components/VoiceRecorderField';
 import { GarageMember, Department, Job, DeferredRepair, JobStatus, AppointmentReservation } from '../types';
 import {
   Users,
@@ -29,7 +30,10 @@ import {
   Printer,
   Mic,
   Square,
-  FileAudio
+  FileAudio,
+  ShieldAlert,
+  MessageSquare,
+  AlertTriangle
 } from 'lucide-react';
 
 export interface HodDashboardProps {
@@ -91,6 +95,11 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [hodJobSummary, setHodJobSummary] = useState('');
+  const [hodRejectionNote, setHodRejectionNote] = useState('');
+  const [hodRejectionVoiceUrl, setHodRejectionVoiceUrl] = useState('');
 
   // Department & HOD Identity
   const effectiveDeptName = departmentName || 'Mechanical Bay & Diagnostics';
@@ -240,8 +249,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         const { data: jobsData } = await supabase
           .from('jobs')
           .select(`*, job_media(*), mechanic:garage_members!jobs_assigned_to_fkey(full_name, email, department_id)`)
-          .eq('garage_id', garageId)
-          .neq('status', 'completed')
+          .or('status.eq.IN_PROGRESS,and(status.eq.COMPLETED,hod_review_pending.eq.true)')
           .order('created_at', { ascending: false });
 
         let deptJobs: Record<string, unknown>[] = [];
@@ -729,175 +737,223 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <Car className="w-4 h-4 sm:w-5 sm:h-5 text-[#34D399]" />
-                    <span>Vehicles on Floor ({floorJobs.length})</span>
+                    <span>Jobs in Bay ({floorJobs.length})</span>
                   </h2>
                   <span className="text-[11px] sm:text-xs text-stone-400">
-                    Tap to update status
+                    Tap to expand details
                   </span>
                 </div>
 
                 <div className="space-y-2.5">
                   {floorJobs.map((job) => {
-                    const isReady = job.status === 'Ready/Released' || Boolean(job.inspectedByHod);
-                    const isDoneByWorker = (job.status === 'Work Done' || Boolean(job.workerCompleted)) && !isReady;
-                    const isInRepair = !isReady && !isDoneByWorker;
+                    const isPendingQC = job.status === 'Pending QC';
+                    const isExpanded = expandedJobId === job.id;
 
                     return (
                       <div
                         key={job.id}
-                        className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${isDoneByWorker
-                            ? 'bg-indigo-950/30 border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/30'
-                            : isReady
-                              ? 'bg-emerald-950/20 border-emerald-500/40'
-                              : 'bg-stone-900 border-stone-800'
+                        className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${isPendingQC
+                            ? 'bg-emerald-950/20 border-emerald-500/40 shadow-sm'
+                            : 'bg-stone-900 border-stone-800'
                           }`}
                       >
-                        {/* Plate & Status Row - Mobile Optimized */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center flex-wrap gap-2 min-w-0">
-                            <LicensePlateBadge plate={job.licensePlate} size="sm" className="sm:hidden" />
-                            <LicensePlateBadge plate={job.licensePlate} size="md" className="hidden sm:inline-flex" />
+                        <div className="flex flex-col gap-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="flex flex-col gap-1.5 min-w-0">
+                              <LicensePlateBadge plate={job.licensePlate} size="md" />
+                              <div className="mt-1">
+                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest block mb-0.5">Intake Issue:</span>
+                                <p className="text-xs sm:text-sm text-stone-300 font-medium whitespace-pre-wrap">
+                                  {job.issueDescription || 'Diagnostic & maintenance procedure'}
+                                </p>
+                              </div>
+                            </div>
 
-                            {isReady ? (
-                              <span className="text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shrink-0 flex items-center gap-1">
-                                <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
-                                Ready for Release
+                            <div className="shrink-0 flex flex-col items-end gap-2">
+                              {isPendingQC ? (
+                                <span className="text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-full border bg-blue-500/20 text-blue-300 border-blue-500/40 flex items-center gap-1.5 shadow-sm">
+                                  <ShieldAlert className="w-3.5 h-3.5" /> Ready for QC Inspection
+                                </span>
+                              ) : (
+                                <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full border bg-stone-800 text-stone-400 border-stone-700">
+                                  Waiting for Job Completion
+                                </span>
+                              )}
+                              
+                              <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                                <UserCheck className="w-3 h-3 text-stone-500" /> {job.mechanicAssigned || 'Unassigned'}
                               </span>
-                            ) : isDoneByWorker ? (
-                              <span className="text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-indigo-500/25 text-indigo-200 border-indigo-500/50 shrink-0 flex items-center gap-1.5 shadow-sm animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
-                                Work Done • Needs Inspection
-                              </span>
-                            ) : (
-                              <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-amber-500/20 text-amber-300 border-amber-500/40 shrink-0">
-                                In Repair
-                              </span>
-                            )}
+                            </div>
                           </div>
 
-                          {/* "Inspected" Action Button Requested by User */}
-                          {!isReady ? (
+                          {isPendingQC && (
                             <button
-                              id={`btn-inspected-${job.id}`}
                               type="button"
-                              onClick={() => handleMarkInspected(job)}
-                              className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer active:scale-95 ${isDoneByWorker
-                                  ? 'bg-[#34D399] hover:bg-emerald-400 text-stone-950 ring-2 ring-emerald-300/60 shadow-emerald-950/50'
-                                  : 'bg-stone-800 hover:bg-stone-700 text-emerald-400 border border-emerald-500/30'
-                                }`}
-                              title="Inspect vehicle and approve for Ready for Release"
+                              onClick={() => {
+                                setExpandedJobId(isExpanded ? null : job.id);
+                                setHodJobSummary(job.hodJobSummary || job.issueDescription || '');
+                                setHodRejectionNote(job.hod_rejection_note || '');
+                                setHodRejectionVoiceUrl(job.hod_voice_note_url || '');
+                              }}
+                              className={`mt-2 w-full min-h-[44px] rounded-xl ${isExpanded ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300' : 'bg-stone-800 hover:bg-stone-700 text-[#34D399] border-stone-700'} font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm border transition-all`}
                             >
-                              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                              <span>Inspected</span>
+                              <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
+                              <span>{isExpanded ? 'Close Inspection' : 'Inspect Job'}</span>
                             </button>
-                          ) : (
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-black bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
-                                <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
-                                <span>Inspected ✓</span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleReopenJob(job)}
-                                className="h-9 sm:h-10 px-2 sm:px-2.5 rounded-xl text-xs font-bold bg-stone-800 text-stone-400 hover:text-white border border-stone-700 flex items-center gap-1 cursor-pointer active:scale-95 transition"
-                                title="Reopen vehicle for more repair work"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Reopen</span>
-                              </button>
+                          )}
+
+                          {isExpanded && isPendingQC && (
+                            <div className="mt-3 pt-4 border-t border-stone-800/60 animate-in slide-in-from-top-2 duration-200">
+                              <h4 className="text-[11px] font-black uppercase text-stone-400 mb-3 flex items-center gap-1.5">
+                                <ShieldAlert className="w-3.5 h-3.5 text-blue-400" /> Mechanic Proof of Work
+                              </h4>
+                              
+                              <div className="space-y-4 mb-4 bg-stone-950/50 p-3 rounded-xl border border-stone-800/80">
+                                <div className="bg-gray-800/50 p-3 rounded-md mb-2 border border-gray-700/50">
+                                  <span className="text-[10px] font-black uppercase tracking-wider block mb-1 text-orange-400">Customer Reported Problem</span>
+                                  <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No intake description provided."}</p>
+                                  {job.voiceNoteUrl && (
+                                    <div className="mt-3">
+                                      <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Intake Voice Note</span>
+                                      <audio src={job.voiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Worker Notes</span>
+                                  <p className="text-sm font-medium text-stone-200 mt-1.5 whitespace-pre-wrap">{job.workerNotes || "No manual notes provided."}</p>
+                                </div>
+
+                                {job.workerVoiceNoteUrl ? (
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Voice Memo</span>
+                                    <audio src={job.workerVoiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
+                                  </div>
+                                ) : null}
+
+                                {(job.oldPartPhotoUrl || job.newPartPhotoUrl) && (
+                                  <div className="grid grid-cols-2 gap-3 mt-3">
+                                      {job.oldPartPhotoUrl && (
+                                        <div className="space-y-1">
+                                          <span className="text-[9px] font-black uppercase text-stone-500">Old Part</span>
+                                          <img src={job.oldPartPhotoUrl} alt="Before" className="w-full h-24 object-cover rounded-md border border-stone-800" />
+                                        </div>
+                                      )}
+                                      {job.newPartPhotoUrl && (
+                                        <div className="space-y-1">
+                                          <span className="text-[9px] font-black uppercase text-stone-500">New Part</span>
+                                          <img src={job.newPartPhotoUrl} alt="After" className="w-full h-24 object-cover rounded-md border border-emerald-900/40" />
+                                        </div>
+                                      )}
+                                  </div>
+                                )}
+                                {job.generalJobPhotoUrl && (
+                                  <div className="space-y-1 mt-3">
+                                    <span className="text-[9px] font-black uppercase text-stone-500">General Photo</span>
+                                    <img src={job.generalJobPhotoUrl} alt="General" className="w-full h-32 object-cover rounded-md border border-stone-800" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="space-y-4 mb-5 border-t border-stone-800/80 pt-4">
+                                <div className="space-y-2">
+                                  <span className="text-[10px] font-black uppercase text-stone-400 tracking-wider flex items-center gap-1">
+                                    <MessageSquare className="w-3.5 h-3.5 text-indigo-400" /> HOD Notes (Invoice Summary or Rejection Reason)
+                                  </span>
+                                  <textarea
+                                    value={isExpanded ? (hodRejectionNote || hodJobSummary) : ''}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                                      setHodJobSummary(e.target.value);
+                                      setHodRejectionNote(e.target.value);
+                                    }}
+                                    placeholder="Type rejection reason for worker OR final invoice summary..."
+                                    className="w-full rounded-xl bg-stone-950 border border-stone-700 p-3 text-sm font-medium text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all min-h-[90px]"
+                                  />
+                                </div>
+                                <div className="bg-stone-900/50 p-1 rounded-xl">
+                                  <VoiceRecorderField
+                                    audioUrl={hodRejectionVoiceUrl}
+                                    durationSeconds={0}
+                                    onAudioChange={(url) => setHodRejectionVoiceUrl(url)}
+                                    label="HOD Voice Feedback"
+                                    promptTitle="Record Voice Feedback"
+                                    promptSubtitle="Speak the reason for rejection or worker instructions."
+                                    buttonId={`record-hod-voice-${job.id}`}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <button
+                                  onClick={async () => {
+                                    const { error } = await supabase.from('jobs').update({ hod_review_pending: false, hod_job_summary: hodJobSummary, hod_name: hodName }).eq('id', job.id);
+                                    if (!error) {
+                                      const nextJob = { ...job, status: 'Ready/Released' as JobStatus, hodJobSummary };
+                                      setFloorJobs(prev => prev.filter(j => j.id !== job.id)); 
+                                      onUpdateJob?.(nextJob);
+                                      setExpandedJobId(null);
+                                      setHodJobSummary('');
+                                      setHodRejectionNote('');
+                                      setHodRejectionVoiceUrl('');
+                                      setSuccessToast("Job Approved & Sent to Checkout!");
+                                      setTimeout(() => setSuccessToast(null), 3500);
+                                    } else {
+                                      console.error(error);
+                                      alert("DB Error: " + error.message);
+                                    }
+                                  }}
+                                  className="bg-emerald-500 active:scale-95 hover:bg-emerald-600 border border-emerald-600 text-white font-black text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-1.5"
+                                >
+                                  <span>Approve to Owner</span>
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    let finalHodVoiceUrl = hodRejectionVoiceUrl;
+                                    if (finalHodVoiceUrl && (finalHodVoiceUrl.startsWith('data:') || finalHodVoiceUrl.startsWith('blob:'))) {
+                                      try {
+                                        const res = await fetch(finalHodVoiceUrl);
+                                        const blob = await res.blob();
+                                        const filePath = `${job.id}/hod_reject_voice_${Date.now()}.webm`; 
+                                        const { error: uploadErr } = await supabase.storage.from('garage-media').upload(filePath, blob, { contentType: blob.type });
+                                        if (!uploadErr) {
+                                          const { data } = supabase.storage.from('garage-media').getPublicUrl(filePath);
+                                          finalHodVoiceUrl = data.publicUrl;
+                                        }
+                                      } catch(e) {}
+                                    }
+
+                                    const { error } = await supabase.from('jobs').update({ 
+                                      status: 'IN_PROGRESS', 
+                                      hod_review_pending: false,
+                                      hod_rejection_note: hodRejectionNote,
+                                      hod_voice_note_url: finalHodVoiceUrl,
+                                      hod_name: hodName
+                                    }).eq('id', job.id);
+                                    
+                                    if (!error) {
+                                      const nextJob = { ...job, status: 'In Repair' as JobStatus, hod_rejection_note: hodRejectionNote, hod_voice_note_url: finalHodVoiceUrl };
+                                      setFloorJobs(prev => prev.map(j => j.id === job.id ? nextJob : j));
+                                      onUpdateJob?.(nextJob);
+                                      setExpandedJobId(null);
+                                      setHodRejectionNote('');
+                                      setHodRejectionVoiceUrl('');
+                                      setHodJobSummary('');
+                                      setSuccessToast("Job Rejected back to Bay.");
+                                      setTimeout(() => setSuccessToast(null), 3500);
+                                    } else {
+                                      console.error(error);
+                                      alert("DB Error: " + error.message);
+                                    }
+                                  }}
+                                  className="bg-stone-800 active:scale-95 border border-rose-900 hover:bg-rose-950 hover:border-rose-800 text-rose-500 font-extrabold text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all flex items-center justify-center gap-1.5"
+                                >
+                                  <AlertTriangle className="w-4 h-4 stroke-[2.5]" />
+                                  <span>Reject to Bay</span>
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
-
-                        {/* Vehicle & Customer Details */}
-                        <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
-                          <div className="text-sm sm:text-base font-bold text-white truncate">
-                            {job.vehicleModel}
-                          </div>
-                          {job.customerPhone && (
-                            <a
-                              href={`tel:${job.customerPhone}`}
-                              className="text-xs text-stone-400 hover:text-white flex items-center gap-1 font-mono transition"
-                            >
-                              <Phone className="w-3 h-3 text-[#34D399] shrink-0" />
-                              <span>{job.customerPhone}</span>
-                            </a>
-                          )}
-                        </div>
-
-                        {/* Issue Description */}
-                        <p className="text-xs sm:text-sm text-stone-300 mb-2 leading-snug line-clamp-2">
-                          {job.issueDescription || 'Diagnostic & maintenance procedure'}
-                        </p>
-
-                        {/* Workflow Status Banner */}
-                        {isDoneByWorker && (
-                          <div className="mb-2.5 p-2 sm:p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 text-xs text-indigo-200 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />
-                              <span><strong>{job.mechanicAssigned}</strong> marked work done. Please inspect and click <strong>Inspected</strong>.</span>
-                            </div>
-                            <span className="text-[10px] font-mono font-bold text-indigo-300 shrink-0 uppercase tracking-wider">Awaiting HOD</span>
-                          </div>
-                        )}
-
-                        {isReady && (
-                          <div className="mb-2.5 p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span>Inspected by <strong>{job.inspectedBy || hodName}</strong>. Vehicle is ready for release!</span>
-                            </div>
-                            {onNavigateToCheckout && (
-                              <button
-                                type="button"
-                                onClick={() => onNavigateToCheckout(job.id)}
-                                className="text-[11px] font-bold text-emerald-300 hover:text-white underline shrink-0 cursor-pointer"
-                              >
-                                Release / Checkout →
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {isInRepair && (
-                          <div className="mb-2.5 p-1.5 sm:p-2 rounded-xl bg-stone-950/60 border border-stone-800 text-xs text-stone-300 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                              <span>Work ongoing with <strong>{job.mechanicAssigned || 'Technician'}</strong></span>
-                            </div>
-                            <span className="text-[11px] text-stone-400 font-mono">{job.timeElapsedMinutes || 45} mins</span>
-                          </div>
-                        )}
-
-                        {/* Footer: Assigned Mechanic & Labor Fee */}
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-800/80 text-xs text-stone-400">
-                          <div className="flex items-center gap-1.5 text-stone-300 truncate">
-                            <UserCheck className="w-3.5 h-3.5 text-[#34D399] shrink-0" />
-                            <span className="truncate">Mechanic: <strong className="text-white">{job.mechanicAssigned || 'Unassigned'}</strong></span>
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs text-stone-400 shrink-0">
-                            {job.laborFeeFcfa !== undefined && (
-                              <span className="font-mono text-[#34D399] font-bold">
-                                {job.laborFeeFcfa.toLocaleString()} FCFA
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* ESTIMATE BUTTON: HOD Add-on Request */}
-                        {!isReady && (
-                          <div className="pt-2 border-t border-stone-800/80 mt-2">
-                            <button
-                              type="button"
-                              onClick={() => setEstimatingJob(job)}
-                              className="w-full h-8 sm:h-9 bg-stone-800 hover:bg-stone-700 active:scale-95 text-stone-300 rounded-lg flex items-center justify-center gap-2 shadow-sm shrink-0 cursor-pointer text-[11px] sm:text-xs font-bold border border-stone-700 transition"
-                            >
-                               <Printer className="w-3.5 h-3.5 text-stone-400" />
-                               <span>Send Add-on Estimate</span>
-                            </button>
-                          </div>
-                        )}
                       </div>
                     );
                   })}

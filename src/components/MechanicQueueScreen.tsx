@@ -7,7 +7,7 @@ import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { MotologaLogo } from './MotologaLogo';
 import { VoiceRecorderField } from './VoiceRecorderField';
 import { DviLoggingWidget } from './DviLoggingWidget';
-import { Clock, Camera, CheckCircle2, User, Package, ShieldAlert, Check, Phone, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Clock, Camera, CheckCircle2, User, Package, ShieldAlert, Check, Phone, RefreshCw, AlertTriangle, MessageSquare } from 'lucide-react';
 
 interface MechanicQueueScreenProps {
   jobs: Job[];
@@ -18,6 +18,7 @@ interface MechanicQueueScreenProps {
   onSyncBay?: () => void | Promise<void>;
   userRole?: 'owner' | 'hod' | 'worker';
   mechanicFilters?: string[];
+  currentUserDisplayName?: string;
 }
 
 export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
@@ -29,9 +30,14 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
   onSyncBay,
   userRole = 'worker',
   mechanicFilters = [],
+  currentUserDisplayName,
 }) => {
   const [filterMechanic, setFilterMechanic] = useState<string>('All');
   const [authorizedFindings, setAuthorizedFindings] = useState<any[]>([]);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [hodJobSummary, setHodJobSummary] = useState<string>('');
+  const [hodRejectionNote, setHodRejectionNote] = useState<string>('');
+  const [hodRejectionVoiceUrl, setHodRejectionVoiceUrl] = useState<string>('');
   const [activePhotoTarget, setActivePhotoTarget] = useState<{
     jobId: string;
     type: 'old-part' | 'new-part' | 'general-job';
@@ -75,9 +81,18 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
   }, []);
 
   // Filter out released jobs AND jobs that are merely marked complete/ready for checkout
-  const activeJobs = jobs.filter((j) => !j.released && j.status !== 'Ready/Released');
+  let activeJobs = jobs.filter((j) => !j.released && j.status !== 'Ready/Released');
+  if (userRole === 'worker') {
+    activeJobs = activeJobs.filter(j => j.status !== 'Pending QC');
+  }
 
   const previousStatuses = React.useRef<Record<string, string>>({});
+
+  // Fix Infinite Loop: Use a stable reference (string) to prevent unnecessary useEffect triggers
+  // if the parent component re-passes a newly allocated jobs array on every render.
+  const activeJobsHash = React.useMemo(() => {
+    return activeJobs.map(j => `${j.id}:${j.status}`).join(',');
+  }, [activeJobs]);
 
   useEffect(() => {
     // Check for recently unpaused jobs to alert the mechanic
@@ -88,7 +103,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       }
       previousStatuses.current[job.id] = job.status;
     });
-  }, [jobs]); // Rerun when jobs change
+  }, [activeJobsHash]); // Rerun only when the actual job IDs or statuses change
 
   useEffect(() => {
     // Dynamically pull in authorized additional findings for the active queue
@@ -105,7 +120,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       }
     };
     fetchAuthorized();
-  }, [jobs]); // Tie it to the jobs state so onSyncBay naturally re-triggers this
+  }, [activeJobsHash]); // Tie it to a stable job hash
 
   const filteredJobs = filterMechanic === 'All'
     ? activeJobs
@@ -147,29 +162,6 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
 
       const jobEdits = localEdits[job.id] || {};
       
-      const updatePayload: any = { status: 'pending_checkout' };
-
-      if (jobEdits.laborFeeFcfa !== undefined) {
-         updatePayload.labor_fee = jobEdits.laborFeeFcfa;
-      }
-      if (calculatedPartsFee > 0) {
-         updatePayload.parts_fee = calculatedPartsFee;
-      }
-      if (jobEdits.partSource !== undefined) {
-         updatePayload.part_source = jobEdits.partSource;
-      }
-
-      const { error: updateError } = await supabase
-        .from('jobs')
-        .update(updatePayload)
-        .eq('id', job.id);
-      
-      if (updateError) {
-        console.error("Supabase Update Error:", updateError.message, updateError.details);
-        alert(`Failed to save: ${updateError.message}`);
-        return;
-      }
-
       // Safely abstract uploads branching strictly into job_media relationships
       const abstractUploadAndLink = async (urlStr: string | undefined, prefix: string) => {
         if (!urlStr || (!urlStr.startsWith('data:') && !urlStr.startsWith('blob:'))) return urlStr;
@@ -201,18 +193,46 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       let finalGeneralPhoto = edits.generalJobPhotoUrl !== undefined ? edits.generalJobPhotoUrl : job.generalJobPhotoUrl;
       finalGeneralPhoto = await abstractUploadAndLink(finalGeneralPhoto, 'general_job');
       
-      const photoPayload: any = {};
-      if (finalOldPart && finalOldPart.startsWith('http')) photoPayload.old_part_photo_url = finalOldPart;
-      if (finalNewPart && finalNewPart.startsWith('http')) photoPayload.new_part_photo_url = finalNewPart;
-      if (finalGeneralPhoto && finalGeneralPhoto.startsWith('http')) photoPayload.general_job_photo_url = finalGeneralPhoto;
+      // Photos are already safely injected into job_media via abstractUploadAndLink
+      // No structural mutation on the jobs table is required for media.
+
+      const updatePayload: any = { 
+        status: 'COMPLETED',
+        hod_review_pending: true,
+        worker_notes: finalNotes,
+        worker_voice_note_url: finalVoiceUrl,
+        hod_rejection_note: null,
+        hod_voice_note_url: null
+      };
+
+      if (currentUserDisplayName) {
+        updatePayload.mechanic_name = currentUserDisplayName;
+      }
+
+      if (jobEdits.laborFeeFcfa !== undefined) {
+         updatePayload.labor_fee = jobEdits.laborFeeFcfa;
+      }
+      if (calculatedPartsFee > 0) {
+         updatePayload.parts_fee = calculatedPartsFee;
+      }
+      if (jobEdits.partSource !== undefined) {
+         updatePayload.part_source = jobEdits.partSource;
+      }
+
+      const { error: updateError } = await supabase
+        .from('jobs')
+        .update(updatePayload)
+        .eq('id', job.id);
       
-      if (Object.keys(photoPayload).length > 0) {
-        await supabase.from('jobs').update(photoPayload).eq('id', job.id);
+      if (updateError) {
+        console.error("Supabase Update Error:", updateError.message, updateError.details);
+        alert(`Failed to save: ${updateError.message}`);
+        return;
       }
       
       const updated: Job = {
         ...job,
-        status: 'Ready/Released',
+        status: 'Pending QC',
         diagnosticNotes: finalNotes,
         diagnosticVoiceNoteUrl: finalVoiceUrl,
         voiceNoteDurationSeconds: finalVoiceDur,
@@ -220,6 +240,9 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
         newPartPhotoUrl: finalNewPart,
         generalJobPhotoUrl: finalGeneralPhoto,
         partSource: edits.partSource || job.partSource,
+        hod_rejection_note: undefined,
+        hod_voice_note_url: undefined,
+        mechanic_name: currentUserDisplayName || job.mechanic_name,
       };
       onUpdateJob(updated); // Sync local state globally triggering parent loadJobs via queue bridge
       
@@ -368,6 +391,24 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     <p className="text-center text-rose-700 font-bold text-xs mt-1.5 max-w-[220px] leading-tight drop-shadow-sm">Work suspended! Owner/HOD is awaiting customer authorization on a critical quote.</p>
                   </div>
                 )}
+                {/* HOD Rejection Alert for Worker */}
+                {(job.hod_rejection_note || job.hod_voice_note_url) && job.status !== 'Ready/Released' && job.status !== 'Pending QC' && (
+                  <div className="bg-red-100 border border-red-500 text-red-700 p-3 rounded mb-4 shadow-sm animate-in fade-in">
+                    <h4 className="text-xs font-black uppercase flex items-center gap-1.5 mb-2">
+                      <AlertTriangle className="w-4 h-4" /> ⚠️ HOD Revision Required
+                    </h4>
+                    {job.hod_rejection_note && (
+                      <p className="text-[13px] font-semibold mb-2 whitespace-pre-wrap leading-relaxed">{job.hod_rejection_note}</p>
+                    )}
+                    {job.hod_voice_note_url && (
+                      <div className="bg-white/60 rounded-lg p-2 flex items-center gap-3 mt-1">
+                         <span className="text-[10px] uppercase font-bold block shrink-0 tracking-wider">Voice Feedback</span>
+                         <audio controls src={job.hod_voice_note_url} className="w-full mt-2" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* CARD LAYOUT: Cameroon License Plate badge at top, Status Chip (In Repair), and Time Elapsed */}
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
                   <div className="space-y-1">
@@ -697,13 +738,31 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                   )}
                 </div>
 
-                {/* PRIMARY CTA: A full-width Mint Green button: "Mark Job Complete" */}
                 <div>
                   {isCompleted ? (
                     <div className="w-full min-h-[48px] rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold flex items-center justify-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       <span>Job Completed • Ready for Customer Checkout</span>
                     </div>
+                  ) : job.status === 'Pending QC' && userRole === 'hod' ? (
+                    <button
+                      id={`review-qc-btn-${job.id}`}
+                      type="button"
+                      onClick={() => {
+                        if (expandedJobId === job.id) {
+                          setExpandedJobId(null);
+                        } else {
+                          setExpandedJobId(job.id);
+                          setHodJobSummary(job.issueDescription || '');
+                          setHodRejectionNote('');
+                          setHodRejectionVoiceUrl('');
+                        }
+                      }}
+                      className={`w-full min-h-[50px] rounded-xl ${expandedJobId === job.id ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-[#0E2829] hover:bg-slate-800 text-[#34D399]'} font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-sm border ${expandedJobId === job.id ? 'border-slate-300' : 'border-[#142F30]'} cursor-pointer transition-all`}
+                    >
+                      <ShieldAlert className="w-5 h-5 stroke-[2.5]" />
+                      <span>{expandedJobId === job.id ? 'Close Inspection' : 'Inspect Quality'}</span>
+                    </button>
                   ) : (
                     <button
                       id={`mark-complete-btn-${job.id}`}
@@ -712,10 +771,126 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       className="w-full min-h-[50px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-sm border border-[#1EBE5D] cursor-pointer transition-all"
                     >
                       <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                      <span>Complete Job & Send to Checkout</span>
+                      <span>{userRole === 'worker' ? 'Complete Job & Send to HOD' : 'Complete Job'}</span>
                     </button>
                   )}
                 </div>
+
+                {/* HOD Expanding QC Card */}
+                {expandedJobId === job.id && userRole === 'hod' && (
+                  <div className="mt-4 pt-4 border-t-2 border-slate-100 animate-in slide-in-from-top-4 duration-300">
+                    <h4 className="text-[11px] font-black uppercase text-slate-800 mb-3 flex items-center gap-1.5"><ShieldAlert className="w-4 h-4 text-emerald-500" /> Mechanic Proof of Work</h4>
+                    
+                    {/* Worker Evidence */}
+                    <div className="space-y-4 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-inner">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Worker Notes</span>
+                        <p className="text-sm font-bold text-slate-800 mt-1 whitespace-pre-wrap">{job.workerNotes || "No notes provided."}</p>
+                      </div>
+
+                      {job.workerVoiceNoteUrl ? (
+                         <div>
+                          <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Voice Memo</span>
+                          <audio src={job.workerVoiceNoteUrl} controls className="w-full h-10 mt-1 rounded-lg" />
+                         </div>
+                      ) : null}
+
+                      {(job.oldPartPhotoUrl || job.newPartPhotoUrl) && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                           {job.oldPartPhotoUrl && <img src={job.oldPartPhotoUrl} alt="Before" className="w-full h-24 object-cover rounded-md" />}
+                           {job.newPartPhotoUrl && <img src={job.newPartPhotoUrl} alt="After" className="w-full h-24 object-cover rounded-md" />}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* HOD Input */}
+                    <div className="space-y-4 mb-5 border-t border-slate-200 pt-4">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1 mb-1"><MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> HOD Notes (Invoice Summary or Rejection Reason)</span>
+                        <textarea
+                          value={expandedJobId === job.id ? (hodRejectionNote || hodJobSummary) : ''}
+                          onChange={(e) => {
+                            setHodJobSummary(e.target.value);
+                            setHodRejectionNote(e.target.value);
+                          }}
+                          placeholder="Type rejection reason for worker OR final invoice summary..."
+                          className="w-full rounded-xl border border-slate-300 p-3 text-[13px] font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all min-h-[80px]"
+                        />
+                      </div>
+                      
+                      <VoiceRecorderField
+                        audioUrl={hodRejectionVoiceUrl}
+                        durationSeconds={0}
+                        onAudioChange={(url) => setHodRejectionVoiceUrl(url)}
+                        label="HOD Voice Feedback"
+                        promptTitle="Record Voice Feedback"
+                        promptSubtitle="Speak the reason for rejection or worker instructions."
+                        buttonId={`record-hod-voice-${job.id}`}
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={async () => {
+                          const { error } = await supabase.from('jobs').update({ hod_review_pending: false, hod_job_summary: hodJobSummary }).eq('id', job.id);
+                          if (!error) {
+                            onUpdateJob({ ...job, status: 'Ready/Released', hodJobSummary });
+                            setExpandedJobId(null);
+                            setHodJobSummary('');
+                            setHodRejectionNote('');
+                            setHodRejectionVoiceUrl('');
+                          } else {
+                            console.error(error);
+                            alert("DB Error: " + error.message);
+                          }
+                        }}
+                        className="bg-emerald-500 active:scale-95 hover:bg-emerald-600 border border-emerald-600 text-white font-black text-xs min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-1"
+                      >
+                        <span>Approve & Send to Owner</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          let finalHodVoiceUrl = hodRejectionVoiceUrl;
+                          if (finalHodVoiceUrl && (finalHodVoiceUrl.startsWith('data:') || finalHodVoiceUrl.startsWith('blob:'))) {
+                            try {
+                              const res = await fetch(finalHodVoiceUrl);
+                              const blob = await res.blob();
+                              const filePath = `${job.id}/hod_reject_voice_${Date.now()}.webm`; 
+                              const { error: uploadErr } = await supabase.storage.from('garage-media').upload(filePath, blob, { contentType: blob.type });
+                              if (!uploadErr) {
+                                const { data } = supabase.storage.from('garage-media').getPublicUrl(filePath);
+                                finalHodVoiceUrl = data.publicUrl;
+                              }
+                            } catch(e) {}
+                          }
+                          
+                          const { error } = await supabase.from('jobs').update({ 
+                            status: 'IN_PROGRESS', 
+                            hod_review_pending: false,
+                            hod_rejection_note: hodRejectionNote,
+                            hod_voice_note_url: finalHodVoiceUrl
+                          }).eq('id', job.id);
+                          
+                          if (!error) {
+                            onUpdateJob({ ...job, status: 'In Repair', hod_rejection_note: hodRejectionNote, hod_voice_note_url: finalHodVoiceUrl });
+                            setExpandedJobId(null);
+                            setHodRejectionNote('');
+                            setHodRejectionVoiceUrl('');
+                            setHodJobSummary('');
+                          } else {
+                            console.error(error);
+                            alert("DB Error: " + error.message);
+                          }
+                        }}
+                        className="bg-white active:scale-95 border-2 border-rose-200 hover:bg-rose-50 text-rose-600 font-extrabold text-[11px] min-h-[44px] rounded-xl w-full transition-all flex items-center justify-center gap-1"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Reject to Bay</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -761,6 +936,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
           }}
         />
       )}
+
     </div>
   );
 };

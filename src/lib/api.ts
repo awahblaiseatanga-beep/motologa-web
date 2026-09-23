@@ -38,9 +38,23 @@ export const uploadMedia = async (jobId: string, file: Blob, type: string) => {
 export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
   const status = dbJob.status as string;
   let uiStatus: Job['status'] = 'Diagnosis';
-  if (status === 'active' || status === 'in_progress') uiStatus = 'In Repair';
-  if (status === 'ready' || status === 'pending_checkout') uiStatus = 'Ready/Released';
+  if (status === 'awaiting_approval') uiStatus = 'Awaiting Approval';
+  if (status === 'active' || status === 'in_progress' || status === 'IN_PROGRESS') uiStatus = 'In Repair';
   if (status === 'paused') uiStatus = 'Paused';
+  if (status === 'pending_hod_review' || status === 'PENDING_HOD_REVIEW') uiStatus = 'Pending QC';
+  
+  if (status === 'completed' || status === 'COMPLETED' || status === 'RELEASED') {
+    if (dbJob.hod_review_pending === true) {
+      uiStatus = 'Pending QC';
+    } else if (dbJob.hod_review_pending === false && (!dbJob.released)) {
+      uiStatus = 'Ready/Released';
+    } else {
+      uiStatus = 'Work Done'; // e.g., released is true, or fallback
+    }
+  }
+
+  // Legacy fallback strings
+  if (status === 'ready' || status === 'pending_checkout' || status === 'PENDING_CHECKOUT') uiStatus = 'Ready/Released';
 
   const media = (dbJob.job_media || []) as DbJobMedia[];
 
@@ -53,13 +67,22 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
     issueDescription: (dbJob.description as string) || (dbJob.title as string) || (dbJob.issue_description as string) || '',
     estimateNotes: (dbJob.estimate_notes as string) || '',
     assigned_to: dbJob.assigned_to as string | undefined,
-    mechanic: (Array.isArray(dbJob.mechanic) ? dbJob.mechanic[0] : dbJob.mechanic) as { full_name?: string; email?: string } | undefined,
+    mechanic: (() => {
+      const mech: any = Array.isArray(dbJob.mechanic) ? dbJob.mechanic[0] : dbJob.mechanic;
+      if (!mech) return undefined;
+      return {
+        full_name: mech.profiles?.full_name || mech.full_name,
+        email: mech.profiles?.email || mech.email
+      };
+    })(),
+    mechanic_name: (dbJob.mechanic_name as string) || undefined,
+    hod_name: (dbJob.hod_name as string) || undefined,
     status: uiStatus,
     createdAt: new Date((dbJob.created_at as string) || Date.now()).getTime(),
     partSource: 'Garage Stock',
     laborFeeFcfa: (dbJob.labor_fee as number) || 0,
     partsFeeFcfa: (dbJob.parts_fee as number) || 0,
-    released: status === 'ready',
+    released: status === 'ready' || status === 'RELEASED',
     dashboardPhotoUrl: media.find((m) => m.type === 'intake_dash')?.file_url || '',
     exteriorPhotoUrl: media.find((m) => m.type === 'intake_body')?.file_url || '',
     oldPartPhotoUrl: media.find((m) => m.type === 'old_part')?.file_url || '',
@@ -67,7 +90,23 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
     generalJobPhotoUrl: media.find((m) => m.type === 'general_job')?.file_url || (dbJob.general_job_photo_url as string) || '',
     voiceNoteUrl: media.find((m) => m.type === 'intake_voice_note')?.file_url || media.find((m) => m.type === 'voice_note')?.file_url || '',
     diagnosticVoiceNoteUrl: media.find((m) => m.type === 'diagnostic_voice_note')?.file_url || '',
+    workerVoiceNoteUrl: media.find((m) => m.type === 'worker_voice_note')?.file_url || (dbJob.worker_voice_note_url as string) || '',
     diagnosticNotes: (dbJob.diagnostic_notes as string) || (dbJob.mechanic_notes as string) || '',
+    workerNotes: (dbJob.worker_notes as string) || '',
+    hodJobSummary: (dbJob.hod_job_summary as string) || '',
+    hod_rejection_note: (dbJob.hod_rejection_note as string) || null,
+    hod_voice_note_url: (dbJob.hod_voice_note_url as string) || null,
+    garageInfo: dbJob.garages ? {
+      name: (dbJob.garages as any).name || '',
+      location: (dbJob.garages as any).location,
+      phone: (dbJob.garages as any).phone,
+      email: (dbJob.garages as any).email,
+      ownerPhone: (dbJob.garages as any).owner?.phone || (dbJob.garages as any).profiles?.phone,
+      ownerEmail: (dbJob.garages as any).owner?.email || (dbJob.garages as any).profiles?.email,
+      brandColor: (dbJob.garages as any).brand_color,
+      invoiceMessage: (dbJob.garages as any).invoice_message,
+      watermarkUrl: (dbJob.garages as any).watermark_url,
+    } : undefined
   };
 };
 
@@ -79,10 +118,10 @@ export const fetchJobsForGarage = async (garageId: string) => {
       job_media(*),
       customers(name, phone),
       vehicles(make, model, plate),
-      mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
+      mechanic:garage_members!jobs_assigned_to_fkey(id, role, profiles(full_name, email)),
+      garages ( name, brand_color, invoice_message, watermark_url, owner_id )
     `)
-    .eq('garage_id', garageId)
-    .neq('status', 'completed');
+    .eq('garage_id', garageId);
 
   if (error) {
     console.error('Error fetching jobs', error);
@@ -100,10 +139,11 @@ export const fetchJobsForMechanic = async (mechanicUserId: string) => {
       job_media(*),
       customers(name, phone),
       vehicles(make, model, plate),
-      mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
+      mechanic:garage_members!jobs_assigned_to_fkey(id, role, profiles(full_name, email)),
+      garages ( name, brand_color, invoice_message, watermark_url, owner_id )
     `)
     .eq('assigned_to', mechanicUserId)
-    .neq('status', 'completed');
+    .eq('status', 'IN_PROGRESS');
 
   if (error) {
     console.error('Error fetching jobs', error);
@@ -121,10 +161,11 @@ export const fetchCompletedInvoicesToday = async (garageId: string) => {
       job_media(*),
       customers(name, phone),
       vehicles(make, model, plate),
-      mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)
+      mechanic:garage_members!jobs_assigned_to_fkey(id, role, profiles(full_name, email)),
+      garages ( name, brand_color, invoice_message, watermark_url, owner_id )
     `)
     .eq('garage_id', garageId)
-    .eq('status', 'completed')
+    .in('status', ['completed', 'COMPLETED', 'RELEASED'])
     .order('created_at', { ascending: false });
 
   if (error || !data) return [];
@@ -220,18 +261,33 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
 
 export const updateJobStatus = async (jobId: string, status: string, laborFee: number = 0) => {
   let dbStatus = 'pending';
-  if (status === 'In Repair') dbStatus = 'in_progress';
-  if (status === 'Ready/Released') dbStatus = 'pending_checkout';
+  if (status === 'In Repair') dbStatus = 'IN_PROGRESS';
   if (status === 'Paused') dbStatus = 'paused';
+
+  // Create base payload mapping 
+  const payload: any = { status: dbStatus, labor_fee: laborFee };
+
+  if (status === 'Ready/Released') {
+    payload.status = 'COMPLETED';
+    payload.hod_review_pending = false;
+  }
+  
+  if (status === 'Pending QC') {
+    payload.status = 'COMPLETED';
+    payload.hod_review_pending = true;
+  }
 
   const { data, error } = await supabase
     .from('jobs')
-    .update({ status: dbStatus, labor_fee: laborFee })
+    .update(payload)
     .eq('id', jobId)
     .select()
     .single();
 
-  if (error || !data) throw new Error("A database error occurred while updating the job status.");
+  if (error || !data) {
+    console.error("DB Error:", error);
+    throw error;
+  }
 };
 
 export const fetchDeferredRepairs = async (jobIds: string[]): Promise<DeferredRepair[]> => {

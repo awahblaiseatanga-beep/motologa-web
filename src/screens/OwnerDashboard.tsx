@@ -41,7 +41,8 @@ import {
   ChevronDown,
   Link2,
   DollarSign,
-  Send
+  Send,
+  CheckCircle
 } from 'lucide-react';
 
 export interface OwnerAnalyticsMetrics {
@@ -118,8 +119,8 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
   };
 
   useEffect(() => {
-    loadData();
-  }, [garage.id]);
+    loadData(false);
+  }, [garage.id, activeScreen]);
 
   // Operational Mutations
   const handleCreateJob = async (newJob: Job, assignedToId: string) => {
@@ -338,7 +339,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Total Revenue</span>
@@ -369,6 +370,22 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                 <span className="text-stone-300 font-medium">Currently in service</span>
                 <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-0.5">
                   See Floor View <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Completed Jobs</span>
+                <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  <CheckCircle className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-white tracking-tight">{metrics.completedJobsCount}</div>
+              <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
+                <span className="text-stone-300 font-medium">Successfully delivered</span>
+                <span className="text-sky-400 font-bold text-[11px] flex items-center gap-0.5">
+                  <CheckCircle className="w-3 h-3" />
                 </span>
               </div>
             </div>

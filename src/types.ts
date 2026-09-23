@@ -1,4 +1,4 @@
-export type JobStatus = 'Diagnosis' | 'Awaiting Approval' | 'In Repair' | 'Paused' | 'Work Done' | 'Ready/Released';
+export type JobStatus = 'Diagnosis' | 'Awaiting Approval' | 'In Repair' | 'Paused' | 'Pending QC' | 'Work Done' | 'Ready/Released';
 
 export type PartSource = 'Customer-Supplied Part' | 'Worker Bought' | 'Garage Stock' | 'Garage Inventory';
 
@@ -29,6 +29,8 @@ export interface Job {
   vehicleModel: string;
   assigned_to?: string;
   mechanic?: { full_name?: string; email?: string };
+  mechanic_name?: string;
+  hod_name?: string;
   status: JobStatus;
   createdAt: number;
   timeElapsedMinutes?: number;
@@ -44,17 +46,34 @@ export interface Job {
   issueDescription?: string;
   estimateNotes?: string;
   diagnosticNotes?: string;
+  workerNotes?: string;
+  hodJobSummary?: string;
   voiceNoteUrl?: string;
+  workerVoiceNoteUrl?: string;
   diagnosticVoiceNoteUrl?: string;
   voiceNoteDurationSeconds?: number;
-  released: boolean;
+  hod_rejection_note?: string;
+  hod_voice_note_url?: string;
+  hod_review_pending?: boolean;
   releasedAt?: number;
+  released?: boolean;
   mechanicAssigned?: string;
   workerCompleted?: boolean;
   workerCompletedAt?: number;
   inspectedByHod?: boolean;
   inspectedAt?: number;
   inspectedBy?: string;
+  garageInfo?: {
+    name: string;
+    location?: string;
+    phone?: string;
+    email?: string;
+    ownerPhone?: string;
+    ownerEmail?: string;
+    brandColor?: string;
+    invoiceMessage?: string;
+    watermarkUrl?: string;
+  };
 }
 
 export interface AppointmentReservation {
@@ -145,6 +164,12 @@ export interface Garage {
   subscription_status: string;
   trial_ends_at: string;
   created_at?: string;
+  location?: string;
+  phone?: string;
+  email?: string;
+  brand_color?: string;
+  invoice_message?: string;
+  watermark_url?: string;
 }
 
 export interface Department {

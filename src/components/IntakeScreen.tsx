@@ -71,6 +71,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
 
   const [licensePlate, setLicensePlate] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>('');
   const [vehicleModel, setVehicleModel] = useState<string>('');
   
   // Store the UUID of the selected mechanic ('unassigned' by default)
@@ -105,6 +106,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       id: '', // UUID is assigned by Supabase backend
       licensePlate: trimmedPlate,
       customerPhone: customerPhone.startsWith('+237') ? customerPhone : `+237 ${customerPhone.trim()}`,
+      customerName: customerName.trim() || 'Walk-in Client',
       vehicleModel: vehicleModel.trim() || 'Unspecified Vehicle',
       assigned_to: assignedMechanic,
       status: 'Diagnosis' as JobStatus,
@@ -147,6 +149,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       // Reset inputs for next car
       setLicensePlate('');
       setCustomerPhone('');
+      setCustomerName('');
       setVehicleModel('');
       setDashboardPhoto('');
       setExteriorPhoto('');
@@ -253,6 +256,22 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
             <p className="text-[11px] text-slate-400">
               Orange Money / MTN Mobile Money & WhatsApp ready
             </p>
+          </div>
+
+          {/* INPUT 3: Customer Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-slate-500" />
+              3. Customer Name
+            </label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="e.g. Jean Dupont"
+              maxLength={50}
+              className="w-full px-3.5 py-3 rounded-xl border-2 border-slate-300 bg-white font-semibold text-slate-800 text-base focus:border-emerald-600 focus:outline-none min-h-[48px]"
+            />
           </div>
 
           {/* Vehicle Make & Model Helper */}

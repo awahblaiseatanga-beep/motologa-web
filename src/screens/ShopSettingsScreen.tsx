@@ -24,6 +24,13 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
   // Logo State
   const [existingLogoUrl, setExistingLogoUrl] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  // Invoice Branding State
+  const [brandColor, setBrandColor] = useState('#1e3a8a');
+  const [invoiceMessage, setInvoiceMessage] = useState('');
+  const [existingWatermarkUrl, setExistingWatermarkUrl] = useState('');
+  const [watermarkFile, setWatermarkFile] = useState<File | null>(null);
+  const watermarkInputRef = useRef<HTMLInputElement>(null);
   
   // Department State
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -84,6 +91,19 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         setCurrencySymbol(data.currency_symbol || 'FCFA');
         setLowStockThreshold(data.low_stock_threshold || 5);
         setInventoryMarkup(data.inventory_markup_percentage || 10);
+      }
+
+      if (garageId) {
+        const { data: garageData } = await supabase
+          .from('garages')
+          .select('brand_color, invoice_message, watermark_url')
+          .eq('id', garageId)
+          .single();
+        if (garageData) {
+          if (garageData.brand_color) setBrandColor(garageData.brand_color);
+          if (garageData.invoice_message) setInvoiceMessage(garageData.invoice_message);
+          if (garageData.watermark_url) setExistingWatermarkUrl(garageData.watermark_url);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -146,9 +166,48 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         throw new Error(updateError.message || "Failed to update settings");
       }
 
-      // 3. Success state
+      // 3. Upload Watermark if staged
+      let finalWatermarkUrl = existingWatermarkUrl;
+      if (watermarkFile) {
+        const fileExt = watermarkFile.name.split('.').pop();
+        const fileName = `watermark_${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('garage-media')
+          .upload(`settings/${fileName}`, watermarkFile, { contentType: watermarkFile.type });
+          
+        if (uploadError) {
+          throw new Error(`Watermark Upload Failed: ${uploadError.message}`);
+        }
+        
+        const { data: urlData } = supabase.storage
+          .from('garage-media')
+          .getPublicUrl(`settings/${fileName}`);
+          
+        finalWatermarkUrl = urlData.publicUrl;
+      }
+
+      // 4. Update Garages Table
+      if (garageId) {
+        const { error: garageUpdateError } = await supabase
+          .from('garages')
+          .update({
+            brand_color: brandColor,
+            invoice_message: invoiceMessage,
+            watermark_url: finalWatermarkUrl
+          })
+          .eq('id', garageId);
+          
+        if (garageUpdateError) {
+          throw new Error(garageUpdateError.message || "Failed to update garage branding");
+        }
+      }
+
+      // 5. Success state
       setExistingLogoUrl(finalLogoUrl);
-      setLogoFile(null); // Clear staged file after successful upload
+      setLogoFile(null);
+      setExistingWatermarkUrl(finalWatermarkUrl);
+      setWatermarkFile(null); // Clear staged watermark file
       setSuccessToast(true);
       setTimeout(() => setSuccessToast(false), 4000);
 
@@ -171,6 +230,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
 
   // Derive preview URL safely
   const activeLogoPreview = logoFile ? URL.createObjectURL(logoFile) : existingLogoUrl;
+  const activeWatermarkPreview = watermarkFile ? URL.createObjectURL(watermarkFile) : existingWatermarkUrl;
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 sm:p-6 pb-24">
@@ -340,7 +400,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                   </label>
                   <input
                     type="text"
-                    required
+
                     maxLength={50}
                     value={newDeptName}
                     onChange={(e) => setNewDeptName(e.target.value)}
@@ -354,7 +414,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                   </label>
                   <input
                     type="text"
-                    required
+
                     maxLength={50}
                     value={newDeptRole}
                     onChange={(e) => setNewDeptRole(e.target.value)}
@@ -481,6 +541,101 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                 <AlertTriangle className="w-4 h-4 text-stone-600 flex-shrink-0" />
                 This message will automatically append to the bottom of all digital invoices sent to your customers when a job is marked paid. Use it for warranties, thank-yous, or operating hours.
               </p>
+          </div>
+        </div>
+
+        {/* Invoice Branding Block */}
+        <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 text-stone-400" />
+            Invoice Customization
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
+                  Brand Theme Color
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={brandColor}
+                    onChange={(e) => setBrandColor(e.target.value)}
+                    className="w-12 h-10 bg-stone-950/50 border border-stone-800 rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={brandColor}
+                    onChange={(e) => setBrandColor(e.target.value)}
+                    placeholder="#1e3a8a"
+                    className="flex-1 bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
+                  Default Invoice Message
+                </label>
+                <textarea
+                  value={invoiceMessage}
+                  onChange={(e) => setInvoiceMessage(e.target.value)}
+                  placeholder="e.g. Quality service. Reliable repairs. Happier journeys."
+                  rows={3}
+                  className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all resize-none font-medium"
+                />
+                <p className="text-[10px] text-stone-500 mt-1 uppercase tracking-wider">
+                  Appears directly under the "INVOICE" title.
+                </p>
+              </div>
+            </div>
+
+            {/* Watermark Upload */}
+            <div className="flex flex-col">
+              <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
+                Garage Watermark (Invoices)
+              </label>
+              
+              <div 
+                className="flex-1 bg-stone-950/50 border border-stone-800 border-dashed rounded-xl p-4 flex flex-col items-center justify-center gap-4 hover:bg-stone-900/80 transition-colors cursor-pointer group"
+                onClick={() => watermarkInputRef.current?.click()}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={watermarkInputRef}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setWatermarkFile(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+                
+                {activeWatermarkPreview ? (
+                  <div className="relative group/img w-full h-24">
+                    <img 
+                      src={activeWatermarkPreview} 
+                      alt="Invoice Watermark" 
+                      className="w-full h-full object-contain rounded-lg opacity-40 bg-white"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                      <ImageIcon className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-stone-900 border border-stone-800 flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-stone-600" />
+                  </div>
+                )}
+                
+                <div className="text-center">
+                  <p className="text-sm font-medium text-emerald-400 group-hover:text-emerald-300">Tap to upload watermark</p>
+                  <p className="text-xs text-stone-500 mt-1">Rendered transparently behind A4 grids</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
