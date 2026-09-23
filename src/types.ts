@@ -59,6 +59,8 @@ export interface Job {
   released?: boolean;
   mechanicAssigned?: string;
   workerCompleted?: boolean;
+  startedAt?: string;
+  completedAt?: string;
   workerCompletedAt?: number;
   inspectedByHod?: boolean;
   inspectedAt?: number;

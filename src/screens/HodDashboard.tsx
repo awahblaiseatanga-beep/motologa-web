@@ -103,7 +103,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
   // Department & HOD Identity
   const effectiveDeptName = departmentName || 'Mechanical Bay & Diagnostics';
-  const hodName = membership?.full_name || membership?.email?.split('@')[0] || 'Marcus Vance';
+  const hodName = membership?.role === 'owner' ? 'Workshop Administrator' : (membership?.full_name || membership?.email?.split('@')[0] || 'Marcus Vance');
 
   const todayKey = new Date().toISOString().split('T')[0];
   const storageKey = `motologa_hod_notes_${garageId}_${departmentId || 'dept'}_${todayKey}`;
@@ -448,7 +448,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 departmentId={departmentId}
                 departmentName={effectiveDeptName}
                 mechanics={Array.from(new Set([
-                  ...deptMembers.map((m) => m.full_name || m.email?.split('@')[0] || 'Technician'),
+                  ...deptMembers.map((m) => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || 'Technician')),
                   'Jean',
                   'Paul',
                   'Michel',
@@ -886,7 +886,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               <div className="grid grid-cols-2 gap-3">
                                 <button
                                   onClick={async () => {
-                                    const { error } = await supabase.from('jobs').update({ hod_review_pending: false, hod_job_summary: hodJobSummary, hod_name: hodName }).eq('id', job.id);
+                                    const { error } = await supabase.from('jobs').update({ hod_review_pending: false, hod_job_summary: hodJobSummary, hod_name: hodName, completed_at: new Date().toISOString() }).eq('id', job.id);
                                     if (!error) {
                                       const nextJob = { ...job, status: 'Ready/Released' as JobStatus, hodJobSummary };
                                       setFloorJobs(prev => prev.filter(j => j.id !== job.id)); 
@@ -974,7 +974,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
                 <div className="space-y-2">
                   {deptMembers.map((m, index) => {
-                    const name = m.full_name || m.email?.split('@')[0] || `Technician ${index + 1}`;
+                    const name = m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || `Technician ${index + 1}`);
                     const isHod = m.is_hod;
                     const bay = `Bay ${index + 1}`;
 

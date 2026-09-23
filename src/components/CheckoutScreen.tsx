@@ -19,7 +19,8 @@ import {
   ExternalLink,
   ChevronDown,
   Phone,
-  FileEdit
+  FileEdit,
+  Clock
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from './InvoiceGenerator';
@@ -61,6 +62,27 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   // Billing state
   const [laborFee, setLaborFee] = useState<number | ''>(currentJob?.laborFeeFcfa || '');
 
+  // Dynamic Time & Rates
+  const [hourlyRate, setHourlyRate] = useState<number | ''>('');
+  const [partsCost, setPartsCost] = useState<number | ''>(currentJob?.partsFeeFcfa || '');
+
+  const calculateHours = (start?: string, end?: string) => {
+    if (!start || !end) return 0;
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
+    if (isNaN(s) || isNaN(e)) return 0;
+    const diffHours = (e - s) / 1000 / 3600;
+    return Math.max(0, Number(diffHours.toFixed(1)));
+  };
+
+  const hoursWorked = currentJob ? calculateHours(currentJob.startedAt, currentJob.completedAt) : 0;
+
+  useEffect(() => {
+    if (hourlyRate !== '') {
+      setLaborFee(Math.max(0, hoursWorked * Number(hourlyRate)));
+    }
+  }, [hourlyRate, hoursWorked, currentJobId]);
+
   // HOD Summary state
   const [hodJobSummary, setHodJobSummary] = useState<string>(
     currentJob?.hodJobSummary || currentJob?.issueDescription || ''
@@ -90,6 +112,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   useEffect(() => {
     if (currentJob) {
       setLaborFee(currentJob.laborFeeFcfa || '');
+      setPartsCost(currentJob.partsFeeFcfa || '');
       setHodJobSummary(currentJob.hodJobSummary || currentJob.issueDescription || '');
       setFlagDeferred(currentJob.deferredRepair?.flagged || false);
       setDeferredComponent(currentJob.deferredRepair?.component || DEFERRED_COMPONENTS[0]);
@@ -128,10 +151,12 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     if (!currentJob) return;
 
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
+    const partsAmt = typeof partsCost === 'number' ? partsCost : (currentJob.partsFeeFcfa || 0);
 
     const updatedJob: Job = {
       ...currentJob,
       laborFeeFcfa: feeAmount,
+      partsFeeFcfa: partsAmt,
       deferredRepair: {
         flagged: flagDeferred,
         component: deferredComponent,
@@ -146,6 +171,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       .update({ 
         status: 'RELEASED', 
         labor_fee: feeAmount,
+        parts_fee: partsAmt,
         hod_job_summary: hodJobSummary
       })
       .eq('id', currentJob.id);
@@ -177,7 +203,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     
     // We recreate the updatedJob context locally since the state hasn't instantly updated
     const feeAmount = typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0);
-    const updatedJob: Job = { ...currentJob, laborFeeFcfa: feeAmount };
+    const partsAmt = typeof partsCost === 'number' ? partsCost : (currentJob.partsFeeFcfa || 0);
+    const updatedJob: Job = { ...currentJob, laborFeeFcfa: feeAmount, partsFeeFcfa: partsAmt };
     
     const baseText = generateWhatsAppInvoiceText(updatedJob);
     const messageText = `${baseText}\n\nView and download your official document here: ${window.location.origin}/shared/document/${updatedJob.id}`;
@@ -416,8 +443,33 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
             {/* Removed QC Block / HOD Summary UI - Successfully migrated to separate HOD review modal */}
 
+            {/* Automated Checkout Engine */}
+            <div className="bg-stone-50 border border-slate-200 rounded-xl p-3.5 space-y-4 shadow-sm mt-3">
+               <div className="flex justify-between items-center bg-emerald-50 px-3 py-2 rounded border border-emerald-100">
+                 <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Total Time Worked</span>
+                 <span className="font-mono font-bold text-emerald-700">{hoursWorked > 0 ? hoursWorked : "None or 0.0"} Hours</span>
+               </div>
+               
+               <div className="flex items-center gap-3">
+                 <div className="flex-1 space-y-1">
+                   <label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider flex flex-col">
+                     Hourly Rate ({currencySymbol})
+                   </label>
+                   <input type="number" placeholder="e.g. 5000" value={hourlyRate} onChange={e => setHourlyRate(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold font-mono focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                 </div>
+                 {currentJob.partSource === 'Garage Inventory' ? (
+                   <div className="flex-1 space-y-1">
+                     <label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Parts Cost</label>
+                     <input type="number" placeholder="e.g. 15000" value={partsCost} onChange={e => setPartsCost(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold font-mono focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                   </div>
+                 ) : (
+                   <div className="flex-1 space-y-1 hidden sm:block"></div>
+                 )}
+               </div>
+            </div>
+
             {/* Conditionally display separate part prices before total */}
-            {currentJob.partsFeeFcfa ? (
+            {currentJob.partSource !== 'Garage Inventory' && currentJob.partsFeeFcfa ? (
               <div className="flex items-center justify-between pb-2 pt-1 border-b border-dashed border-slate-200 mb-2">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
@@ -536,6 +588,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           job={{
             ...currentJob,
             laborFeeFcfa: typeof laborFee === 'number' ? laborFee : (currentJob.laborFeeFcfa || 0),
+            partsFeeFcfa: typeof partsCost === 'number' ? partsCost : (currentJob.partsFeeFcfa || 0),
             hodJobSummary: hodJobSummary,
             hod_job_summary: hodJobSummary
           } as any}

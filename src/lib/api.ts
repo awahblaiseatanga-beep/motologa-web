@@ -96,6 +96,8 @@ export const mapDbJobToUiJob = (dbJob: Record<string, unknown>): Job => {
     hodJobSummary: (dbJob.hod_job_summary as string) || '',
     hod_rejection_note: (dbJob.hod_rejection_note as string) || null,
     hod_voice_note_url: (dbJob.hod_voice_note_url as string) || null,
+    startedAt: (dbJob.started_at as string) || undefined,
+    completedAt: (dbJob.completed_at as string) || undefined,
     garageInfo: dbJob.garages ? {
       name: (dbJob.garages as any).name || '',
       location: (dbJob.garages as any).location,
@@ -221,7 +223,8 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
       description: job.issueDescription || '',
       labor_fee: job.laborFeeFcfa || 0,
       customer_id: customerRecord?.id || null,
-      vehicle_id: vehicleRecord?.id || null
+      vehicle_id: vehicleRecord?.id || null,
+      ...(dbStatus === 'in_progress' ? { started_at: new Date().toISOString() } : {})
     })
     .select()
     .single();
@@ -267,9 +270,17 @@ export const updateJobStatus = async (jobId: string, status: string, laborFee: n
   // Create base payload mapping 
   const payload: any = { status: dbStatus, labor_fee: laborFee };
 
+  if (dbStatus === 'IN_PROGRESS') {
+    const { data: currentJob } = await supabase.from('jobs').select('started_at').eq('id', jobId).single();
+    if (currentJob && !currentJob.started_at) {
+      payload.started_at = new Date().toISOString();
+    }
+  }
+
   if (status === 'Ready/Released') {
     payload.status = 'COMPLETED';
     payload.hod_review_pending = false;
+    payload.completed_at = new Date().toISOString();
   }
   
   if (status === 'Pending QC') {

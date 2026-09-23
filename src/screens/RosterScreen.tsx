@@ -75,24 +75,31 @@ export const RosterScreen: React.FC<RosterScreenProps> = ({
                   .sort((a, b) => (a.department_id || 'zzzz').localeCompare(b.department_id || 'zzzz'))
                   .map((member) => {
                   const isMemberHod = member.role === 'hod';
-                  let roleBadgeText = 'TECHNICIAN';
-                  let roleBadgeStyles = 'bg-stone-800 text-stone-300 border-stone-700';
+                  let roleBadges = [{ text: 'TECHNICIAN', styles: 'bg-stone-800 text-stone-300 border-stone-700' }];
 
                   if (member.role === 'owner') {
-                    roleBadgeText = 'OWNER';
-                    roleBadgeStyles = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+                    roleBadges = [{ text: 'OWNER', styles: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' }];
                   } else if (isMemberHod) {
-                    roleBadgeText = 'HOD / LEAD';
-                    roleBadgeStyles = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+                    roleBadges = [
+                      { text: 'HOD', styles: 'bg-amber-500/10 text-amber-400 border-amber-500/30' },
+                      { text: 'LEAD', styles: 'bg-amber-500/10 text-amber-400 border-amber-500/30' }
+                    ];
                   }
 
                   return (
                     <tr key={member.id} className="hover:bg-stone-800/30 transition">
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-white text-sm">{member.full_name || member.email?.split('@')[0] || 'Worker'}</div>
-                        <div className="text-[11px] text-stone-400 font-mono">{member.email || `ID: ${member.user_id?.slice(0, 8)}...`}</div>
+                        <div className="font-bold text-white text-sm">{member.role === 'owner' ? 'Workshop Administrator' : (member.full_name || member.email?.split('@')[0] || 'Unnamed Staff')}</div>
                       </td>
-                      <td className="py-3.5 px-4"><span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${roleBadgeStyles}`}>{roleBadgeText}</span></td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {roleBadges.map((badge, idx) => (
+                            <span key={idx} className={`px-2.5 py-0.5 rounded-full text-[10px] whitespace-nowrap font-extrabold uppercase tracking-wide border ${badge.styles}`}>
+                              {badge.text}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4">
                         <div className="relative max-w-[220px]">
                           {userRole === 'owner' ? (
