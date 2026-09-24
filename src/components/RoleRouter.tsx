@@ -12,6 +12,7 @@ import { CustomerOutboxScreen } from '../screens/CustomerOutboxScreen';
 import { ShopSettingsScreen } from '../screens/ShopSettingsScreen';
 import { OwnerDailyLogsScreen } from '../screens/OwnerDailyLogsScreen';
 import { createJob } from '../lib/api';
+import { ProfileSetupScreen } from './ProfileSetupScreen';
 import { MotologaLogo } from './MotologaLogo';
 import { InstallAppButton } from './InstallAppButton';
 import { AnimatedTabBar, TabItem } from './ui/animated-tab-bar';
@@ -34,7 +35,8 @@ import {
   Sparkles,
   Menu,
   Send,
-  FileAudio
+  FileAudio,
+  User
 } from 'lucide-react';
 
 interface RoleRouterProps {
@@ -217,6 +219,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
   const [activeOwnerHat, setActiveOwnerHat] = useState<'owner' | 'hod'>('owner');
   const [ownerScreen, setOwnerScreen] = useState<string>('analytics');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   
   const WORKER_TABS = useMemo(() => {
     const tabs: TabItem[] = [
@@ -400,6 +403,15 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             </button>
           )}
 
+          <button
+            onClick={() => setIsEditingProfile(true)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
+            title="Edit Identity Profile"
+          >
+            <User className="w-3.5 h-3.5 text-stone-400" />
+            <span>Profile</span>
+          </button>
+
           <InstallAppButton variant="header" />
 
           <button
@@ -547,6 +559,14 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                   <CreditCard className="w-3.5 h-3.5" /> Billing
                 </button>
               )}
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
+                title="Edit Identity Profile"
+              >
+                <User className="w-3.5 h-3.5 text-stone-400" />
+                <span>Profile</span>
+              </button>
               <InstallAppButton variant="header" />
             </div>
           </header>
@@ -573,6 +593,19 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             garage={garage}
             onClose={() => setShowBillingModal(false)}
             onStatusUpdated={(newStatus) => setGarage(prev => prev ? { ...prev, subscription_status: newStatus } : prev)}
+          />
+        )}
+
+        {isEditingProfile && (
+          <ProfileSetupScreen
+            isEditing
+            initialName={membership?.full_name || ''}
+            onComplete={async () => {
+              setIsEditingProfile(false);
+              await supabase.auth.getSession(); // Silent refresh for local session state cache
+              loadRoleData(); // Refresh the role data to explicitly update UI bindings globally
+            }}
+            onCancel={() => setIsEditingProfile(false)}
           />
         )}
       </div>
@@ -609,6 +642,19 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           </div>
         )}
       </main>
+
+      {isEditingProfile && (
+        <ProfileSetupScreen
+          isEditing
+          initialName={membership?.full_name || ''}
+          onComplete={async () => {
+            setIsEditingProfile(false);
+            await supabase.auth.getSession();
+            loadRoleData();
+          }}
+          onCancel={() => setIsEditingProfile(false)}
+        />
+      )}
     </div>
   );
 };

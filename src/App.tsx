@@ -6,6 +6,7 @@ import { Sparkles } from 'lucide-react';
 import { JoinScreen } from './screens/JoinScreen';
 import { SharedDocumentPage } from './screens/SharedDocumentPage';
 import { syncOfflineQueue } from './services/offlineSync';
+import { ProfileSetupScreen } from './components/ProfileSetupScreen';
 
 export default function App() {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -109,6 +110,21 @@ export default function App() {
 
   // 2. Role Routing for Authenticated Supabase Users
   if (session) {
+    const hasName = session.user.user_metadata?.full_name?.trim() || session.user.user_metadata?.name?.trim();
+    
+    if (!hasName) {
+      return (
+        <ProfileSetupScreen 
+          onComplete={async () => {
+            const { data: { session: refreshedSession } } = await supabase.auth.getSession();
+            if (refreshedSession) {
+              setSession(refreshedSession);
+            }
+          }} 
+        />
+      );
+    }
+
     return (
       <div key="router-boundary">
         <RoleRouter
