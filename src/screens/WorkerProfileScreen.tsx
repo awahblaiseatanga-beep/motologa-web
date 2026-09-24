@@ -18,15 +18,22 @@ export const WorkerProfileScreen: React.FC<WorkerProfileScreenProps> = ({ curren
     else setIsRefreshing(true);
     
     try {
-      // Fetch member profile
-      const { data: memberData } = await supabase
+      // Fetch member profile natively
+      const { data: memberData, error: memberErr } = await supabase
         .from('garage_members')
-        .select('full_name, role, phone, email')
+        .select('role, profiles(full_name, phone, email)')
         .eq('user_id', currentUserId)
         .single();
         
-      if (memberData) {
-        setProfile(memberData);
+      if (memberErr) {
+        console.error('Failed to fetch worker profile data', memberErr);
+      } else if (memberData) {
+        setProfile({
+          role: memberData.role,
+          full_name: (memberData as any).profiles?.full_name || 'Unnamed Staff',
+          phone: (memberData as any).profiles?.phone || '',
+          email: (memberData as any).profiles?.email || ''
+        });
       }
 
       const now = new Date();
