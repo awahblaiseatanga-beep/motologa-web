@@ -395,7 +395,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   };
 
   return (
-    <div className="flex flex-col flex-1 gap-4 w-full h-full max-w-full pb-8">
+    <div className="flex flex-col flex-1 gap-4 w-full h-full max-w-full pb-32">
       {/* Toast Alert */}
       {successToast && (
         <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 bg-emerald-900 border border-emerald-400 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in">
