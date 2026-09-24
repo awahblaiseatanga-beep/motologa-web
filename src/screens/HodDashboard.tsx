@@ -48,8 +48,8 @@ export interface HodDashboardProps {
   onUpdateJob?: (job: Job) => void;
   onAddJob?: (job: Job) => Promise<void> | void;
   onNavigateToCheckout?: (jobId?: string) => void;
-  activeTab?: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox';
-  onTabChange?: (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox') => void;
+  activeTab?: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue';
+  onTabChange?: (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue') => void;
   hideTopNav?: boolean;
 }
 
@@ -69,9 +69,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   onTabChange,
   hideTopNav = false,
 }) => {
-  const [internalTab, setInternalTab] = useState<'queue' | 'roster' | 'intake' | 'appointments' | 'outbox'>('queue');
+  const [internalTab, setInternalTab] = useState<'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue'>('queue');
   const activeTab = propActiveTab !== undefined ? propActiveTab : internalTab;
-  const handleTabSelect = (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox') => {
+  const handleTabSelect = (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue') => {
     setInternalTab(tab);
     if (onTabChange) onTabChange(tab);
   };
@@ -79,6 +79,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const HOD_TABS = useMemo(() => {
     const tabs: TabItem[] = [
       { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5" />, color: '#34d399' },
+      { id: 'my-queue', label: 'My Bay', icon: <Car className="w-5 h-5" />, color: '#10b981' },
       { id: 'outbox', label: 'Outbox', icon: <Send className="w-5 h-5" />, color: '#38bdf8' },
       { id: 'roster', label: 'Staff', icon: <Users className="w-5 h-5" />, color: '#a78bfa' },
       { id: 'appointments', label: 'Bookings', icon: <Calendar className="w-5 h-5" />, color: '#fca5a5' },
@@ -569,7 +570,20 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             </div>
           )}
 
-          {/* MAIN FLOOR & HOD NOTES */}
+          {/* MY BAY (HOD AS WORKER) */}
+          {activeTab === 'my-queue' && (
+            <div className="animate-in fade-in duration-200">
+              <QueueScreen
+                userRole="worker"
+                garageId={garageId}
+                departmentId={departmentId}
+                departmentName={effectiveDeptName}
+                currentUserId={userId}
+              />
+            </div>
+          )}
+
+          {/* MAIN FLOOR (DEPARTMENT OVERVIEW) & HOD NOTES */}
           {activeTab === 'queue' && (
             <div className="flex flex-col gap-3.5 sm:gap-4 animate-in fade-in duration-200">
               {/* 2. AT-A-GLANCE NUMBERS (Clean, High Contrast, Large Text) */}
@@ -800,6 +814,48 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
                               <span>{isExpanded ? 'Close Inspection' : 'Inspect Job'}</span>
                             </button>
+                          )}
+                          {!isPendingQC && (
+                            <button
+                               type="button"
+                               onClick={async () => {
+                                 if (isExpanded) {
+                                   setExpandedJobId(null);
+                                 } else {
+                                   setExpandedJobId(job.id);
+                                 }
+                               }}
+                               className={`mt-2 w-full min-h-[44px] rounded-xl ${isExpanded ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300' : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700'} font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm border transition-all`}
+                            >
+                               <Wrench className="w-4 h-4 stroke-[2.5]" />
+                               <span>{isExpanded ? 'Hide Details' : 'View / Reassign'}</span>
+                            </button>
+                          )}
+
+                          {isExpanded && !isPendingQC && (
+                            <div className="mt-3 pt-4 border-t border-stone-800/60 animate-in slide-in-from-top-2 duration-200 flex flex-col gap-3">
+                              <h4 className="text-[11px] font-black uppercase text-stone-400">Manage Active Repair</h4>
+                              
+                              <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No intake description provided."}</p>
+                              
+                              <button
+                                onClick={async () => {
+                                  // Assign to self
+                                  const { error } = await supabase.from('jobs').update({ mechanicAssigned: userId }).eq('id', job.id);
+                                  if (!error) {
+                                    setFloorJobs(prev => prev.map(j => j.id === job.id ? { ...j, mechanicAssigned: userId, status: 'In Repair' } : j));
+                                    setExpandedJobId(null);
+                                    showToast("Job successfully claimed to your bay!");
+                                    setTimeout(() => handleTabSelect('my-queue'), 1000); // Redirect to their Queue
+                                  } else {
+                                    alert('Failed to claim job: ' + error.message);
+                                  }
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-2"
+                              >
+                                <CheckCircle2 className="w-4 h-4" /> Claim Job to My Bay
+                              </button>
+                            </div>
                           )}
 
                           {isExpanded && isPendingQC && (
