@@ -448,61 +448,6 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 garageId={garageId}
                 departmentId={departmentId}
                 departmentName={effectiveDeptName}
-                mechanics={Array.from(new Set([
-                  ...deptMembers.map((m) => m.full_name || 'Unnamed Staff'),
-                  'Jean',
-                  'Paul',
-                  'Michel',
-                  'Ibrahim'
-                ]))}
-                deferredRepairs={deferredRepairs}
-                onConvertAppointmentToJob={async (appt) => {
-                  const assignedJob: Job = {
-                    id: `job-${Date.now()}`,
-                    licensePlate: appt.vehiclePlate,
-                    customerPhone: appt.customerPhone,
-                    vehicleModel: appt.vehicleModel || 'Customer Vehicle',
-                    mechanicAssigned: appt.mechanicAssigned && appt.mechanicAssigned !== 'Unassigned' ? appt.mechanicAssigned : 'Jean',
-                    status: 'In Repair',
-                    workerCompleted: false,
-                    inspectedByHod: false,
-                    released: false,
-                    createdAt: Date.now(),
-                    timeElapsedMinutes: 1,
-                    partSource: 'Garage Stock',
-                    laborFeeFcfa: 15000,
-                    issueDescription: [
-                      appt.notes || appt.serviceRequested || 'Scheduled Vehicle Reservation',
-                      `Date: ${appt.appointmentDate}${appt.appointmentTime ? ` at ${appt.appointmentTime}` : ''}`,
-                      appt.audioUrl ? '🎤 Voice note recorded by customer attached' : ''
-                    ].filter(Boolean).join(' • '),
-                  };
-
-                  // 1. Add to floor
-                  setFloorJobs((prev) => [assignedJob, ...prev.filter((j) => j.id !== assignedJob.id)]);
-
-                  // 2. Propagate to App state
-                  if (onAddJob) {
-                    try {
-                      await onAddJob(assignedJob);
-                    } catch (e) {
-                      console.warn('onAddJob error:', e);
-                    }
-                  } else if (onUpdateJob) {
-                    onUpdateJob(assignedJob);
-                  }
-
-                  // 3. Persist to API
-                  try {
-                    await createJob(assignedJob, garageId, userId);
-                  } catch (e) {
-                    console.warn('createJob error:', e);
-                  }
-
-                  showToast(`Job card created for ${assignedJob.licensePlate} on floor & assigned to ${assignedJob.mechanicAssigned}!`);
-                  handleTabSelect('queue');
-                }}
-                onNavigateToFloor={() => handleTabSelect('queue')}
               />
             </div>
           )}

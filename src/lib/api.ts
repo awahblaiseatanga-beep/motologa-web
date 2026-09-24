@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Job, DeferredRepair, DeferredStatus } from '../types';
+import { Job, DeferredRepair, DeferredStatus, Appointment, AppointmentStatus } from '../types';
 
 // Typed interface for job_media rows
 interface DbJobMedia {
@@ -569,4 +569,162 @@ export const updateGarageSubscription = async (
 
   if (error || !data) throw new Error(error?.message || 'Failed to update subscription status');
   return data;
+};
+
+// ==========================================
+// APPOINTMENTS SCHEDULING PIPELINE (Phase 3A)
+// ==========================================
+
+export const promoteFindingToAppointment = async (
+  findingId: string,
+  departmentId: string,
+  scheduledDate: string,
+  scheduledTime: string,
+  issueDescription: string
+) => {
+  // Safely enforce YYYY-MM-DD string representation without triggering timezone shifts
+  const safeDate = typeof scheduledDate === 'string' ? scheduledDate.slice(0, 10) : ''; 
+  
+  // Safely enforce HH:MM:SS for the PostgreSQL TIME parameter
+  const safeTime = scheduledTime 
+    ? (scheduledTime.length === 5 ? `${scheduledTime}:00` : scheduledTime) 
+    : null;
+
+  const { data, error } = await supabase.rpc('promote_finding_to_appointment', {
+    p_finding_id: findingId,
+    p_department_id: departmentId,
+    p_scheduled_date: safeDate,
+    p_scheduled_time: safeTime,
+    p_issue_description: issueDescription
+  });
+
+  if (error) {
+    console.error('RPC Schema Validation Failed:', error);
+    throw new Error(error.message || 'Failed to schedule appointment natively.');
+  }
+
+  return data; // Returns the new UUID of the appointment
+};
+
+export const fetchAppointments = async (garageId: string, departmentId?: string): Promise<Appointment[]> => {
+  let query = supabase
+    .from('appointments')
+    .select('*, customers(*), vehicles(*), departments(*)')
+    .eq('garage_id', garageId);
+  
+  if (departmentId) {
+    query = query.eq('department_id', departmentId);
+  }
+  
+  // Sort strictly by soonest upcoming
+  query = query.order('scheduled_date', { ascending: true });
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Database Appointments Lookup Failed:', error);
+    return [];
+  }
+  
+  return data as Appointment[];
+};
+
+export const createDirectAppointment = async (
+  garageId: string,
+  departmentId: string,
+  customerName: string,
+  customerPhone: string,
+  vehiclePlate: string,
+  vehicleModel: string,
+  scheduledDate: string,
+  scheduledTime: string,
+  issueDescription: string,
+  source: 'direct_booking' | 'checkout'
+) => {
+  // Gracefully sanitize departmentId to null if falsy to protect UUID typecast
+  const safeDeptId = departmentId ? departmentId : null;
+
+  // 1. Relational Upsert: Customers table
+  const { data: customerRecord } = await supabase
+    .from('customers')
+    .upsert(
+      { 
+        phone: customerPhone, 
+        full_name: customerName || 'Walk-in Client',
+        address: '' // Compatibility patch for deprecated columns
+      }, 
+      { onConflict: 'phone' }
+    )
+    .select('id')
+    .single();
+
+  // 2. Relational Upsert: Vehicles table
+  const { data: vehicleRecord } = await supabase
+    .from('vehicles')
+    .upsert(
+      { 
+        plate: vehiclePlate || 'UNKNOWN', 
+        model: vehicleModel || 'Unspecified',
+        make: 'Unknown' // Derived from unspecified form state
+      }, 
+      { onConflict: 'plate' }
+    )
+    .select('id')
+    .single();
+
+  // 3. Insert Appointment natively mapping UUIDs
+  const { data, error } = await supabase
+    .from('appointments')
+    .insert({
+      garage_id: garageId,
+      department_id: departmentId || null,
+      customer_id: customerRecord?.id || null,
+      vehicle_id: vehicleRecord?.id || null,
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledTime || null,
+      issue_description: issueDescription,
+      source: source,
+      status: 'scheduled'
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to create direct appointment:', error);
+    throw new Error(error.message || 'Database rejected appointment creation.');
+  }
+
+  return data;
+};
+
+export const updateAppointmentStatus = async (
+  appointmentId: string, 
+  newStatus: AppointmentStatus,
+  additionalUpdates: Record<string, any> = {}
+): Promise<void> => {
+  const { error } = await supabase
+    .from('appointments')
+    .update({ 
+      status: newStatus, 
+      updated_at: new Date().toISOString(),
+      ...additionalUpdates
+    })
+    .eq('id', appointmentId);
+
+  if (error) {
+    console.error(`Failed to transition appointment ${appointmentId} to ${newStatus}:`, error);
+    throw error;
+  }
+};
+
+export const convertAppointmentToJob = async (appointmentId: string): Promise<string> => {
+   const { data, error } = await supabase.rpc('convert_appointment_to_job', {
+     p_appointment_id: appointmentId
+   });
+
+   if (error) {
+     console.error('Failed to convert appointment to job:', error);
+     throw new Error(error.message || 'Database rejected atomic conversion.');
+   }
+
+   return data; // Returns the newly created UUID
 };

@@ -24,11 +24,13 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from './InvoiceGenerator';
+import { ScheduleAppointmentModal } from './ScheduleAppointmentModal';
 
 interface CheckoutScreenProps {
   jobs: Job[];
   todayRevenue: number;
   garageName: string;
+  garageId: string;
   onUpdateJob: (updatedJob: Job) => void;
   onJobReleased: (job: Job, finalFee: number) => void;
   onAddDeferredRepair?: (repair: DeferredRepair, jobId: string) => void;
@@ -39,6 +41,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   jobs,
   todayRevenue,
   garageName,
+  garageId,
   onUpdateJob,
   onJobReleased,
   onAddDeferredRepair,
@@ -125,6 +128,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   const [copiedInvoice, setCopiedInvoice] = useState<boolean>(false);
   const [showInvoicePreview, setShowInvoicePreview] = useState<boolean>(false);
   const [showInvoiceGenerator, setShowInvoiceGenerator] = useState<boolean>(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
   // Synchronize when switching vehicle
   const handleSelectJob = (job: Job) => {
@@ -544,16 +548,34 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 
           {/* DEFERRED REPAIR SECTION: Creation Component for Future Repair */}
           <div className="pt-2">
-            <DeferredRepairToggle
-              initialEnabled={flagDeferred}
-              initialComponent={deferredComponent}
-              initialTimeframe={deferredTimeframe}
-              onChange={(data: DeferredRepairSelection) => {
-                setFlagDeferred(data.enabled);
-                setDeferredComponent(data.component);
-                setDeferredTimeframe(data.timeframe as DeferredTimeframe);
-              }}
-            />
+			  <div className="flex flex-col gap-3">
+				{/* The Core Deferment Toggle */}
+				<DeferredRepairToggle
+				  initialEnabled={flagDeferred}
+				  initialComponent={deferredComponent}
+				  initialTimeframe={deferredTimeframe}
+				  onChange={(data: DeferredRepairSelection) => {
+					setFlagDeferred(data.enabled);
+					setDeferredComponent(data.component);
+					setDeferredTimeframe(data.timeframe as DeferredTimeframe);
+				  }}
+				/>
+				
+				{/* Native Schedule Appointment Branch */}
+				<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-sky-950/20 border border-sky-900/30 rounded-2xl mx-auto w-full max-w-md shadow-inner">
+				   <div className="text-left flex-1 min-w-0">
+					   <h4 className="text-sm font-black tracking-tight text-sky-800 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-sky-500"/> Need a Hard Booking?</h4>
+					   <p className="text-[11px] font-medium text-slate-500 leading-snug mt-0.5">Secure a rigid target date into the operational calendar.</p>
+				   </div>
+				   <button
+					 type="button"
+					 onClick={() => setScheduleModalOpen(true)}
+					 className="w-full sm:w-auto shrink-0 bg-sky-600 hover:bg-sky-500 text-white font-black uppercase text-xs px-4 py-2.5 rounded-lg transition-all active:scale-95"
+				   >
+					  Schedule Now
+				   </button>
+				</div>
+			  </div>
           </div>
 
           {/* CTA: Open Invoice Generator */}
@@ -600,6 +622,24 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           }} 
           currencySymbol={currencySymbol} 
         />
+      )}
+
+      {/* Embedded Native Schedule Boundary */}
+      {currentJob && (
+         <ScheduleAppointmentModal
+            isOpen={scheduleModalOpen}
+            onClose={() => setScheduleModalOpen(false)}
+            mode="checkout"
+            garageId={garageId}
+            departmentId={undefined} // Force explicit undefined omitting department strict-cast in DB
+            customerName={currentJob.customerName || currentJob.customerPhone}
+            vehicleLabel={`${currentJob.licensePlate} - ${currentJob.vehicleModel}`}
+            initialDescription={hodJobSummary || currentJob.issueDescription}
+            onSchedulingSuccess={() => {
+               setScheduleModalOpen(false);
+               alert("Appointment Secured & Calendared Locally.");
+            }}
+         />
       )}
     </div>
   );

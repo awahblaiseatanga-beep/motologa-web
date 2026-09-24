@@ -114,7 +114,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
         .from('additional_findings')
         .select('*')
         .in('parent_job_id', activeJobIds)
-        .eq('status', 'customer_approved');
+        .in('status', ['customer_approved', 'scheduled']);
       if (data) {
         setAuthorizedFindings(data);
       }
@@ -436,15 +436,20 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                   </div>
                 </div>
 
-                {/* AUTHORIZED ADDITIONAL WORK */}
+                {/* AUTHORIZED OR SCHEDULED ADDITIONAL WORK */}
                 {authorizedFindings.filter(f => f.parent_job_id === job.id).length > 0 && (
                   <div className="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-3 shadow-sm animate-in fade-in">
                     <h4 className="text-xs font-black text-emerald-700 uppercase flex items-center gap-1.5 mb-2">
-                      <CheckCircle2 className="w-4 h-4" /> Authorized Additional Work
+                      <CheckCircle2 className="w-4 h-4" /> Work Updates Logged
                     </h4>
                     <div className="space-y-2">
                       {authorizedFindings.filter(f => f.parent_job_id === job.id).map(f => (
                         <div key={f.id} className="bg-white border border-emerald-200 rounded-lg p-2.5">
+                          {f.status === 'scheduled' && (
+                             <div className="text-[11px] font-black text-sky-600 bg-sky-100 p-2 rounded-lg border border-sky-300 mb-2.5 shadow-sm text-balance leading-tight">
+                               📅 Additional Work Scheduled. You are cleared to continue main repairs.
+                             </div>
+                          )}
                           {f.worker_voice_note_url && (
                              <div className="mb-2">
                                <span className="text-[10px] uppercase font-bold text-emerald-600 block mb-1">Approved Voice Note</span>

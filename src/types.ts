@@ -91,6 +91,26 @@ export interface AppointmentReservation {
   audioUrl?: string;
 }
 
+export type AppointmentStatus = 'scheduled' | 'checked_in' | 'cancelled' | 'no_show' | 'converted_to_job';
+export type AppointmentSource = 'additional_finding' | 'direct_booking' | 'checkout';
+
+export interface Appointment {
+  id: string;
+  garage_id: string;
+  department_id: string;
+  customer_id?: string;
+  vehicle_id?: string;
+  scheduled_date: string; // YYYY-MM-DD
+  scheduled_time?: string; // HH:mm:ss
+  issue_description: string;
+  source: AppointmentSource;
+  source_job_id?: string;
+  source_finding_id?: string;
+  status: AppointmentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GarageStats {
   todayRevenueFcfa: number;
   vehiclesReadyCount: number;

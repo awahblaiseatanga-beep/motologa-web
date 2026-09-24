@@ -36,7 +36,8 @@ import {
   Menu,
   Send,
   FileAudio,
-  User
+  User,
+  Calendar
 } from 'lucide-react';
 
 interface RoleRouterProps {
@@ -480,6 +481,12 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'checkout' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
               <Receipt className="w-4 h-4" /> Checkout
+            </button>
+            <button 
+              onClick={() => { setOwnerScreen('appointments'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'appointments' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
+            >
+              <Calendar className="w-4 h-4" /> Bookings
             </button>
             <button 
               onClick={() => { setOwnerScreen('inventory'); setIsSidebarOpen(false); }}

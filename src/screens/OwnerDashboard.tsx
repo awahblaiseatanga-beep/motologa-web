@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { IntakeScreen } from '../components/IntakeScreen';
 import { CheckoutScreen } from '../components/CheckoutScreen';
 import { MechanicQueueScreen } from '../components/MechanicQueueScreen';
+import { AppointmentsScreen } from './AppointmentsScreen';
 import { RosterScreen } from './RosterScreen';
 import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
 import {
@@ -42,7 +43,8 @@ import {
   Link2,
   DollarSign,
   Send,
-  CheckCircle
+  CheckCircle,
+  Calendar
 } from 'lucide-react';
 
 export interface OwnerAnalyticsMetrics {
@@ -59,7 +61,7 @@ export interface OwnerDashboardProps {
   activeScreen?: string;
 }
 
-export type ManagementTab = 'analytics' | 'structure' | 'intake' | 'queue' | 'checkout';
+export type ManagementTab = 'analytics' | 'structure' | 'intake' | 'queue' | 'checkout' | 'appointments';
 
 export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeScreen = 'analytics' }) => {
   // External layout engine drives the screen renders
@@ -70,6 +72,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
       { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5" />, color: '#10b981' },
       { id: 'intake', label: 'Intake', icon: <PlusCircle className="w-5 h-5" />, color: '#f59e0b' },
       { id: 'checkout', label: 'Checkout', icon: <Receipt className="w-5 h-5" />, color: '#0ea5e9' },
+      { id: 'appointments', label: 'Bookings', icon: <Calendar className="w-5 h-5" />, color: '#8b5cf6' },
     ];
     return tabs;
   }, []);
@@ -291,11 +294,22 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                jobs={jobs}
                todayRevenue={totalRevenue}
                garageName={garage.name}
+               garageId={garage.id}
                onUpdateJob={handleUpdateJob}
                onJobReleased={handleReleaseJob}
                onAddDeferredRepair={handleAddDeferredRepair}
             />
          </div>
+      )}
+
+      {activeScreen === 'appointments' && (
+        <div className="animate-in fade-in duration-200">
+           <AppointmentsScreen
+              garageId={garage.id}
+              userRole="owner"
+              departments={departments}
+           />
+        </div>
       )}
 
       {activeScreen === 'analytics' && (

@@ -4,6 +4,7 @@ import { fetchGarageMembers, fetchJobsForGarage } from '../lib/api';
 import { GarageMember, Job } from '../types';
 import { Clock, Check, Send, AlertCircle, RefreshCw } from 'lucide-react';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
+import { ScheduleAppointmentModal } from '../components/ScheduleAppointmentModal';
 
 interface CustomerOutboxScreenProps {
   garageId: string;
@@ -28,6 +29,9 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
   
   // Invoice Modal State
   const [estimatingJob, setEstimatingJob] = useState<{ finding: any; matchedJobData: Job; customDescription?: string; customImage?: string } | null>(null);
+  
+  // Schedule Modal State
+  const [schedulingFinding, setSchedulingFinding] = useState<any>(null);
 
   const loadData = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -365,9 +369,14 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
                       <span>Quoted:</span>
                       <span>{finding.estimated_cost} FCFA</span>
                     </div>
-                    <button onClick={() => handleCustomerApproved(finding)} className="w-full bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow">
-                      <Check className="w-4 h-4" /> Mark Customer Approved
-                    </button>
+                    <div className="flex gap-2 mt-1">
+                      <button onClick={() => handleCustomerApproved(finding)} className="flex-[2] bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1 shadow">
+                        <Check className="w-3.5 h-3.5" /> Approved
+                      </button>
+                      <button onClick={() => setSchedulingFinding(finding)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center shadow whitespace-nowrap">
+                        Schedule
+                      </button>
+                    </div>
                     {finding.jobs?.status === 'paused' && (
                        <button onClick={() => handleUnpauseJob(finding)} className="w-full bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow mt-1">
                          <RefreshCw className="w-4 h-4 shrink-0" /> Unpause Job (Continue Work)
@@ -421,6 +430,24 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
           }}
         />
       )}
+
+      {/* SCHEDULE APPOINTMENT MAPPER BOUNDARY */}
+      <ScheduleAppointmentModal 
+         isOpen={!!schedulingFinding}
+         onClose={() => setSchedulingFinding(null)}
+         mode="additional_finding"
+         garageId={garageId}
+         departmentId={departmentId}
+         findingId={schedulingFinding?.id}
+         customerName={schedulingFinding?.jobs?.customer_phone || "Attached Client"}
+         vehicleLabel={`${schedulingFinding?.jobs?.vehicle_make} ${schedulingFinding?.jobs?.vehicle_model} - ${schedulingFinding?.jobs?.license_plate || schedulingFinding?.jobs?.plate}`}
+         initialDescription={localDescriptions[schedulingFinding?.id]}
+         onSchedulingSuccess={() => {
+            setSchedulingFinding(null);
+            // Refresh to rigidly assert DB Single Source of Truth
+            loadData(false);
+         }}
+      />
     </div>
   );
 };
