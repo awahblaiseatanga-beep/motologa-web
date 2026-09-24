@@ -454,52 +454,47 @@ export const provisionNewWorkshop = async (ownerId: string, shopName: string, ph
 };
 
 export const fetchGarageMembers = async (garageId: string) => {
-  // Attempt fetching with profiles join per requirement
+  // Querying the explicit profiles View natively, bypassing broken FK constraints
   const { data, error } = await supabase
-    .from('garage_members')
+    .from('profiles')
     .select(`
-      *,
+      id,
+      user_id,
+      garage_id,
+      role,
+      department_id,
+      is_hod,
+      email,
+      full_name,
       departments (
         id,
         name
-      ),
-      profiles (
-        full_name,
-        email
       )
     `)
     .eq('garage_id', garageId);
 
-  // If the schema lacks the 'profiles' table or relationship, fallback to safe query
-  if (error && (error.code === 'PGRST205' || error.message.includes('relationship'))) {
-    console.warn('Profiles schema not found or relation failed. Falling back to default payload.', error);
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from('garage_members')
-      .select(`
-        *,
-        departments (
-          id,
-          name
-        )
-      `)
+  if (error) {
+    console.error('Error fetching garage members from profiles view:', error);
+    
+    // In case the view lacks departments relation or fails, attempt a flat array load
+    const { data: fallbackData } = await supabase
+      .from('profiles')
+      .select('id, user_id, garage_id, role, department_id, is_hod, email, full_name')
       .eq('garage_id', garageId);
       
-    if (fallbackError) {
-      console.error('Error fetching garage members (fallback):', fallbackError);
-      return [];
+    if (fallbackData) {
+      return fallbackData.map((m: any) => ({
+        ...m,
+        full_name: m.full_name || 'Unnamed Staff' // Fallback mapping applied 
+      }));
     }
-    return fallbackData || [];
-  }
-
-  if (error) {
-    console.error('Error fetching garage members:', error);
     return [];
   }
   
   return (data || []).map((m: any) => ({
     ...m,
-    full_name: m.profiles?.full_name || m.full_name,
-    email: m.profiles?.email || m.email,
+    full_name: m.full_name || 'Unnamed Staff', // Injecting explicit fallback missing from UI
+    email: m.email || ''
   }));
 };
 

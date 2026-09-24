@@ -53,7 +53,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       
       const allMembers = await fetchGarageMembers(garageId);
       const me = allMembers.find(m => m.user_id === currentUserId);
-      if (me) setCurrentUserDisplayName(me.role === 'owner' ? 'Workshop Administrator' : (me.full_name || me.email?.split('@')[0] || ''));
+      if (me) setCurrentUserDisplayName(me.role === 'owner' ? 'Workshop Administrator' : (me.full_name || me.email?.split('@')[0] || 'Unnamed Staff'));
 
       let fetchedJobs: Job[] = [];
       let availableNames: string[] = [];
@@ -82,10 +82,10 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
         
         if (userRole === 'owner') {
           fetchedJobs = mappedData;
-          availableNames = allMembers.map(m => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || ''));
+          availableNames = allMembers.map(m => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || 'Unnamed Staff'));
         } else if (userRole === 'hod') {
           const scopedMembers = allMembers.filter(m => m.department_id === departmentId);
-          availableNames = scopedMembers.map(m => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || ''));
+          availableNames = scopedMembers.map(m => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || 'Unnamed Staff'));
           
           fetchedJobs = mappedData.filter(j => {
             if (!j.assigned_to) return true;
