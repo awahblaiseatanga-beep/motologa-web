@@ -448,7 +448,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 departmentId={departmentId}
                 departmentName={effectiveDeptName}
                 mechanics={Array.from(new Set([
-                  ...deptMembers.map((m) => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || 'Technician')),
+                  ...deptMembers.map((m) => m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || '')),
                   'Jean',
                   'Paul',
                   'Michel',
@@ -974,7 +974,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
                 <div className="space-y-2">
                   {deptMembers.map((m, index) => {
-                    const name = m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || `Technician ${index + 1}`);
+                    const name = m.role === 'owner' ? 'Workshop Administrator' : (m.full_name || m.email?.split('@')[0] || '');
                     const isHod = m.is_hod;
                     const bay = `Bay ${index + 1}`;
 

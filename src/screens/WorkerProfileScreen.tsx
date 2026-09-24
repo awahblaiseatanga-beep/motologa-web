@@ -84,7 +84,7 @@ export const WorkerProfileScreen: React.FC<WorkerProfileScreenProps> = ({ curren
             </div>
             <div className="text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-black text-white mb-1 shadow-black/50 drop-shadow-md">
-                {profile?.full_name || 'Technician'}
+                {profile?.full_name}
               </h1>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                 <div className="flex items-center gap-1.5 text-sky-300/80 font-mono text-[10px] sm:text-xs uppercase tracking-wider bg-sky-950/40 px-3 py-1 rounded-full border border-sky-500/20 w-fit">

@@ -118,14 +118,6 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       // 1c. CRITICAL FIX: Flush the auth state to ensure PostgREST headers are updated
       await supabase.auth.getSession();
 
-      // 1d. CRITICAL FIX: Persist explicit name to profiles so member fetches resolve actual names
-      const { error: profileError } = await supabase.from('profiles')
-        .upsert({ id: authUserId, full_name: fullName.trim(), email: email.trim() }, { onConflict: 'id' });
-        
-      if (profileError) {
-        console.warn('Non-fatal profile upsert warning:', profileError);
-      }
-
       // 2. Insert record into `garage_members` table
       await joinGarageMember(
         garageId,
