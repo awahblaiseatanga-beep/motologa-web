@@ -449,7 +449,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                             {hod && (
                               <span className="text-amber-300 flex items-center gap-1 font-semibold">
                                 <Crown className="w-3 h-3 text-amber-400" />
-                                Lead: {hod.role === 'owner' ? 'Workshop Administrator' : (hod.full_name || hod.email?.split('@')[0])}
+                                Lead: {hod.full_name || (hod.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff')}
                               </span>
                             )}
                           </div>
@@ -605,7 +605,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                             <div className="flex justify-between text-stone-300">
                               <span className="text-stone-500">Head of Dept:</span>
                               <span className="font-semibold text-amber-300 flex items-center gap-1">
-                                {hod ? <><Crown className="w-3 h-3 text-amber-400" />{hod.role === 'owner' ? 'Workshop Administrator' : (hod.full_name || hod.email?.split('@')[0])}</> : <span className="text-stone-500 italic">None Assigned</span>}
+                                {hod ? <><Crown className="w-3 h-3 text-amber-400" />{hod.full_name || (hod.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff')}</> : <span className="text-stone-500 italic">None Assigned</span>}
                               </span>
                             </div>
                           </div>
