@@ -18,21 +18,30 @@ export const WorkerProfileScreen: React.FC<WorkerProfileScreenProps> = ({ curren
     else setIsRefreshing(true);
     
     try {
+interface WorkerProfileResponse {
+  role: 'owner' | 'hod' | 'worker' | null;
+  profiles: { full_name?: string; email?: string } | { full_name?: string; email?: string }[] | null;
+}
+
       // Fetch member profile natively
-      const { data: memberData, error: memberErr } = await supabase
+      const { data, error: memberErr } = await supabase
         .from('garage_members')
         .select('role, profiles(full_name, email)')
         .eq('user_id', currentUserId)
         .single();
         
+      const memberData = data as unknown as WorkerProfileResponse | null;
+        
       if (memberErr) {
         console.error('Failed to fetch worker profile data', memberErr);
       } else if (memberData) {
+        const profilePayload = Array.isArray(memberData.profiles) ? memberData.profiles[0] : memberData.profiles;
+        
         setProfile({
-          role: memberData.role,
-          full_name: (memberData as any).profiles?.full_name || 'Unnamed Staff',
+          role: memberData.role || 'worker',
+          full_name: profilePayload?.full_name ?? 'Unnamed Staff',
           phone: '',
-          email: (memberData as any).profiles?.email || ''
+          email: profilePayload?.email ?? ''
         });
       }
 

@@ -195,6 +195,10 @@ export interface GarageMember {
   department?: Department;
   garages?: Garage;
   is_hod?: boolean;
+  profiles?: {
+    full_name?: string;
+    email?: string;
+  };
 }
 
 export interface InventoryItem {

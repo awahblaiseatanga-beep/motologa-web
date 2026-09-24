@@ -453,50 +453,45 @@ export const provisionNewWorkshop = async (ownerId: string, shopName: string, ph
   return garageData;
 };
 
+interface ApiGarageMemberResponse {
+  id: string;
+  garage_id: string;
+  user_id: string;
+  role: 'owner' | 'hod' | 'worker';
+  department_id: string | null;
+  created_at?: string;
+  is_hod?: boolean;
+  departments?: { id: string; name: string } | null;
+  profiles?: { full_name?: string; email?: string } | null;
+}
+
 export const fetchGarageMembers = async (garageId: string) => {
-  // Step A: Fetch operational data without joining profiles
-  const { data: members, error: membersErr } = await supabase
+  const { data, error } = await supabase
     .from('garage_members')
     .select(`
       *,
       departments (
         id,
         name
+      ),
+      profiles (
+        full_name,
+        email
       )
     `)
-    .eq('garage_id', garageId);
+    .eq('garage_id', garageId) as { data: ApiGarageMemberResponse[] | null, error: any };
 
-  if (membersErr || !members) {
-    console.error('Error fetching garage members:', membersErr);
+  if (error) {
+    console.error('Error fetching garage members natively:', error);
     return [];
   }
 
-  // Step B: Extract IDs
-  const userIds = members.map((m: any) => m.user_id);
-  
-  if (userIds.length === 0) return [];
-
-  // Step C: Fetch names directly from the profiles view
-  const { data: profiles, error: profilesErr } = await supabase
-    .from('profiles')
-    .select('user_id, full_name, email')
-    .in('user_id', userIds);
-
-  if (profilesErr) {
-    console.warn('Profiles fetch failed, returning base members', profilesErr);
-  }
-
-  // Step D: Merge in JavaScript
-  const mergedRoster = members.map((member: any) => {
-    const profile = profiles?.find((p: any) => p.user_id === member.user_id);
-    return {
-      ...member,
-      full_name: profile?.full_name || member.full_name || 'Unnamed Staff',
-      email: profile?.email || member.email || ''
-    };
-  });
-
-  return mergedRoster;
+  // Restore the data securely utilizing null-coalescing loops to enforce hard boundaries
+  return (data || []).map((m) => ({
+    ...m,
+    full_name: m.profiles?.full_name ?? 'Unnamed Staff',
+    email: m.profiles?.email ?? ''
+  }));
 };
 
 export const updateMemberDepartment = async (memberId: string, departmentId: string | null) => {
