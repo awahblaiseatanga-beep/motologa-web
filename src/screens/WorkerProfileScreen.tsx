@@ -21,7 +21,7 @@ export const WorkerProfileScreen: React.FC<WorkerProfileScreenProps> = ({ curren
       // Fetch member profile natively
       const { data: memberData, error: memberErr } = await supabase
         .from('garage_members')
-        .select('role, profiles(full_name, phone, email)')
+        .select('role, profiles(full_name, email)')
         .eq('user_id', currentUserId)
         .single();
         
@@ -31,7 +31,7 @@ export const WorkerProfileScreen: React.FC<WorkerProfileScreenProps> = ({ curren
         setProfile({
           role: memberData.role,
           full_name: (memberData as any).profiles?.full_name || 'Unnamed Staff',
-          phone: (memberData as any).profiles?.phone || '',
+          phone: '',
           email: (memberData as any).profiles?.email || ''
         });
       }
