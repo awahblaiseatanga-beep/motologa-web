@@ -42,6 +42,7 @@ import {
 interface RoleRouterProps {
   userId: string;
   userEmail?: string;
+  userName: string;
   onSignOut: () => void;
 }
 
@@ -207,6 +208,7 @@ export const OwnerBillingModal: React.FC<{
 export const RoleRouter: React.FC<RoleRouterProps> = ({
   userId,
   userEmail,
+  userName,
   onSignOut,
 }) => {
   const [loading, setLoading] = useState(true);

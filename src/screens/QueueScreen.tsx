@@ -53,7 +53,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       
       const allMembers = await fetchGarageMembers(garageId);
       const me = allMembers.find(m => m.user_id === currentUserId);
-      if (me) setCurrentUserDisplayName(me.full_name || (me.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff'));
+      if (me) setCurrentUserDisplayName(me.full_name || 'Unnamed Staff');
 
       let fetchedJobs: Job[] = [];
       let availableNames: string[] = [];
@@ -82,10 +82,10 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
         
         if (userRole === 'owner') {
           fetchedJobs = mappedData;
-          availableNames = allMembers.map(m => m.full_name || (m.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff'));
+          availableNames = allMembers.map(m => m.full_name || 'Unnamed Staff');
         } else if (userRole === 'hod') {
           const scopedMembers = allMembers.filter(m => m.department_id === departmentId);
-          availableNames = scopedMembers.map(m => m.full_name || (m.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff'));
+          availableNames = scopedMembers.map(m => m.full_name || 'Unnamed Staff');
           
           fetchedJobs = mappedData.filter(j => {
             if (!j.assigned_to) return true;

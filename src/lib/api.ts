@@ -454,57 +454,49 @@ export const provisionNewWorkshop = async (ownerId: string, shopName: string, ph
 };
 
 export const fetchGarageMembers = async (garageId: string) => {
-  // Querying garage_members and safely joining profiles
-  const { data, error } = await supabase
+  // Step A: Fetch operational data without joining profiles
+  const { data: members, error: membersErr } = await supabase
     .from('garage_members')
     .select(`
       *,
       departments (
         id,
         name
-      ),
-      profiles (
-        full_name,
-        email
       )
     `)
     .eq('garage_id', garageId);
 
-  // If the schema lacks the 'profiles' table or relationship, fallback to safe query
-  if (error && (error.code === 'PGRST205' || error.message.includes('relationship'))) {
-    console.warn('Profiles schema not found or relation failed. Falling back to default payload.', error);
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from('garage_members')
-      .select(`
-        *,
-        departments (
-          id,
-          name
-        )
-      `)
-      .eq('garage_id', garageId);
-      
-    if (fallbackError) {
-      console.error('Error fetching garage members (fallback):', fallbackError);
-      return [];
-    }
-    return (fallbackData || []).map((m: any) => ({
-      ...m,
-      full_name: m.full_name || 'Unnamed Staff',
-      email: m.email || ''
-    }));
-  }
-
-  if (error) {
-    console.error('Error fetching garage members:', error);
+  if (membersErr || !members) {
+    console.error('Error fetching garage members:', membersErr);
     return [];
   }
+
+  // Step B: Extract IDs
+  const userIds = members.map((m: any) => m.user_id);
   
-  return (data || []).map((m: any) => ({
-    ...m,
-    full_name: m.profiles?.full_name || m.full_name || 'Unnamed Staff',
-    email: m.profiles?.email || m.email || ''
-  }));
+  if (userIds.length === 0) return [];
+
+  // Step C: Fetch names directly from the profiles view
+  const { data: profiles, error: profilesErr } = await supabase
+    .from('profiles')
+    .select('user_id, full_name, email')
+    .in('user_id', userIds);
+
+  if (profilesErr) {
+    console.warn('Profiles fetch failed, returning base members', profilesErr);
+  }
+
+  // Step D: Merge in JavaScript
+  const mergedRoster = members.map((member: any) => {
+    const profile = profiles?.find((p: any) => p.user_id === member.user_id);
+    return {
+      ...member,
+      full_name: profile?.full_name || member.full_name || 'Unnamed Staff',
+      email: profile?.email || member.email || ''
+    };
+  });
+
+  return mergedRoster;
 };
 
 export const updateMemberDepartment = async (memberId: string, departmentId: string | null) => {

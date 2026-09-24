@@ -103,7 +103,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
   // Department & HOD Identity
   const effectiveDeptName = departmentName || 'Mechanical Bay & Diagnostics';
-  const hodName = membership?.full_name || (membership?.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff');
+  const hodName = membership?.full_name || 'Unnamed Staff';
 
   const todayKey = new Date().toISOString().split('T')[0];
   const storageKey = `motologa_hod_notes_${garageId}_${departmentId || 'dept'}_${todayKey}`;
@@ -448,7 +448,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 departmentId={departmentId}
                 departmentName={effectiveDeptName}
                 mechanics={Array.from(new Set([
-                  ...deptMembers.map((m) => m.full_name || (m.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff')),
+                  ...deptMembers.map((m) => m.full_name || 'Unnamed Staff'),
                   'Jean',
                   'Paul',
                   'Michel',
@@ -974,7 +974,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
                 <div className="space-y-2">
                   {deptMembers.map((m, index) => {
-                    const name = m.full_name || (m.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff');
+                    const name = m.full_name || 'Unnamed Staff';
                     const isHod = m.is_hod;
                     const bay = `Bay ${index + 1}`;
 

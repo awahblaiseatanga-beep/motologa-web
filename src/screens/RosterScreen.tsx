@@ -89,7 +89,7 @@ export const RosterScreen: React.FC<RosterScreenProps> = ({
                   return (
                     <tr key={member.id} className="hover:bg-stone-800/30 transition">
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-white text-sm">{member.full_name || (member.role === 'owner' ? 'Workshop Administrator' : 'Unnamed Staff')}</div>
+                        <div className="font-bold text-white text-sm">{member.full_name || 'Unnamed Staff'}</div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex flex-wrap gap-2 items-center">

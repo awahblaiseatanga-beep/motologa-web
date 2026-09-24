@@ -118,7 +118,7 @@ export default function App() {
           onComplete={async () => {
             const { data: { session: refreshedSession } } = await supabase.auth.getSession();
             if (refreshedSession) {
-              setSession(refreshedSession);
+              setSession({...refreshedSession}); // force new obj ref to trigger react rerender natively
             }
           }} 
         />
@@ -130,6 +130,7 @@ export default function App() {
         <RoleRouter
           userId={session.user.id}
           userEmail={session.user.email}
+          userName={session.user.user_metadata?.full_name || session.user.user_metadata?.name || 'Unnamed Staff'}
           onSignOut={handleSignOut}
         />
       </div>

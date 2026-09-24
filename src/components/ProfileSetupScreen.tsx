@@ -36,6 +36,8 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
       
       if (updateError) throw updateError;
       
+      await supabase.auth.refreshSession();
+      
       onComplete();
     } catch (err: any) {
       console.error('Error updating profile:', err);
