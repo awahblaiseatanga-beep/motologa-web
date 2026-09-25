@@ -498,7 +498,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               onClick={() => { setOwnerScreen('outbox'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'outbox' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Send className="w-4 h-4" /> Customer Outbox
+              <Send className="w-4 h-4" /> Additional JOBS
             </button>
             <button 
               onClick={() => { setOwnerScreen('daily_logs'); setIsSidebarOpen(false); }}
@@ -534,8 +534,10 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                  ownerScreen === 'intake' ? 'Vehicle Register' :
                  ownerScreen === 'checkout' ? 'Exit' :
                  ownerScreen === 'inventory' ? 'Inventory Management' :
+                 ownerScreen === 'outbox' ? 'Additional JOBS' :
                  ownerScreen === 'daily_logs' ? 'End of Day HOD Logs' :
-                 'Shop Settings'}
+                 ownerScreen === 'settings' ? 'Shop Settings' :
+                 'Shop Dashboard'}
               </div>
             </div>
             
