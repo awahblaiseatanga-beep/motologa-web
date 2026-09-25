@@ -98,7 +98,7 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
             <div className="menu__item-icon-wrapper">
               {item.icon}
             </div>
-            <span className="menu__item-label">{item.label}</span>
+            <span className="menu__item-label text-xs sm:text-sm md:text-base font-semibold tracking-tight whitespace-nowrap px-2 sm:px-4">{item.label}</span>
           </button>
         ))}
         <div className="menu__border" ref={menuBorderRef}></div>

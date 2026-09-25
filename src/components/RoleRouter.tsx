@@ -226,7 +226,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
   
   const WORKER_TABS = useMemo(() => {
     const tabs: TabItem[] = [
-      { id: 'queue', label: 'Queue', icon: <Wrench className="w-5 h-5" />, color: '#10b981' }
+      { id: 'queue', label: 'JOBS', icon: <Wrench className="w-5 h-5" />, color: '#10b981' }
     ];
     return tabs;
   }, []);
@@ -465,28 +465,28 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               <BarChart3 className="w-4 h-4" /> Analytics Dashboard
             </button>
             <button 
-              onClick={() => { setOwnerScreen('bays'); setIsSidebarOpen(false); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'bays' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
+              onClick={() => { setOwnerScreen('queue'); setIsSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'queue' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Building2 className="w-4 h-4" /> Bays (Queue)
+              <Building2 className="w-4 h-4" /> JOBS
             </button>
             <button 
               onClick={() => { setOwnerScreen('intake'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'intake' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <PlusCircle className="w-4 h-4" /> Intake
+              <PlusCircle className="w-4 h-4" /> Register
             </button>
             <button 
               onClick={() => { setOwnerScreen('checkout'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'checkout' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Receipt className="w-4 h-4" /> Checkout
+              <Receipt className="w-4 h-4" /> Exit
             </button>
             <button 
               onClick={() => { setOwnerScreen('appointments'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'appointments' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Calendar className="w-4 h-4" /> Bookings
+              <Calendar className="w-4 h-4" /> Appointments
             </button>
             <button 
               onClick={() => { setOwnerScreen('inventory'); setIsSidebarOpen(false); }}
@@ -504,7 +504,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               onClick={() => { setOwnerScreen('daily_logs'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'daily_logs' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <FileAudio className="w-4 h-4" /> End of Day Logs
+              <FileAudio className="w-4 h-4" /> Day Summary
             </button>
             <button 
               onClick={() => { setOwnerScreen('settings'); setIsSidebarOpen(false); }}
@@ -530,9 +530,9 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               </button>
               <div className="text-sm font-black text-white">
                 {ownerScreen === 'analytics' ? 'Analytics Engine' : 
-                 ownerScreen === 'bays' ? 'Bays & Garage Floor' :
-                 ownerScreen === 'intake' ? 'Vehicle Intake Registry' :
-                 ownerScreen === 'checkout' ? 'Customer Checkout' :
+                 ownerScreen === 'queue' ? 'JOBS' :
+                 ownerScreen === 'intake' ? 'Vehicle Register' :
+                 ownerScreen === 'checkout' ? 'Customer Exit' :
                  ownerScreen === 'inventory' ? 'Inventory Management' :
                  ownerScreen === 'daily_logs' ? 'End of Day HOD Logs' :
                  'Shop Settings'}

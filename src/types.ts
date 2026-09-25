@@ -102,7 +102,8 @@ export interface Appointment {
   vehicle_id?: string;
   scheduled_date: string; // YYYY-MM-DD
   scheduled_time?: string; // HH:mm:ss
-  issue_description: string;
+  issue_description?: string;
+  voice_note_url?: string;
   source: AppointmentSource;
   source_job_id?: string;
   source_finding_id?: string;

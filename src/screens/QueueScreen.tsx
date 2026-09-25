@@ -157,7 +157,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
                 : `Technician Floor Station`}
             </span>
           </div>
-          <h2 className="text-xl font-black text-white">Active Bay & Repair Queue</h2>
+          <h2 className="text-xl font-black text-white">Active JOBS</h2>
         </div>
 
       </div>
@@ -191,7 +191,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
             }`}
           >
             <LayoutDashboard className="w-5 h-5 shrink-0" />
-            <span className="hidden sm:inline uppercase tracking-wider text-xs">Active Bay</span>
+            <span className="hidden sm:inline uppercase tracking-wider text-xs">JOBS</span>
           </button>
           
           <button

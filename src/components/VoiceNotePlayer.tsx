@@ -11,7 +11,7 @@ interface VoiceNotePlayerProps {
 export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   audioUrl,
   durationSeconds = 0,
-  label = 'Intake Voice Memo',
+  label = 'Register Voice Memo',
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);

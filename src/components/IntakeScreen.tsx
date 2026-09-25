@@ -4,7 +4,7 @@ import { Job, JobStatus, GarageMember, Department } from '../types';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { MotologaLogo } from './MotologaLogo';
 import { VoiceRecorderField } from './VoiceRecorderField';
-import { fetchDepartments, fetchGarageMembers } from '../lib/api';
+import { fetchDepartments, fetchGarageMembers, hasNarrativeContent } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { CustomerVehicleIdentity } from './CustomerVehicleIdentity';
 
@@ -102,6 +102,11 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       alert("STOP: You must select a mechanic before dispatching.");
       return;
     }
+    
+    if (!hasNarrativeContent(issueDescription, voiceNoteUrl)) {
+      alert("You must log an issue description via text or attach a voice note.");
+      return;
+    }
 
     const newJob: Job = {
       id: '', // UUID is assigned by Supabase backend
@@ -119,7 +124,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       newPartPhotoUrl: '',
       partSource: 'Garage Stock',
       laborFeeFcfa: 15000,
-      issueDescription: issueDescription.trim() || 'General mechanical servicing',
+      issueDescription: issueDescription.trim() || undefined,
       voiceNoteUrl: voiceNoteUrl || undefined,
       voiceNoteDurationSeconds: voiceNoteDuration || undefined,
       deferredRepair: {
@@ -193,7 +198,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                New Vehicle Intake
+                New Vehicle Register
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 font-medium">
                 Douala & Yaoundé Garage Terminal • Offline Active

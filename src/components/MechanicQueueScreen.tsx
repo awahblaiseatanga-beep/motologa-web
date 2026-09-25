@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Job, PartSource, JobStatus, DeferredRepair, InventoryItem } from '../types';
 import { supabase } from '../lib/supabase';
+import { hasNarrativeContent } from '../lib/api';
 import { LicensePlateBadge } from './LicensePlateBadge';
 import { StatusChip } from './StatusChip';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
@@ -158,7 +159,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
 
     try {
       const edits = localEdits[job.id] || {};
-      const finalNotes = localNotes[job.id] !== undefined ? localNotes[job.id] : job.issueDescription;
+      const finalNotes = localNotes[job.id] !== undefined ? localNotes[job.id] : (job.diagnosticNotes || '');
 
       const jobEdits = localEdits[job.id] || {};
       
@@ -183,6 +184,11 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       let finalVoiceUrl = edits.diagnosticVoiceNoteUrl !== undefined ? edits.diagnosticVoiceNoteUrl : job.diagnosticVoiceNoteUrl;
       const finalVoiceDur = edits.voiceNoteDurationSeconds !== undefined ? edits.voiceNoteDurationSeconds : job.voiceNoteDurationSeconds; 
       finalVoiceUrl = await abstractUploadAndLink(finalVoiceUrl, 'diagnostic_voice_note');
+
+      if (!hasNarrativeContent(finalNotes, finalVoiceUrl)) {
+         alert("You must record a diagnostic voice note or type manual notes to explain the repair before sending to HOD.");
+         return;
+      }
 
       let finalOldPart = edits.oldPartPhotoUrl !== undefined ? edits.oldPartPhotoUrl : job.oldPartPhotoUrl;
       finalOldPart = await abstractUploadAndLink(finalOldPart, 'old_part');
@@ -484,15 +490,15 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                   {/* Newly added Read-Only Customer Intake Summary */}
                   <div className="bg-[#142F30] rounded-xl p-3 border border-emerald-900 shadow-inner">
                     <h4 className="text-[10px] font-black uppercase text-emerald-400 tracking-wider mb-2 flex items-center gap-1.5">
-                      Customer Complaint & Intake Notes
+                      Customer Complaint & Register Notes
                     </h4>
                     <p className="text-sm font-medium text-emerald-50 mb-3 whitespace-pre-wrap leading-relaxed">
-                      {job.issueDescription || <span className="italic text-emerald-700">No text notes recorded at intake.</span>}
+                      {job.issueDescription || <span className="italic text-emerald-700">No text notes recorded at registration.</span>}
                     </p>
                     
                     {job.voiceNoteUrl && (
                       <div className="bg-[#0b1c1d] rounded-lg p-2 flex items-center gap-3">
-                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest shrink-0">Intake Audio</span>
+                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest shrink-0">Register Audio</span>
                          <audio controls src={job.voiceNoteUrl} className="h-8 max-w-[200px]" />
                       </div>
                     )}
@@ -747,7 +753,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                   {isCompleted ? (
                     <div className="w-full min-h-[48px] rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold flex items-center justify-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <span>Job Completed • Ready for Customer Checkout</span>
+                      <span>Job Completed • Ready for Customer Exit</span>
                     </div>
                   ) : job.status === 'Pending QC' && userRole === 'hod' ? (
                     <button

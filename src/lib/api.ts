@@ -1,6 +1,10 @@
 import { supabase } from './supabase';
 import { Job, DeferredRepair, DeferredStatus, Appointment, AppointmentStatus } from '../types';
 
+export const hasNarrativeContent = (text?: string | null, voiceUrl?: string | null): boolean => {
+  return (text?.trim().length || 0) > 0 || Boolean(voiceUrl);
+};
+
 // Typed interface for job_media rows
 interface DbJobMedia {
   type: string;
@@ -580,7 +584,8 @@ export const promoteFindingToAppointment = async (
   departmentId: string,
   scheduledDate: string,
   scheduledTime: string,
-  issueDescription: string
+  issueDescription: string | null,
+  voiceNoteUrl?: string | null
 ) => {
   // Safely enforce YYYY-MM-DD string representation without triggering timezone shifts
   const safeDate = typeof scheduledDate === 'string' ? scheduledDate.slice(0, 10) : ''; 
@@ -595,7 +600,8 @@ export const promoteFindingToAppointment = async (
     p_department_id: departmentId,
     p_scheduled_date: safeDate,
     p_scheduled_time: safeTime,
-    p_issue_description: issueDescription
+    p_issue_description: issueDescription || null,
+    p_voice_note_url: voiceNoteUrl || null
   });
 
   if (error) {
@@ -637,28 +643,33 @@ export const createDirectAppointment = async (
   vehicleModel: string,
   scheduledDate: string,
   scheduledTime: string,
-  issueDescription: string,
+  issueDescription: string | null,
+  voiceNoteUrl: string | null,
   source: 'direct_booking' | 'checkout'
 ) => {
   // Gracefully sanitize departmentId to null if falsy to protect UUID typecast
   const safeDeptId = departmentId ? departmentId : null;
 
   // 1. Relational Upsert: Customers table
-  const { data: customerRecord } = await supabase
+  const { data: customerRecord, error: customerError } = await supabase
     .from('customers')
     .upsert(
       { 
-        phone: customerPhone, 
-        full_name: customerName || 'Walk-in Client',
-        address: '' // Compatibility patch for deprecated columns
+        phone: customerPhone || 'Unknown', 
+        name: customerName || 'Walk-in Client'
       }, 
       { onConflict: 'phone' }
     )
     .select('id')
     .single();
 
+  if (customerError) {
+    console.error('Failed to upsert booking customer:', customerError);
+    throw new Error('Database rejected client initialization.');
+  }
+
   // 2. Relational Upsert: Vehicles table
-  const { data: vehicleRecord } = await supabase
+  const { data: vehicleRecord, error: vehicleError } = await supabase
     .from('vehicles')
     .upsert(
       { 
@@ -671,6 +682,11 @@ export const createDirectAppointment = async (
     .select('id')
     .single();
 
+  if (vehicleError) {
+    console.error('Failed to upsert booking vehicle:', vehicleError);
+    throw new Error('Database rejected vehicle registration.');
+  }
+
   // 3. Insert Appointment natively mapping UUIDs
   const { data, error } = await supabase
     .from('appointments')
@@ -681,7 +697,8 @@ export const createDirectAppointment = async (
       vehicle_id: vehicleRecord?.id || null,
       scheduled_date: scheduledDate,
       scheduled_time: scheduledTime || null,
-      issue_description: issueDescription,
+      issue_description: issueDescription || null,
+      voice_note_url: voiceNoteUrl || null,
       source: source,
       status: 'scheduled'
     })

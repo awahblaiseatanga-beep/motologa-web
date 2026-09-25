@@ -254,7 +254,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-stone-300 text-sm font-medium bg-stone-900 border border-stone-800 rounded-2xl animate-in fade-in h-96">
         <RefreshCw className="w-6 h-6 text-sky-400 animate-spin mb-4" />
-        <span className="animate-pulse tracking-widest uppercase font-black text-xs text-stone-400">Loading Outbox</span>
+        <span className="animate-pulse tracking-widest uppercase font-black text-xs text-stone-400">Loading Additional JOB</span>
       </div>
     );
   }
@@ -265,7 +265,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-sky-500/10">
           <div className="flex items-center gap-2 text-sky-400 font-bold">
             <Clock className="w-5 h-5" />
-            <h2 className="uppercase tracking-wider text-sm">Unified Approvals & Outbox ({customerFindings.length})</h2>
+            <h2 className="uppercase tracking-wider text-sm">Unified Approvals & Additional JOB ({customerFindings.length})</h2>
           </div>
           <button onClick={() => loadData(false)} className="p-2 bg-sky-900/30 text-sky-400 hover:text-sky-300 rounded-lg transition active:scale-95 text-xs font-bold flex items-center gap-1 border border-sky-500/30">
             <RefreshCw className="w-3.5 h-3.5" /> Reload

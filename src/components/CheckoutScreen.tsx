@@ -306,7 +306,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       {/* Select Vehicle to Checkout carousel if multiple */}
       <div className="space-y-1.5">
         <label className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
-          <span>Active Checkout Bay</span>
+          <span>Active Exit</span>
           <span className="text-[11px] text-slate-400 font-normal">
             Tap a vehicle plate to inspect bill
           </span>
@@ -597,7 +597,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
           <h3 className="font-extrabold text-slate-800 text-lg">All Vehicles Dispatched</h3>
           <p className="text-sm text-slate-500">
-            Intake new vehicles from the first tab to begin repairs.
+            Register new vehicles from the first tab to begin repairs.
           </p>
         </div>
       )}

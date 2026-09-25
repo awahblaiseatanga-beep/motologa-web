@@ -6,7 +6,7 @@ import { IntakeScreen } from '../components/IntakeScreen';
 import { CustomerOutboxScreen } from './CustomerOutboxScreen';
 import { LicensePlateBadge } from '../components/LicensePlateBadge';
 import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
-import { fetchGarageMembers, fetchDepartments, createJob, mapDbJobToUiJob } from '../lib/api';
+import { fetchGarageMembers, fetchDepartments, createJob, mapDbJobToUiJob, hasNarrativeContent } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { VoiceRecorderField } from '../components/VoiceRecorderField';
@@ -79,11 +79,11 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const HOD_TABS = useMemo(() => {
     const tabs: TabItem[] = [
       { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5" />, color: '#34d399' },
-      { id: 'my-queue', label: 'My Bay', icon: <Car className="w-5 h-5" />, color: '#10b981' },
-      { id: 'outbox', label: 'Outbox', icon: <Send className="w-5 h-5" />, color: '#38bdf8' },
+      { id: 'my-queue', label: 'JOBS', icon: <Car className="w-5 h-5" />, color: '#10b981' },
+      { id: 'outbox', label: 'Additional JOB', icon: <Send className="w-5 h-5" />, color: '#38bdf8' },
       { id: 'roster', label: 'Staff', icon: <Users className="w-5 h-5" />, color: '#a78bfa' },
-      { id: 'appointments', label: 'Bookings', icon: <Calendar className="w-5 h-5" />, color: '#fca5a5' },
-      { id: 'intake', label: 'Intake', icon: <PlusCircle className="w-5 h-5" />, color: '#fbbf24' },
+      { id: 'appointments', label: 'Appointments', icon: <Calendar className="w-5 h-5" />, color: '#fca5a5' },
+      { id: 'intake', label: 'Register', icon: <PlusCircle className="w-5 h-5" />, color: '#fbbf24' },
     ];
     return tabs;
   }, []);
@@ -535,7 +535,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    In Bays
+                    JOBS
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 sm:mt-1 font-mono">
                     {inBayCount}
@@ -696,7 +696,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <Car className="w-4 h-4 sm:w-5 sm:h-5 text-[#34D399]" />
-                    <span>Jobs in Bay ({floorJobs.length})</span>
+                    <span>JOBS ({floorJobs.length})</span>
                   </h2>
                   <span className="text-[11px] sm:text-xs text-stone-400">
                     Tap to expand details
@@ -721,7 +721,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                             <div className="flex flex-col gap-1.5 min-w-0">
                               <LicensePlateBadge plate={job.licensePlate} size="md" />
                               <div className="mt-1">
-                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest block mb-0.5">Intake Issue:</span>
+                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest block mb-0.5">Register Issue:</span>
                                 <p className="text-xs sm:text-sm text-stone-300 font-medium whitespace-pre-wrap">
                                   {job.issueDescription || 'Diagnostic & maintenance procedure'}
                                 </p>
@@ -781,7 +781,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                             <div className="mt-3 pt-4 border-t border-stone-800/60 animate-in slide-in-from-top-2 duration-200 flex flex-col gap-3">
                               <h4 className="text-[11px] font-black uppercase text-stone-400">Manage Active Repair</h4>
                               
-                              <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No intake description provided."}</p>
+                              <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No register description provided."}</p>
                               
                               <button
                                 onClick={async () => {
@@ -798,7 +798,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                 }}
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-2"
                               >
-                                <CheckCircle2 className="w-4 h-4" /> Claim Job to My Bay
+                                <CheckCircle2 className="w-4 h-4" /> Claim Job to Work
                               </button>
                             </div>
                           )}
@@ -812,10 +812,10 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               <div className="space-y-4 mb-4 bg-stone-950/50 p-3 rounded-xl border border-stone-800/80">
                                 <div className="bg-gray-800/50 p-3 rounded-md mb-2 border border-gray-700/50">
                                   <span className="text-[10px] font-black uppercase tracking-wider block mb-1 text-orange-400">Customer Reported Problem</span>
-                                  <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No intake description provided."}</p>
+                                  <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No register description provided."}</p>
                                   {job.voiceNoteUrl && (
                                     <div className="mt-3">
-                                      <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Intake Voice Note</span>
+                                      <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Register Voice Note</span>
                                       <audio src={job.voiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
                                     </div>
                                   )}
@@ -896,7 +896,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                       setHodJobSummary('');
                                       setHodRejectionNote('');
                                       setHodRejectionVoiceUrl('');
-                                      setSuccessToast("Job Approved & Sent to Checkout!");
+                                      setSuccessToast("Job Approved & Sent to Exit!");
                                       setTimeout(() => setSuccessToast(null), 3500);
                                     } else {
                                       console.error(error);
@@ -909,6 +909,10 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                 </button>
                                 <button
                                   onClick={async () => {
+                                    if (!hasNarrativeContent(hodRejectionNote, hodRejectionVoiceUrl)) {
+                                       alert("You must provide a rejection reason via text or voice memo.");
+                                       return;
+                                    }
                                     let finalHodVoiceUrl = hodRejectionVoiceUrl;
                                     if (finalHodVoiceUrl && (finalHodVoiceUrl.startsWith('data:') || finalHodVoiceUrl.startsWith('blob:'))) {
                                       try {
@@ -939,7 +943,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                       setHodRejectionNote('');
                                       setHodRejectionVoiceUrl('');
                                       setHodJobSummary('');
-                                      setSuccessToast("Job Rejected back to Bay.");
+                                      setSuccessToast("Job Rejected back to Work.");
                                       setTimeout(() => setSuccessToast(null), 3500);
                                     } else {
                                       console.error(error);
@@ -949,7 +953,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                   className="bg-stone-800 active:scale-95 border border-rose-900 hover:bg-rose-950 hover:border-rose-800 text-rose-500 font-extrabold text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all flex items-center justify-center gap-1.5"
                                 >
                                   <AlertTriangle className="w-4 h-4 stroke-[2.5]" />
-                                  <span>Reject to Bay</span>
+                                  <span>Reject to Work</span>
                                 </button>
                               </div>
                             </div>
@@ -977,7 +981,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   {deptMembers.map((m, index) => {
                     const name = m.full_name || 'Unnamed Staff';
                     const isHod = m.is_hod;
-                    const bay = `Bay ${index + 1}`;
+                    const bay = `JOBS ${index + 1}`;
 
                     return (
                       <div

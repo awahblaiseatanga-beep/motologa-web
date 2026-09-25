@@ -69,10 +69,10 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
     const tabs: TabItem[] = [
       { id: 'analytics', label: 'Dashboard', icon: <BarChart3 className="w-5 h-5" />, color: '#34d399' },
       { id: 'structure', label: 'Bays', icon: <Building2 className="w-5 h-5" />, color: '#f43f5e' },
-      { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5" />, color: '#10b981' },
-      { id: 'intake', label: 'Intake', icon: <PlusCircle className="w-5 h-5" />, color: '#f59e0b' },
-      { id: 'checkout', label: 'Checkout', icon: <Receipt className="w-5 h-5" />, color: '#0ea5e9' },
-      { id: 'appointments', label: 'Bookings', icon: <Calendar className="w-5 h-5" />, color: '#8b5cf6' },
+      { id: 'queue', label: 'JOBS', icon: <Wrench className="w-5 h-5" />, color: '#10b981' },
+      { id: 'intake', label: 'Register', icon: <PlusCircle className="w-5 h-5" />, color: '#f59e0b' },
+      { id: 'checkout', label: 'Exit', icon: <Receipt className="w-5 h-5" />, color: '#0ea5e9' },
+      { id: 'appointments', label: 'Appointments', icon: <Calendar className="w-5 h-5" />, color: '#8b5cf6' },
     ];
     return tabs;
   }, []);
@@ -374,7 +374,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
 
             <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Active Jobs</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">JOBS</span>
                 <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <Car className="w-4 h-4" />
                 </div>

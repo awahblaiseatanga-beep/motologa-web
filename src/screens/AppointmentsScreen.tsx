@@ -65,7 +65,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
          <div>
             <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
                <Calendar className="w-6 h-6 text-sky-400" />
-               Appointments & Future Bookings
+               Appointments
             </h2>
             <p className="text-sm font-medium text-stone-400 mt-1">
                {departmentName ? `${departmentName} Operational Queue` : 'Global Garage Schedule'}
@@ -158,15 +158,42 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                       <div>
                          <p className="text-[10px] uppercase font-black tracking-widest text-stone-500 mb-0.5">Attached Client</p>
                          <p className="text-stone-300 font-medium text-sm">
-                            {cust ? `${cust.full_name} (${cust.phone})` : 'Unknown Client'}
+                            {cust ? `${cust.name || cust.full_name || 'Unknown'} (${cust.phone})` : 'Unknown Client'}
                          </p>
                       </div>
 
                       <div className="bg-stone-950 p-3 rounded-xl border border-stone-800/80">
-                         <p className="text-[10px] uppercase font-black tracking-widest text-amber-500 mb-1 flex items-center gap-1">
-                            <Wrench className="w-3 h-3" /> Issue Description
+                         <p className="text-[10px] uppercase font-black tracking-widest text-amber-500 mb-2 flex items-center gap-1">
+                            <Wrench className="w-3 h-3" /> Issue Context
                          </p>
-                         <p className="text-stone-400 text-xs leading-relaxed">{appt.issue_description}</p>
+                         {(() => {
+                             const legacyRegex = /\[Voice Note: (.*?)\]/g;
+                             let desc = appt.issue_description || '';
+                             let extractedUrl = appt.voice_note_url || null;
+                             
+                             const match = legacyRegex.exec(desc);
+                             if (match) {
+                                 extractedUrl = extractedUrl || match[1];
+                                 desc = desc.replace(match[0], '').trim();
+                             }
+
+                             return (
+                               <div className="flex flex-col gap-2">
+                                   {desc && <p className="text-stone-400 text-xs leading-relaxed whitespace-pre-wrap">{desc}</p>}
+                                   {extractedUrl && (
+                                      <div className={`${desc ? 'pt-2 border-t border-stone-800/60 mt-1' : ''}`}>
+                                         <p className="text-[10px] text-sky-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                                            <Wrench className="w-3 h-3" /> Voice Memo attached
+                                         </p>
+                                         <audio controls src={extractedUrl} className="w-full h-8 shadow-sm rounded max-w-[90%] [&::-webkit-media-controls-panel]:bg-stone-800 [&::-webkit-media-controls-current-time-display]:text-stone-300 [&::-webkit-media-controls-time-remaining-display]:text-stone-300" />
+                                      </div>
+                                   )}
+                                   {!desc && !extractedUrl && (
+                                      <p className="text-stone-600 text-xs italic">No narrative context provided.</p>
+                                   )}
+                               </div>
+                             );
+                         })()}
                       </div>
                    </div>
 
