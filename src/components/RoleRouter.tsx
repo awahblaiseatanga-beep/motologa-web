@@ -532,7 +532,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                 {ownerScreen === 'analytics' ? 'Analytics Engine' : 
                  ownerScreen === 'queue' ? 'JOBS' :
                  ownerScreen === 'intake' ? 'Vehicle Register' :
-                 ownerScreen === 'checkout' ? 'Customer Exit' :
+                 ownerScreen === 'checkout' ? 'Exit' :
                  ownerScreen === 'inventory' ? 'Inventory Management' :
                  ownerScreen === 'daily_logs' ? 'End of Day HOD Logs' :
                  'Shop Settings'}

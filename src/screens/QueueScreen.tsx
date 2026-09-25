@@ -136,10 +136,9 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
 
   const handleNavigateToCheckout = () => {
     if (userRole === 'owner') {
-      // Typically Owner uses OwnerDashboard navigation, but for standalone QueueScreen:
-      alert("Checkout operations must be handled from the Owner Dashboard Checkout Tab.");
+      alert("Exit operations must be handled from the Owner Dashboard Exit Tab.");
     } else {
-      alert("Only Workshop Owners can process final payments and checkout via their Dashboard.");
+      alert("Only Workshop Owners can process final payments and exit via their Dashboard.");
     }
   };
 
