@@ -5,6 +5,7 @@ import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { MotologaLogo } from './MotologaLogo';
 import { VoiceRecorderField } from './VoiceRecorderField';
 import { fetchDepartments, fetchGarageMembers, hasNarrativeContent } from '../lib/api';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { supabase } from '../lib/supabase';
 import { CustomerVehicleIdentity } from './CustomerVehicleIdentity';
 
@@ -36,7 +37,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
   const [fetchedDepartments, setFetchedDepartments] = useState<Department[]>([]);
   const [busyMechanicIds, setBusyMechanicIds] = useState<string[]>([]);
 
-  useEffect(() => {
+  const loadData = () => {
     if (garageId) {
       Promise.all([
         fetchDepartments(garageId),
@@ -51,6 +52,20 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
         }
       }).catch(err => console.error('Failed to fetch garage context for intake:', err));
     }
+  };
+
+  useEffect(() => {
+    loadData();
+
+    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, loadData);
+    const unsubMembers = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_MEMBERS, loadData);
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, loadData);
+
+    return () => {
+      unsubJobs();
+      unsubMembers();
+      unsubReconnect();
+    };
   }, [garageId]);
 
   // Derived state to group staff by department ID

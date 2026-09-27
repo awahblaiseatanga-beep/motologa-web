@@ -9,6 +9,7 @@ import {
   updateJobStatus,
   mapDbJobToUiJob
 } from '../lib/api';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import {
   Wrench,
   Users,
@@ -65,7 +66,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       let query = supabase.from('jobs').select('*, job_media(*), mechanic:garage_members!jobs_assigned_to_fkey(full_name, email)');
       
       if (userRole === 'worker') {
-        query = query.eq('assigned_to', currentUserId).eq('status', 'IN_PROGRESS');
+        query = query.eq('assigned_to', currentUserId).in('status', ['pending', 'in_progress', 'IN_PROGRESS', 'paused', 'awaiting_approval']);
       } else if (userRole === 'hod') {
         query = query.eq('garage_id', garageId).eq('status', 'COMPLETED').eq('hod_review_pending', true);
       } else {
@@ -118,6 +119,16 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
   // Force a fresh fetch when the component mounts or the role view switches, busting local cache
   useEffect(() => {
     loadJobs(false);
+
+    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, () => loadJobs(true));
+    const unsubDeferred = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_DEFERRED, () => loadJobs(true));
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => loadJobs(true));
+
+    return () => {
+      unsubJobs();
+      unsubDeferred();
+      unsubReconnect();
+    };
   }, [userRole, garageId, currentUserId]);
 
 

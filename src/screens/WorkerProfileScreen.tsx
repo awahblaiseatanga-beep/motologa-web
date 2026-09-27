@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Activity, CheckCircle, RefreshCw, Calendar, TrendingUp, Phone, Mail } from 'lucide-react';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 
+// Replace missing lucide-react Wrench with standard import or generic fallback inline if WrenchIcon was a local sub-comp mapping, wait, lines 107 show `<WrenchIcon />`, let's just make sure imports are right without breaking it. We'll just append our import.
 interface WorkerProfileScreenProps {
   currentUserId: string;
 }
@@ -74,6 +76,14 @@ interface WorkerProfileResponse {
 
   useEffect(() => {
     fetchStats();
+
+    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, () => fetchStats(true));
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => fetchStats(true));
+
+    return () => {
+      unsubJobs();
+      unsubReconnect();
+    };
   }, [currentUserId]);
 
   if (loading) {

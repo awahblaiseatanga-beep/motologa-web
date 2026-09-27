@@ -7,6 +7,7 @@ import { CustomerOutboxScreen } from './CustomerOutboxScreen';
 import { LicensePlateBadge } from '../components/LicensePlateBadge';
 import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
 import { fetchGarageMembers, fetchDepartments, createJob, mapDbJobToUiJob, hasNarrativeContent } from '../lib/api';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { VoiceRecorderField } from '../components/VoiceRecorderField';
@@ -273,6 +274,16 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
   useEffect(() => {
     loadData();
+
+    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, () => loadData());
+    const unsubMembers = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_MEMBERS, () => loadData());
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => loadData());
+
+    return () => {
+      unsubJobs();
+      unsubMembers();
+      unsubReconnect();
+    };
   }, [garageId, departmentId]);
 
   // Dept members with friendly fallback
@@ -786,7 +797,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               <button
                                 onClick={async () => {
                                   // Assign to self
-                                  const { error } = await supabase.from('jobs').update({ mechanicAssigned: userId }).eq('id', job.id);
+                                  const { error } = await supabase.from('jobs').update({ assigned_to: userId }).eq('id', job.id);
                                   if (!error) {
                                     setFloorJobs(prev => prev.map(j => j.id === job.id ? { ...j, mechanicAssigned: userId, status: 'In Repair' } : j));
                                     setExpandedJobId(null);

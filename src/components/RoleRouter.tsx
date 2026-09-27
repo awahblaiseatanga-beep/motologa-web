@@ -15,6 +15,8 @@ import { createJob } from '../lib/api';
 import { ProfileSetupScreen } from './ProfileSetupScreen';
 import { MotologaLogo } from './MotologaLogo';
 import { InstallAppButton } from './InstallAppButton';
+import { NotificationProvider } from './NotificationProvider';
+import { NotificationBell } from './NotificationBell';
 import { AnimatedTabBar, TabItem } from './ui/animated-tab-bar';
 import {
   ShieldAlert,
@@ -415,6 +417,8 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             <span>Profile</span>
           </button>
 
+          <NotificationBell />
+
           <InstallAppButton variant="header" />
 
           <button
@@ -431,6 +435,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
 
   if (role === 'owner' && activeOwnerHat === 'owner') {
     return (
+      <NotificationProvider garageId={garage.id} userId={userId}>
       <div className="flex h-[100dvh] bg-[#0E2829] text-stone-100 overflow-hidden">
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
@@ -578,6 +583,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                 <User className="w-3.5 h-3.5 text-stone-400" />
                 <span>Profile</span>
               </button>
+              <NotificationBell />
               <InstallAppButton variant="header" />
             </div>
           </header>
@@ -594,7 +600,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             ) : ownerScreen === 'settings' ? (
               <ShopSettingsScreen garageId={garage.id} />
             ) : (
-              <OwnerDashboard garage={garage} activeScreen={ownerScreen} />
+              <OwnerDashboard garage={garage} activeScreen={ownerScreen} onNavigate={(s) => setOwnerScreen(s as any)} />
             )}
           </main>
         </div>
@@ -620,10 +626,12 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           />
         )}
       </div>
+      </NotificationProvider>
     );
   }
 
   return (
+    <NotificationProvider garageId={garage.id} userId={userId}>
     <div className="min-h-[100dvh] bg-[#0E2829] text-stone-100 flex flex-col">
       {renderHeader()}
 
@@ -667,5 +675,6 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
         />
       )}
     </div>
+    </NotificationProvider>
   );
 };

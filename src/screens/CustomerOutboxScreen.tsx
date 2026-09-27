@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchGarageMembers, fetchJobsForGarage } from '../lib/api';
 import { GarageMember, Job } from '../types';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { Clock, Check, Send, AlertCircle, RefreshCw } from 'lucide-react';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { ScheduleAppointmentModal } from '../components/ScheduleAppointmentModal';
@@ -119,6 +120,14 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
 
   useEffect(() => {
     loadData();
+
+    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, () => loadData(true));
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => loadData(true));
+    
+    return () => {
+       unsubJobs();
+       unsubReconnect();
+    };
   }, [garageId, departmentId, userRole]);
 
   const handleSavePrice = async (findingId: string) => {

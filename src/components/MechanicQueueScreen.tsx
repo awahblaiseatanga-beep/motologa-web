@@ -20,6 +20,7 @@ interface MechanicQueueScreenProps {
   userRole?: 'owner' | 'hod' | 'worker';
   mechanicFilters?: string[];
   currentUserDisplayName?: string;
+  refreshFindingsTrigger?: number;
 }
 
 export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
@@ -32,6 +33,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
   userRole = 'worker',
   mechanicFilters = [],
   currentUserDisplayName,
+  refreshFindingsTrigger = 0,
 }) => {
   const [filterMechanic, setFilterMechanic] = useState<string>('All');
   const [authorizedFindings, setAuthorizedFindings] = useState<any[]>([]);
@@ -121,7 +123,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       }
     };
     fetchAuthorized();
-  }, [activeJobsHash]); // Tie it to a stable job hash
+  }, [activeJobsHash, refreshFindingsTrigger]); // Tie it to a stable job hash
 
   const filteredJobs = filterMechanic === 'All'
     ? activeJobs

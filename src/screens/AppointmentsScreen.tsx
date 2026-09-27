@@ -3,6 +3,7 @@ import { Calendar, Plus, RefreshCw, Car, Wrench, ShieldCheck, Clock } from 'luci
 import { Appointment, Department } from '../types';
 import { fetchAppointments, updateAppointmentStatus, convertAppointmentToJob } from '../lib/api';
 import { ScheduleAppointmentModal } from '../components/ScheduleAppointmentModal';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { supabase } from '../lib/supabase';
 
 export interface AppointmentsScreenProps {
@@ -49,6 +50,14 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
 
   useEffect(() => {
     loadAppointments();
+
+    const unsubAppts = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_APPOINTMENTS, () => loadAppointments(true));
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => loadAppointments(true));
+
+    return () => {
+      unsubAppts();
+      unsubReconnect();
+    };
   }, [garageId, departmentId, userRole]);
 
   const visibleAppointments = appointments.filter(a => {

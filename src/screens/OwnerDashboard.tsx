@@ -14,6 +14,7 @@ import {
   createDeferredRepair
 } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { IntakeScreen } from '../components/IntakeScreen';
 import { CheckoutScreen } from '../components/CheckoutScreen';
 import { MechanicQueueScreen } from '../components/MechanicQueueScreen';
@@ -59,11 +60,12 @@ export interface OwnerAnalyticsMetrics {
 export interface OwnerDashboardProps {
   garage: Garage;
   activeScreen?: string;
+  onNavigate?: (screen: string) => void;
 }
 
 export type ManagementTab = 'analytics' | 'structure' | 'intake' | 'queue' | 'checkout' | 'appointments';
 
-export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeScreen = 'analytics' }) => {
+export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeScreen = 'analytics', onNavigate }) => {
   // External layout engine drives the screen renders
   const OWNER_TABS = useMemo(() => {
     const tabs: TabItem[] = [
@@ -123,6 +125,18 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
 
   useEffect(() => {
     loadData(false);
+
+    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, () => loadData(true));
+    const unsubMembers = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_MEMBERS, () => loadData(true));
+    const unsubDeferred = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_DEFERRED, () => loadData(true));
+    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => loadData(true));
+
+    return () => {
+      unsubJobs();
+      unsubMembers();
+      unsubDeferred();
+      unsubReconnect();
+    };
   }, [garage.id, activeScreen]);
 
   // Operational Mutations
@@ -238,14 +252,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
     .reduce((sum, j) => sum + (j.laborFeeFcfa || 0), 0);
   const mockBaselineRevenue = 0;
   const totalRevenue = recordedRevenue > 0 ? recordedRevenue + mockBaselineRevenue : mockBaselineRevenue;
+  const exitJobsCount = jobs.filter((j) => j.status === 'Ready/Released' && !j.released).length;
 
-  const metrics: OwnerAnalyticsMetrics = {
+  const metrics = {
     totalRevenueFcfa: totalRevenue,
     activeJobsCount: jobs.filter((j) => !j.released).length,
     pendingDeferredRepairsCount: deferredRepairs.filter((r) => r.status === 'pending').length,
     totalStaffCount: members.length,
     monthlyGrowthPercent: 14.8,
     completedJobsCount: jobs.filter((j) => j.released).length,
+    exitJobsCount: exitJobsCount,
   };
 
   return (
@@ -353,11 +369,17 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <button
+              onClick={() => {
+                onNavigate?.('checkout');
+                setTimeout(() => document.getElementById('kpi-today-revenue')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+              }}
+              className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Total Revenue</span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-[#34D399] border border-emerald-500/20">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Total Revenue</span>
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-[#34D399] border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                   <DollarSign className="w-4 h-4" />
                 </div>
               </div>
@@ -370,69 +392,105 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                 </span>
                 <span className="text-[11px] text-stone-500 font-mono">Mock baseline</span>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
+            <button
+              onClick={() => onNavigate?.('queue')}
+              className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">JOBS</span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">JOBS</span>
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                   <Car className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.activeJobsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-stone-300 font-medium">Currently in service</span>
-                <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-0.5">
-                  See Floor View <ArrowRight className="w-3 h-3" />
+                <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                  Floor View <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
+            <button
+              onClick={() => onNavigate?.('daily_logs')}
+              className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-sky-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-sky-500 w-full"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Completed Jobs</span>
-                <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Completed Jobs</span>
+                <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 group-hover:bg-sky-500/20 transition-colors">
                   <CheckCircle className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.completedJobsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-stone-300 font-medium">Successfully delivered</span>
-                <span className="text-sky-400 font-bold text-[11px] flex items-center gap-0.5">
-                  <CheckCircle className="w-3 h-3" />
+                <span className="text-sky-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                  Logs <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-            </div>
-
-            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
+            </button>
+            
+            <button
+              onClick={() => onNavigate?.('checkout')}
+              className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-indigo-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Deferred Repairs</span>
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Exit Jobs</span>
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
+                  <Receipt className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl font-black text-white tracking-tight">{metrics.exitJobsCount}</div>
+              <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
+                <span className="text-stone-300 font-medium">Ready for checkout</span>
+                <span className="text-indigo-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
+                  Exit <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                onNavigate?.('queue'); // BAYS handles rendering them or Intake/Outbox? Let's just point to queue for now
+              }}
+              className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-amber-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500 w-full"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Deferred Repairs</span>
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
                   <Clock className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-amber-300 tracking-tight">{metrics.pendingDeferredRepairsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-stone-400">Scheduled for recall</span>
-                <span className="text-[11px] font-mono text-amber-400 font-bold">Pending follow-up</span>
+                <span className="text-[11px] font-mono text-amber-400 font-bold group-hover:translate-x-1 transition-transform">View Bays</span>
               </div>
-            </div>
+            </button>
 
-            <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/30 transition shadow-lg">
+            <button
+              onClick={() => {
+                const el = document.getElementById('roster-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-purple-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-purple-500 w-full"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">Total Staff</span>
-                <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Total Staff</span>
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:bg-purple-500/20 transition-colors">
                   <Users className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.totalStaffCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-stone-300">{members.filter((m) => m.role==='hod').length} Dept Leads</span>
-                <button className="text-sky-400 opacity-50 cursor-not-allowed font-bold text-[11px] flex items-center gap-0.5">
-                  View Sidebar <ArrowRight className="w-3 h-3" />
-                </button>
+                <span className="text-purple-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-y-1 transition-transform">
+                  View Below <ChevronDown className="w-3 h-3" />
+                </span>
               </div>
-            </div>
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -520,7 +578,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
           </div>
 
           {/* === MERGED ROSTER SECTION === */}
-          <div className="mt-8 pt-6 border-t border-stone-800 border-dashed">
+          <div id="roster-section" className="mt-8 pt-6 border-t border-stone-800 border-dashed scroll-mt-24">
             <div className="flex flex-col gap-1 mb-6 text-center sm:text-left">
               <h2 className="text-xl font-black flex items-center justify-center sm:justify-start gap-2 text-white">
                 <Users className="w-5 h-5 text-[#c084fc]" />
