@@ -1,5 +1,6 @@
 import React from 'react';
 import { Phone, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const COMMON_VEHICLES = [
   'Toyota Hilux',
@@ -29,6 +30,7 @@ export const CustomerVehicleIdentity: React.FC<CustomerVehicleIdentityProps> = (
   customerName, setCustomerName,
   vehicleModel, setVehicleModel
 }) => {
+  const { t } = useTranslation('owner');
   return (
     <div className="space-y-4">
       {/* INPUT 1: License Plate (Direct Text Input) */}
@@ -37,12 +39,12 @@ export const CustomerVehicleIdentity: React.FC<CustomerVehicleIdentityProps> = (
           htmlFor="identity-license-plate"
           className="text-xs font-black uppercase tracking-wider text-slate-700"
         >
-          Vehicle License Plate
+          {t('vehicleLicensePlate')}
         </label>
         <input
           id="identity-license-plate"
           type="text"
-          placeholder="e.g. LT 7249 D or CE 8492 C"
+          placeholder={t('licensePlateExample')}
           value={licensePlate}
           onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
           className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-900 font-mono font-black text-base sm:text-lg tracking-wider px-3.5 py-3 rounded-xl border-2 border-slate-300 focus:border-[#34D399] focus:ring-2 focus:ring-emerald-400/20 focus:outline-none min-h-[48px] uppercase transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
@@ -55,7 +57,7 @@ export const CustomerVehicleIdentity: React.FC<CustomerVehicleIdentityProps> = (
       <div className="space-y-1.5">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
           <Phone className="w-3.5 h-3.5 text-slate-500" />
-          Customer WhatsApp / Phone
+          {t('customerWhatsAppPhone')}
         </label>
         <div className="flex items-center rounded-xl border-2 border-slate-300 bg-white overflow-hidden focus-within:border-emerald-600 transition-colors shadow-xs">
           <div className="bg-stone-200 px-3.5 py-3 text-slate-800 font-black font-mono text-base border-r border-slate-300 select-none flex items-center gap-1.5 min-h-[48px]">
@@ -67,7 +69,7 @@ export const CustomerVehicleIdentity: React.FC<CustomerVehicleIdentityProps> = (
             type="tel"
             value={customerPhone}
             onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
-            placeholder="e.g. 699451288"
+            placeholder={t('phoneExample')}
             maxLength={20}
             className="flex-1 px-3 py-3 font-mono font-bold text-slate-900 text-lg focus:outline-none min-h-[48px] placeholder:text-slate-400 placeholder:font-normal"
             required
@@ -79,13 +81,13 @@ export const CustomerVehicleIdentity: React.FC<CustomerVehicleIdentityProps> = (
       <div className="space-y-1.5">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-slate-500" />
-          Customer Name
+          {t('customerName')}
         </label>
         <input
           type="text"
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="e.g. Jean Dupont"
+          placeholder={t('customerNameExample')}
           maxLength={50}
           className="w-full px-3.5 py-3 rounded-xl border-2 border-slate-300 bg-white font-semibold text-slate-800 text-base focus:border-emerald-600 focus:outline-none min-h-[48px]"
         />
@@ -94,14 +96,14 @@ export const CustomerVehicleIdentity: React.FC<CustomerVehicleIdentityProps> = (
       {/* Vehicle Make & Model Helper */}
       <div className="space-y-1.5">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
-          Vehicle Model & Specification
+          {t('vehicleModelAndSpec')}
         </label>
         <input
           id="identity-vehicle-model"
           type="text"
           value={vehicleModel}
           onChange={(e) => setVehicleModel(e.target.value)}
-          placeholder="e.g. Toyota Hilux 4x4 or Peugeot Partner"
+          placeholder={t('vehicleModelExample')}
           maxLength={50}
           className="w-full px-3.5 py-3 rounded-xl border-2 border-slate-300 bg-white font-semibold text-slate-800 text-base focus:border-emerald-600 focus:outline-none min-h-[48px]"
         />

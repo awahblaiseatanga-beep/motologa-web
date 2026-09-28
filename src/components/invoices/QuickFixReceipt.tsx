@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Job } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface InvoiceProps {
   job: Job;
@@ -10,10 +11,12 @@ interface InvoiceProps {
   customDescription?: string;
   customImage?: string;
   shopSettings?: any;
+  docLanguage?: 'en' | 'fr';
 }
 
 export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage, shopSettings }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage, shopSettings, docLanguage = 'en' }, ref) => {
+    const { t } = useTranslation('invoices');
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -54,7 +57,7 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
             <p className="text-[10px] text-gray-800 uppercase mb-0.5">{job.garageInfo.email || job.garageInfo.ownerEmail}</p>
           )}
           <p className="text-[10px] uppercase text-gray-600 mt-2">
-            {documentType === 'ESTIMATE' ? 'ADDITIONAL WORK ESTIMATE' : 'Official Workshop Receipt'}
+            {documentType === 'ESTIMATE' ? t('estimate_title', { lng: docLanguage }) : t('receipt_title', { lng: docLanguage })}
           </p>
           {(documentType === 'ESTIMATE' && departmentName) && (
             <p className="text-[10px] font-bold text-gray-800 uppercase mt-1">
@@ -65,28 +68,28 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
         </div>
 
         <div className="space-y-1 mb-6">
-          <p><span className="font-bold">Date:</span> {formattedDate}</p>
-          <p><span className="font-bold">Job ID:</span> {job.id.substring(0, 8).toUpperCase()}</p>
-          <p><span className="font-bold">Vehicle:</span> {job.vehicleModel}</p>
-          <p><span className="font-bold">Plate:</span> {job.licensePlate}</p>
-          <p><span className="font-bold">Customer:</span> {job.customerName || 'Walk-in'} ({job.customerPhone})</p>
+          <p><span className="font-bold">{t('date', { lng: docLanguage })}:</span> {formattedDate}</p>
+          <p><span className="font-bold">{t('job_no', { lng: docLanguage })}:</span> {job.id.substring(0, 8).toUpperCase()}</p>
+          <p><span className="font-bold">{t('vehicle_info', { lng: docLanguage })}:</span> {job.vehicleModel}</p>
+          <p><span className="font-bold">{t('plate', { lng: docLanguage })}:</span> {job.licensePlate}</p>
+          <p><span className="font-bold">{t('customer_info', { lng: docLanguage })}:</span> {job.customerName || 'Walk-in'} ({job.customerPhone})</p>
         </div>
 
         <div className="border-b-2 border-dashed border-gray-300 my-4" />
 
         <div className="mb-6 space-y-3">
           <div className="flex justify-between font-bold">
-            <span>Description</span>
-            <span>Subtotal</span>
+            <span>{t('description', { lng: docLanguage })}</span>
+            <span>{t('subtotal', { lng: docLanguage })}</span>
           </div>
           {partsFee > 0 && (
             <div className="flex justify-between items-start">
-              <span>Spare Parts ({job.partSource})</span>
+              <span>{t('spare_parts', { lng: docLanguage })} ({job.partSource})</span>
               <span>{partsFee.toLocaleString()}</span>
             </div>
           )}
           <div className="flex justify-between items-start">
-            <span className="max-w-[70%]">{customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'} (Auth: {formatSenderName()})</span>
+            <span className="max-w-[70%]">{customDescription || job.diagnosticNotes || job.issueDescription || t('labour_services', { lng: docLanguage })} (Auth: {formatSenderName()})</span>
             <span>{laborFee.toLocaleString()}</span>
           </div>
         </div>
@@ -96,7 +99,7 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
         {/* PHOTOGRAPHIC EVIDENCE (SINGLE PHOTO LIMIT) */}
         {(documentType === 'ESTIMATE' && evidencePhoto) && (
           <div className="mb-4">
-            <p className="font-bold underline mb-1 uppercase tracking-wider text-[10px]">Photo Evidence:</p>
+            <p className="font-bold underline mb-1 uppercase tracking-wider text-[10px]">{t('photo_evidence', { lng: docLanguage })}:</p>
             <div className="w-full h-36 rounded-md overflow-hidden bg-gray-100 border border-gray-300 shadow-sm relative">
               <img src={evidencePhoto.url} alt={evidencePhoto.label} className="w-full h-full object-cover" />
             </div>
@@ -105,13 +108,13 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
         )}
 
         <div className="flex justify-between items-center text-lg font-black mb-1">
-          <span>{documentType === 'ESTIMATE' ? 'EST. TOTAL' : 'TOTAL'}:</span>
+          <span>{documentType === 'ESTIMATE' ? t('est_total', { lng: docLanguage }) : t('total', { lng: docLanguage })}:</span>
           <span>
             {total.toLocaleString()} {currencySymbol}
           </span>
         </div>
         <div className="flex justify-between items-center text-sm font-bold pt-1 mb-8">
-          <span>{documentType === 'ESTIMATE' ? 'ESTIMATED BALANCE' : 'BALANCE'}:</span>
+          <span>{documentType === 'ESTIMATE' ? t('est_balance', { lng: docLanguage }) : t('balance', { lng: docLanguage })}:</span>
           <span>
             {total.toLocaleString()} {currencySymbol}
           </span>
@@ -119,14 +122,14 @@ export const QuickFixReceipt = forwardRef<HTMLDivElement, InvoiceProps>(
 
         {documentType === 'ESTIMATE' && (
           <div className="mb-6 border-2 border-dashed border-black p-3 text-center">
-            <p className="font-black uppercase tracking-wider mb-2">⚠ ACTION REQUIRED</p>
-            <p className="font-bold">Please review the additional findings above. Reply 'APPROVED' via WhatsApp to authorize the workshop to proceed with these repairs.</p>
+            <p className="font-black uppercase tracking-wider mb-2">{t('action_required', { lng: docLanguage })}</p>
+            <p className="font-bold">{t('review_reply', { lng: docLanguage })}</p>
           </div>
         )}
 
         <div className="text-center text-[10px] space-y-1">
-          <p>Thank you for your business!</p>
-          <p>Powered by MOTOLOGA</p>
+          <p>{t('thank_you', { lng: docLanguage })}</p>
+          <p>{t('powered_by', { lng: docLanguage })}</p>
         </div>
       </div>
 

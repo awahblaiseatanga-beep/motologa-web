@@ -5,10 +5,12 @@ import { Job } from '../types';
 import { QuickFixReceipt } from './invoices/QuickFixReceipt';
 import { EliteInvoiceV2 } from './invoices/EliteInvoiceV2';
 import { X, Printer, Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface InvoiceGeneratorProps {
   job: Job;
   garageName: string;
+  garageDefaultLanguage?: string;
   departmentName?: string;
   onClose: () => void;
   currencySymbol?: string;
@@ -16,12 +18,13 @@ interface InvoiceGeneratorProps {
   documentType?: 'INVOICE' | 'ESTIMATE';
   customDescription?: string;
   customImage?: string;
-  onConfirmSave?: () => Promise<void>;
+  onConfirmSave?: () => Promise<void>; // i18n-ignore
 }
 
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ 
   job, 
   garageName,
+  garageDefaultLanguage,
   departmentName,
   onClose,
   currencySymbol = 'FCFA',
@@ -31,7 +34,9 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   customImage,
   onConfirmSave
 }) => {
+  const { t } = useTranslation('common');
   const [template, setTemplate] = useState<'quickfix' | 'elite'>('quickfix');
+  const [docLanguage, setDocLanguage] = useState<'en' | 'fr'>((garageDefaultLanguage as 'en' | 'fr') || 'en');
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [shopSettings, setShopSettings] = useState<any>(null);
@@ -60,7 +65,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         
         {/* Header - Hidden on Print */}
         <div className="flex items-center justify-between p-4 border-b border-emerald-800 bg-[#0A1F1F] print:hidden">
-          <h2 className="text-emerald-400 font-black tracking-wider uppercase text-lg">Generate Invoice</h2>
+          <h2 className="text-emerald-400 font-black tracking-wider uppercase text-lg">{t('invoiceGen.generateInvoice', 'Generate Invoice')}</h2>
           <button onClick={onClose} className="text-emerald-500 hover:text-emerald-300 transition-colors">
             <X className="w-6 h-6" />
           </button>
@@ -69,7 +74,17 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         {/* Control Panel - Hidden on Print */}
         <div className="p-4 bg-[#142F30] border-b border-emerald-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 print:hidden">
           <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 w-full md:w-auto">
-            <label className="text-emerald-300 font-bold text-sm tracking-wider uppercase text-center md:text-left">Style:</label>
+            <div className="flex bg-[#0A1F1F] rounded-lg p-1 border border-emerald-800/50 shrink-0">
+              <select
+                value={docLanguage}
+                onChange={(e) => setDocLanguage(e.target.value as 'en' | 'fr')}
+                className="bg-transparent text-emerald-400 font-bold text-xs px-2 py-1 outline-none cursor-pointer"
+              >
+                <option value="en">🇺🇸 EN</option> {/* i18n-ignore */}
+                <option value="fr">🇫🇷 FR</option> {/* i18n-ignore */}
+              </select>
+            </div>
+            <label className="text-emerald-300 font-bold text-sm tracking-wider uppercase text-center md:text-left">{t('invoiceGen.style', 'Style:')}</label>
             <div className="flex bg-[#0A1F1F] rounded-lg p-1 border border-emerald-800/50 w-full md:w-auto">
               <button
                 onClick={() => setTemplate('quickfix')}
@@ -79,7 +94,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
                     : 'text-emerald-400 hover:bg-emerald-900/50'
                 }`}
               >
-                Quick Fix (POS)
+                {t('invoiceGen.quickFix', 'Quick Fix (POS)')}
               </button>
               <button
                 onClick={() => setTemplate('elite')}
@@ -89,7 +104,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
                     : 'text-emerald-400 hover:bg-emerald-900/50'
                 }`}
               >
-                Elite (A4)
+                {t('invoiceGen.elite', 'Elite (A4)')}
               </button>
             </div>
           </div>
@@ -112,7 +127,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
               className={`disabled:opacity-50 text-white font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center gap-2 shadow-lg transition active:scale-95 ${documentType === 'ESTIMATE' ? 'bg-sky-600 hover:bg-sky-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}
             >
               <Printer className="w-5 h-5 flex-shrink-0" />
-              <span>{isSaving ? "Saving..." : (documentType === 'ESTIMATE' ? "Save Estimate" : "Save Invoice (PDF)")}</span>
+              <span>{isSaving ? t('invoiceGen.saving', 'Saving...') : (documentType === 'ESTIMATE' ? t('invoiceGen.saveEstimate', 'Save Estimate') : t('invoiceGen.saveInvoice', 'Save Invoice (PDF)'))}</span>
             </button>
           ) : (
             <button 
@@ -123,16 +138,16 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
               className="bg-[#25D366] hover:bg-[#20bd5a] text-slate-900 font-black px-4 md:px-6 py-2.5 md:py-2 rounded-lg flex items-center justify-center gap-2 shadow-lg transition animate-in zoom-in active:scale-95"
             >
               <Send className="w-5 h-5 flex-shrink-0" />
-              <span className="truncate">Send to Customer (WhatsApp)</span>
+              <span className="truncate">{t('invoiceGen.sendCustomer', 'Send to Customer (WhatsApp)')}</span>
             </button>
           )}
         </div>
 
         <div className="flex-1 overflow-auto bg-stone-200 p-8 flex justify-center items-start">
           {template === 'quickfix' ? (
-            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} shopSettings={shopSettings} />
+            <QuickFixReceipt ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} shopSettings={shopSettings} docLanguage={docLanguage} />
           ) : (
-            <EliteInvoiceV2 ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} shopSettings={shopSettings} />
+            <EliteInvoiceV2 ref={componentRef} job={job} garageName={garageName} departmentName={departmentName} currencySymbol={currencySymbol} documentType={documentType} customDescription={customDescription} customImage={customImage} shopSettings={shopSettings} docLanguage={docLanguage} />
           )}
         </div>
       </div>

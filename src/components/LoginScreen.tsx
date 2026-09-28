@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MotologaLogo } from './MotologaLogo';
 import { cn } from '../lib/utils';
 import { InstallAppButton } from './InstallAppButton';
+import { useTranslation } from 'react-i18next';
 
 interface LoginScreenProps {
   onLoginSuccess: (userRole: 'owner' | 'mechanic', mechanicId?: string) => void;
@@ -21,6 +22,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
+  
+  const { t } = useTranslation('auth');
 
   // 3D Card Hover Physics
   const mouseX = useMotionValue(0);
@@ -66,7 +69,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
         } else if (data.session) {
           onLoginSuccess('owner');
         } else {
-          setInfoMessage('Account created! Check your email to confirm, or click Demo below.');
+          setInfoMessage(t('createdMsg'));
         }
       } else {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -82,13 +85,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
       }
     } catch (err: any) {
       setIsLoading(false);
-      setError(err?.message || 'Authentication error. Please try again.');
+      setError(err?.message || t('authError'));
     }
   };
 
   const handleForgotPassword = (e: React.MouseEvent) => {
     e.preventDefault();
-    alert('Password Reset: Please contact your MOTOLOGA workshop administrator or check your registered email.');
+    alert(t('passwordReset'));
   };
 
   return (
@@ -340,7 +343,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
               <div className="flex items-center justify-between gap-2 mb-5 pb-3 border-b border-emerald-500/15">
                 <div className="flex items-center gap-1.5 text-xs font-mono text-emerald-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  <span className="font-bold tracking-wider uppercase">CMR Workshop OS</span>
+                  <span className="font-bold tracking-wider uppercase">{t('cmrWorkshop')}</span>
                 </div>
               </div>
 
@@ -363,7 +366,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                   transition={{ delay: 0.15 }}
                   className="text-2xl font-black tracking-wider uppercase font-mono text-white"
                 >
-                  {inviteGarageId ? "Technician Onboarding" : "Owner & Admin Login"}
+                  {inviteGarageId ? t('techOnboarding') : t('ownerAdminLogin')}
                 </motion.h1>
 
                 <motion.p
@@ -373,8 +376,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                   className="text-slate-300 text-xs font-medium"
                 >
                   {inviteGarageId
-                    ? "Create your account to join the workshop floor."
-                    : "Secure access to MOTOLOGA Command."}
+                    ? t('techDesc')
+                    : t('loginDesc')}
                 </motion.p>
               </div>
 
@@ -399,7 +402,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       transition={{ type: 'spring', stiffness: 450, damping: 30 }}
                     />
                   )}
-                  Sign In
+                  {t('signin')}
                 </button>
 
                 <button
@@ -421,7 +424,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       transition={{ type: 'spring', stiffness: 450, damping: 30 }}
                     />
                   )}
-                  Sign Up
+                  {t('signup')}
                 </button>
               </div>
 
@@ -472,7 +475,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       <input
                         type="email"
                         required
-                        placeholder="owner@motologa.cm"
+                        placeholder={t('emailPlaceholder')}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         onFocus={() => setFocusedInput('email')}
@@ -511,7 +514,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       <input
                         type={showPassword ? 'text' : 'password'}
                         required
-                        placeholder={authMode === 'signup' ? 'Create a secure password' : 'Enter your password'}
+                        placeholder={authMode === 'signup' ? t('createPasswordPlaceholder') : t('passwordPlaceholder')}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         onFocus={() => setFocusedInput('password')}
@@ -571,7 +574,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       )}
                     </div>
                     <span className="text-xs text-slate-300 hover:text-white transition-colors">
-                      Remember me
+                      {t('rememberMe')}
                     </span>
                   </label>
 
@@ -615,7 +618,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                           className="flex items-center gap-2 text-stone-950 text-sm font-black uppercase tracking-wide"
                         >
                           <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                          <span>Processing...</span>
+                          <span>{t('processing')}</span>
                         </motion.div>
                       ) : (
                         <motion.span
@@ -625,7 +628,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                           exit={{ opacity: 0 }}
                           className="flex items-center justify-center gap-1.5 text-sm font-black uppercase tracking-wider"
                         >
-                          <span>{authMode === 'signin' ? 'Sign In to Workshop' : 'Create Workshop Account'}</span>
+                          <span>{authMode === 'signin' ? t('signInButton') : t('createAccountButton')}</span>
                           <ArrowRight className="w-4 h-4 group-hover/button:translate-x-1 transition-transform duration-300" />
                         </motion.span>
                       )}
@@ -640,7 +643,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
               <div className="text-center text-xs text-slate-400 mt-5 pt-3 border-t border-emerald-500/15">
                 {authMode === 'signin' ? (
                   <p>
-                    Don't have a garage account?{' '}
+                    {t('noAccount')}{' '}
                     <button
                       type="button"
                       onClick={() => {
@@ -650,12 +653,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       }}
                       className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline cursor-pointer ml-1"
                     >
-                      Create one now
+                      {t('createNow')}
                     </button>
                   </p>
                 ) : (
                   <p>
-                    Already registered?{' '}
+                    {t('alreadyRegistered')}{' '}
                     <button
                       type="button"
                       onClick={() => {
@@ -665,7 +668,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
                       }}
                       className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline cursor-pointer ml-1"
                     >
-                      Sign In here
+                      {t('signInHere')}
                     </button>
                   </p>
                 )}

@@ -1,6 +1,7 @@
 import React, { Component, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import './i18n';
 import './index.css';
 
 interface ErrorBoundaryProps {
@@ -26,7 +27,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     if (this.state.hasError) {
       return (
         <div style={{ color: 'red', padding: '20px', backgroundColor: '#fff', zIndex: 9999, position: 'relative' }}>
-          <h2>Application Error</h2>
+          <h2>Application Error / Erreur de l'application</h2> {/* i18n-ignore */}
           <pre style={{ whiteSpace: 'pre-wrap' }}>{this.state.error?.stack || this.state.error?.toString()}</pre>
         </div>
       );

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Building2, MapPin, Phone, ShieldCheck, ArrowRight, X } from 'lucide-react';
 import { MotologaLogo } from '../components/MotologaLogo';
 import { provisionNewWorkshop } from '../lib/api';
@@ -10,6 +11,7 @@ interface CreateWorkshopScreenProps {
 }
 
 export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ userId, onComplete, onCancel }) => {
+  const { t } = useTranslation('auth');
   const [shopName, setShopName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -20,7 +22,7 @@ export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ user
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopName.trim() || !phone.trim() || !address.trim()) {
-      setErrorMsg("Please securely complete all workspace details.");
+      setErrorMsg(t('completeWorkspaceDetails'));
       return;
     }
 
@@ -30,7 +32,7 @@ export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ user
       await provisionNewWorkshop(userId, shopName.trim(), phone.trim(), address.trim());
       onComplete(); // Triggers the parent re-authentication loop smoothly bypassing network artifacts
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to finalize the environment setup natively.");
+      setErrorMsg(err.message || t('failFinalizeSetup'));
       setLoading(false);
     }
   };
@@ -71,14 +73,14 @@ export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ user
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-stone-400">Workshop & Garage Name</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-stone-400">{t('workshopGarageName')}</label>
             <div className="relative flex items-center overflow-hidden rounded-xl border border-emerald-500/25 bg-[#081B1C]/90 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/30 transition-all duration-200">
               <Building2 className="absolute left-3.5 w-4 h-4 text-emerald-500" />
               <input
                 type="text"
                 required
                 maxLength={50}
-                placeholder="e.g. Prestige Auto Center"
+                placeholder={t('prestigeAutoPlaceholder')}
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
                 className="w-full bg-transparent text-white placeholder:text-stone-500 text-sm font-medium h-12 pl-10 pr-3 outline-none"
@@ -87,7 +89,7 @@ export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ user
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-stone-400">Official Mobile Phone</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-stone-400">{t('officialMobilePhone')}</label>
             <div className="relative flex items-center overflow-hidden rounded-xl border border-emerald-500/25 bg-[#081B1C]/90 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/30 transition-all duration-200">
               <Phone className="absolute left-3.5 w-4 h-4 text-emerald-500" />
               <div className="absolute left-10 text-stone-400 text-sm font-bold border-r border-stone-600 pr-2 py-1">🇨🇲 +237</div>
@@ -104,13 +106,13 @@ export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ user
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-stone-400">Physical Location</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-stone-400">{t('physicalLocation')}</label>
             <div className="relative flex items-center overflow-hidden rounded-xl border border-emerald-500/25 bg-[#081B1C]/90 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/30 transition-all duration-200">
               <MapPin className="absolute left-3.5 top-4 w-4 h-4 text-emerald-500" />
               <textarea
                 required
                 maxLength={250}
-                placeholder="e.g. Bonamoussadi, Douala"
+                placeholder={t('bonamoussadiPlaceholder')}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full bg-transparent text-white placeholder:text-stone-500 text-sm font-medium min-h-[50px] pl-10 pr-3 py-3 outline-none resize-y"
@@ -126,7 +128,7 @@ export const CreateWorkshopScreen: React.FC<CreateWorkshopScreenProps> = ({ user
             {loading ? (
               <span className="flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
-                BUILDING ENVIRONMENT...
+                {t('buildingEnvironment')}
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2 tracking-wider">

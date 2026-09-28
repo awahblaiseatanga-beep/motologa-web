@@ -20,6 +20,7 @@ import {
   UserCircle
 } from 'lucide-react';
 import { WorkerProfileScreen } from './WorkerProfileScreen';
+import { useTranslation } from 'react-i18next';
 
 interface QueueScreenProps {
   userRole: 'owner' | 'hod' | 'worker';
@@ -42,7 +43,8 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [mechanicFilters, setMechanicFilters] = useState<string[]>([]);
   const [activeView, setActiveView] = useState<'queue' | 'profile'>('queue');
-  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>('Technician');
+  const { t } = useTranslation('owner');
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>(t('technicianDefault') || 'Technician');
 
   // Load Jobs independently
   const loadJobs = async (isSilent: boolean = false) => {
@@ -54,7 +56,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       
       const allMembers = await fetchGarageMembers(garageId);
       const me = allMembers.find(m => m.user_id === currentUserId);
-      if (me) setCurrentUserDisplayName(me.full_name || 'Unnamed Staff');
+      if (me) setCurrentUserDisplayName(me.full_name || t('unnamedStaff'));
 
       let fetchedJobs: Job[] = [];
       let availableNames: string[] = [];
@@ -83,10 +85,10 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
         
         if (userRole === 'owner') {
           fetchedJobs = mappedData;
-          availableNames = allMembers.map(m => m.full_name || 'Unnamed Staff');
+          availableNames = allMembers.map(m => m.full_name || t('unnamedStaff'));
         } else if (userRole === 'hod') {
           const scopedMembers = allMembers.filter(m => m.department_id === departmentId);
-          availableNames = scopedMembers.map(m => m.full_name || 'Unnamed Staff');
+          availableNames = scopedMembers.map(m => m.full_name || t('unnamedStaff'));
           
           fetchedJobs = mappedData.filter(j => {
             if (!j.assigned_to) return true;
@@ -141,15 +143,15 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
       setJobs((prev) => prev.map((j) => (j.id === updatedJob.id ? updatedJob : j)));
       await loadJobs(true);
     } catch (error) {
-      alert("Failed to update status. Please try again.");
+      alert(t('failedUpdateStatus'));
     }
   };
 
   const handleNavigateToCheckout = () => {
     if (userRole === 'owner') {
-      alert("Exit operations must be handled from the Owner Dashboard Exit Tab.");
+      alert(t('checkoutFromOwnerDash'));
     } else {
-      alert("Only Workshop Owners can process final payments and exit via their Dashboard.");
+      alert(t('checkoutOnlyOwner'));
     }
   };
 
@@ -161,19 +163,19 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-widest text-[#34D399]">
               {userRole === 'owner'
-                ? 'Garage-Wide Queue'
+                ? t('garageWideQueue')
                 : userRole === 'hod'
-                ? `HOD Operations • ${departmentName || 'Department'}`
-                : `Technician Floor Station`}
+                ? `${t('hodOperationsPrefix', 'HOD Operations')} • ${departmentName || t('departmentDefault')}`
+                : t('technicianFloorStation')}
             </span>
           </div>
-          <h2 className="text-xl font-black text-white">Active JOBS</h2>
+          <h2 className="text-xl font-black text-white">{t('activeJobsHeader')}</h2>
         </div>
 
       </div>
 
       {loadingJobs ? (
-        <div className="text-center py-12 text-stone-400">Loading Job Queue...</div>
+        <div className="text-center py-12 text-stone-400">{t('loadingJobQueue')}</div>
       ) : activeView === 'queue' ? (
         <MechanicQueueScreen
           jobs={jobs}
@@ -201,7 +203,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
             }`}
           >
             <LayoutDashboard className="w-5 h-5 shrink-0" />
-            <span className="hidden sm:inline uppercase tracking-wider text-xs">JOBS</span>
+            <span className="hidden sm:inline uppercase tracking-wider text-xs">{t('jobsTab')}</span>
           </button>
           
           <button
@@ -213,7 +215,7 @@ export const QueueScreen: React.FC<QueueScreenProps> = ({
             }`}
           >
             <UserCircle className="w-5 h-5 shrink-0" />
-            <span className="hidden sm:inline uppercase tracking-wider text-xs">My Profile</span>
+            <span className="hidden sm:inline uppercase tracking-wider text-xs">{t('myProfileTab')}</span>
           </button>
         </div>
       )}

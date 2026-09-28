@@ -11,6 +11,7 @@ import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { VoiceRecorderField } from '../components/VoiceRecorderField';
+import { useTranslation } from 'react-i18next';
 import { GarageMember, Department, Job, DeferredRepair, JobStatus, AppointmentReservation } from '../types';
 import {
   Users,
@@ -47,7 +48,7 @@ export interface HodDashboardProps {
   jobs?: Job[];
   deferredRepairs?: DeferredRepair[];
   onUpdateJob?: (job: Job) => void;
-  onAddJob?: (job: Job) => Promise<void> | void;
+  onAddJob?: (job: Job) => Promise<void> | void; // i18n-ignore
   onNavigateToCheckout?: (jobId?: string) => void;
   activeTab?: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue';
   onTabChange?: (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue') => void;
@@ -70,6 +71,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   onTabChange,
   hideTopNav = false,
 }) => {
+  const { t } = useTranslation('owner');
   const [internalTab, setInternalTab] = useState<'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue'>('queue');
   const activeTab = propActiveTab !== undefined ? propActiveTab : internalTab;
   const handleTabSelect = (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue') => {
@@ -79,12 +81,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
   const HOD_TABS = useMemo(() => {
     const tabs: TabItem[] = [
-      { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5" />, color: '#34d399' },
-      { id: 'my-queue', label: 'JOBS', icon: <Car className="w-5 h-5" />, color: '#10b981' },
-      { id: 'outbox', label: 'Additional JOB', icon: <Send className="w-5 h-5" />, color: '#38bdf8' },
-      { id: 'roster', label: 'Staff', icon: <Users className="w-5 h-5" />, color: '#a78bfa' },
-      { id: 'appointments', label: 'Appointments', icon: <Calendar className="w-5 h-5" />, color: '#fca5a5' },
-      { id: 'intake', label: 'Register', icon: <PlusCircle className="w-5 h-5" />, color: '#fbbf24' },
+      { id: 'queue', label: t('floorTab'), icon: <Wrench className="w-5 h-5" />, color: '#34d399' },
+      { id: 'my-queue', label: t('jobsTab'), icon: <Car className="w-5 h-5" />, color: '#10b981' },
+      { id: 'outbox', label: t('outboxTab'), icon: <Send className="w-5 h-5" />, color: '#38bdf8' },
+      { id: 'roster', label: t('staffTab'), icon: <Users className="w-5 h-5" />, color: '#a78bfa' },
+      { id: 'appointments', label: t('appointmentsTab'), icon: <Calendar className="w-5 h-5" />, color: '#fca5a5' },
+      { id: 'intake', label: t('registerTab'), icon: <PlusCircle className="w-5 h-5" />, color: '#fbbf24' },
     ];
     return tabs;
   }, []);
@@ -104,8 +106,8 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const [hodRejectionVoiceUrl, setHodRejectionVoiceUrl] = useState('');
 
   // Department & HOD Identity
-  const effectiveDeptName = departmentName || 'Mechanical Bay & Diagnostics';
-  const hodName = membership?.full_name || 'Unnamed Staff';
+  const effectiveDeptName = departmentName || t('deptMechBay');
+  const hodName = membership?.full_name || t('unnamedStaff');
 
   const todayKey = new Date().toISOString().split('T')[0];
   const storageKey = `motologa_hod_notes_${garageId}_${departmentId || 'dept'}_${todayKey}`;
@@ -167,7 +169,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         }, 1000);
       } catch (err: any) {
         console.error("Microphone error", err);
-        showToast("Microphone access denied or unavailable.");
+        showToast(t('micAccessDenied'));
       }
     }
   };
@@ -337,7 +339,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const handleMarkInspected = (job: Job) => {
     const isAlreadyInspected = (job.status === 'Ready/Released' || Boolean(job.inspectedByHod));
     if (isAlreadyInspected) {
-      showToast(`${job.licensePlate} is already inspected and ready for release`);
+      showToast(t('alreadyInspectedToast', { plate: job.licensePlate }));
       return;
     }
 
@@ -351,7 +353,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
     };
     setFloorJobs((prev) => prev.map((j) => (j.id === job.id ? updated : j)));
     onUpdateJob?.(updated);
-    showToast(`Inspection Complete! ${job.licensePlate} is now in Ready for Release state.`);
+    showToast(t('inspectionCompleteToast', { plate: job.licensePlate }));
   };
 
   const handleReopenJob = (job: Job) => {
@@ -364,12 +366,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
     };
     setFloorJobs((prev) => prev.map((j) => (j.id === job.id ? updated : j)));
     onUpdateJob?.(updated);
-    showToast(`${job.licensePlate} reopened back to In Repair.`);
+    showToast(t('jobReopenedToast', { plate: job.licensePlate }));
   };
 
   const handleSendAudioReport = async () => {
     if (!audioBlob) {
-      showToast('Please record an audio report first.');
+      showToast(t('recordAudioFirstToast'));
       return;
     }
 
@@ -397,10 +399,10 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       setLastSavedTime(now);
 
       setIsNoteSentToOwner(true);
-      showToast('Audio Report sent to Workshop Owner!');
+      showToast(t('audioReportSentToast'));
     } catch (err: any) {
       console.error('Error uploading report:', err);
-      showToast('Failed to upload audio report. Try again.');
+      showToast(t('audioReportFailToast'));
     } finally {
       setIsSavingNote(false);
     }
@@ -421,7 +423,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-[11px] uppercase font-mono tracking-wider text-[#34D399] font-bold">
-              Head of Department
+              {t('hodTitle')}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
@@ -429,7 +431,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             {effectiveDeptName}
           </h1>
           <p className="text-xs text-stone-400 truncate">
-            Lead: <span className="text-stone-200 font-medium">{hodName}</span>
+            {t('leadLabel')} <span className="text-stone-200 font-medium">{hodName}</span>
           </p>
         </div>
         <button
@@ -437,14 +439,14 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
           className="flex-shrink-0 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400 flex items-center justify-center gap-2"
         >
           <PlusCircle className="w-5 h-5" />
-          <span>Register New Vehicle</span>
+          <span>{t('registerNewVehicleBtn')}</span>
         </button>
       </div>
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center p-8 sm:p-12 text-stone-300 text-sm font-medium bg-stone-900 border border-stone-800 rounded-2xl">
           <RefreshCw className="w-5 h-5 text-[#34D399] animate-spin mr-2" />
-          Loading department data...
+          {t('loadingDeptData')}
         </div>
       ) : (
         <>
@@ -474,7 +476,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   const assignedJob: Job = {
                     ...newJob,
                     id: jobId,
-                    status: newJob.mechanicAssigned && newJob.mechanicAssigned !== 'Unassigned' ? 'In Repair' : 'Diagnosis',
+                    status: newJob.mechanicAssigned && newJob.mechanicAssigned !== t('unassignedLabel') ? 'In Repair' : 'Diagnosis',
                     workerCompleted: false,
                     inspectedByHod: false,
                     released: false,
@@ -503,7 +505,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                     console.warn('createJob fallback:', e);
                   }
 
-                  showToast(`Job card created for ${assignedJob.licensePlate} on floor & assigned to ${assignedJob.mechanicAssigned}!`);
+                  showToast(t('jobCreatedToast', { plate: assignedJob.licensePlate, mechanic: assignedJob.mechanicAssigned }));
                   handleTabSelect('queue');
                 }}
               />
@@ -546,12 +548,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    JOBS
+                    {t('jobsTab')}
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 sm:mt-1 font-mono">
                     {inBayCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">Repairs active</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('repairsActiveDesc')}</span>
                 </div>
 
                 <div className={`border p-2.5 sm:p-3.5 rounded-xl transition-all ${awaitingInspectionCount > 0
@@ -560,7 +562,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   }`}>
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                      Need Inspection
+                      {t('needInspectionTab')}
                     </span>
                     {awaitingInspectionCount > 0 && (
                       <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
@@ -569,27 +571,27 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-indigo-400 mt-0.5 sm:mt-1 font-mono">
                     {awaitingInspectionCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-indigo-300/80 block truncate">Worker done ✓</span>
+                  <span className="text-[10px] sm:text-xs text-indigo-300/80 block truncate">{t('workerDoneLabel')}</span>
                 </div>
 
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    Ready
+                    {t('readyStatusLabel')}
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-[#34D399] mt-0.5 sm:mt-1 font-mono">
                     {readyCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">Inspected / release</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('inspectedReleaseDesc')}</span>
                 </div>
 
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    Mechanics
+                    {t('mechanicsTab')}
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-white mt-0.5 sm:mt-1 font-mono">
                     {deptMembers.length}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">On shift today</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('onShiftDesc')}</span>
                 </div>
               </div>
 
@@ -600,16 +602,16 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                     <FileEdit className="w-5 h-5 text-[#34D399] shrink-0" />
                     <div>
                       <h2 className="text-sm sm:text-base font-bold text-white leading-tight">
-                        HOD Daily Work Log & Summary
+                        {t('hodDailyWorkLogTitle')}
                       </h2>
                       <p className="text-[11px] sm:text-xs text-stone-400">
-                        Write notes, issues encountered, or handovers for the day
+                        {t('hodDailyWorkLogDesc')}
                       </p>
                     </div>
                   </div>
                   {lastSavedTime && (
                     <span className="text-[10px] sm:text-xs text-stone-400 bg-stone-950 px-2 sm:px-2.5 py-1 rounded-lg border border-stone-800 font-mono shrink-0">
-                      Saved {lastSavedTime}
+                      {t('savedAtLabel')} {lastSavedTime}
                     </span>
                   )}
                 </div>
@@ -620,7 +622,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                     <div className="bg-stone-950 border border-stone-800 p-4 rounded-xl flex flex-col gap-3">
                       <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                        Today's Report Secured
+                        {t('todayReportSecured')}
                       </div>
                       <audio controls src={savedAudioUrl} className="w-full h-10 filter sepia hue-rotate-180 brightness-90 saturate-200" />
                       <button
@@ -631,7 +633,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                         }}
                         className="text-stone-500 hover:text-stone-300 text-xs text-left underline"
                       >
-                        Record a new report instead
+                        {t('recordNewReportLink')}
                       </button>
                     </div>
                   ) : (
@@ -639,7 +641,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                       {audioBlob ? (
                         <div className="bg-indigo-950/30 border border-indigo-900/50 p-4 rounded-xl flex flex-col gap-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2"><FileAudio className="w-4 h-4"/> Report Preview</span>
+                            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2"><FileAudio className="w-4 h-4"/> {t('reportPreviewTitle')}</span>
                             <span className="text-xs text-stone-400 font-mono">{formatDuration(recordingDuration)}</span>
                           </div>
                           <audio controls src={URL.createObjectURL(audioBlob)} className="w-full h-10 filter sepia hue-rotate-180 brightness-90 saturate-200" />
@@ -647,7 +649,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                             onClick={() => { setAudioBlob(null); setRecordingDuration(0); }}
                             className="text-rose-400 hover:text-rose-300 text-xs text-left underline"
                           >
-                            Discard & Re-record
+                            {t('discardRerecordLink')}
                           </button>
                         </div>
                       ) : (
@@ -663,14 +665,14 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                           {isRecording ? (
                             <>
                               <Square className="w-8 h-8" />
-                              <span className="font-bold text-sm tracking-widest break-all px-2 text-center">RECORDING... {formatDuration(recordingDuration)}</span>
-                              <span className="text-[10px] text-rose-200 uppercase tracking-widest font-black">Tap to Stop</span>
+                              <span className="font-bold text-sm tracking-widest break-all px-2 text-center">{t('recordingStatus')} {formatDuration(recordingDuration)}</span>
+                              <span className="text-[10px] text-rose-200 uppercase tracking-widest font-black">{t('tapToStop')}</span>
                             </>
                           ) : (
                             <>
                               <Mic className="w-8 h-8 opacity-80 text-sky-400" />
-                              <span className="font-bold text-sm text-white">Start Voice Report</span>
-                              <span className="text-[10px] text-stone-500 uppercase tracking-widest font-black">Tap to Record</span>
+                              <span className="font-bold text-sm text-white">{t('startVoiceReport')}</span>
+                              <span className="text-[10px] text-stone-500 uppercase tracking-widest font-black">{t('tapToRecord')}</span>
                             </>
                           )}
                         </button>
@@ -692,9 +694,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                         }`}
                       >
                         {isSavingNote ? (
-                          <><RefreshCw className="w-5 h-5 animate-spin" /> Uploading...</>
+                          <><RefreshCw className="w-5 h-5 animate-spin" /> {t('uploadingStatus')}</>
                         ) : (
-                          <><Send className="w-5 h-5" /> {isNoteSentToOwner ? 'Sent to Owner ✓' : 'Send Audio Report'}</>
+                          <><Send className="w-5 h-5" /> {isNoteSentToOwner ? t('sentToOwnerStatus') : t('sendAudioReportBtn')}</>
                         )}
                       </button>
                     </div>
@@ -732,9 +734,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                             <div className="flex flex-col gap-1.5 min-w-0">
                               <LicensePlateBadge plate={job.licensePlate} size="md" />
                               <div className="mt-1">
-                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest block mb-0.5">Register Issue:</span>
+                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest block mb-0.5">{t('registerIssueLabel', 'Register Issue:')}</span>
                                 <p className="text-xs sm:text-sm text-stone-300 font-medium whitespace-pre-wrap">
-                                  {job.issueDescription || 'Diagnostic & maintenance procedure'}
+                                  {job.issueDescription || t('diagnosticMaintenanceDesc')}
                                 </p>
                               </div>
                             </div>
@@ -751,7 +753,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               )}
                               
                               <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                                <UserCheck className="w-3 h-3 text-stone-500" /> {job.mechanicAssigned || 'Unassigned'}
+                                <UserCheck className="w-3 h-3 text-stone-500" /> {job.mechanicAssigned || t('unassignedLabel')}
                               </span>
                             </div>
                           </div>
@@ -768,7 +770,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               className={`mt-2 w-full min-h-[44px] rounded-xl ${isExpanded ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300' : 'bg-stone-800 hover:bg-stone-700 text-[#34D399] border-stone-700'} font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm border transition-all`}
                             >
                               <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
-                              <span>{isExpanded ? 'Close Inspection' : 'Inspect Job'}</span>
+                              <span>{isExpanded ? t('closeInspectionBtn') : t('inspectJobBtn')}</span>
                             </button>
                           )}
                           {!isPendingQC && (
@@ -784,15 +786,15 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                className={`mt-2 w-full min-h-[44px] rounded-xl ${isExpanded ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300' : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700'} font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm border transition-all`}
                             >
                                <Wrench className="w-4 h-4 stroke-[2.5]" />
-                               <span>{isExpanded ? 'Hide Details' : 'View / Reassign'}</span>
+                               <span>{isExpanded ? t('hideDetailsBtn') : t('viewReassignBtn')}</span>
                             </button>
                           )}
 
                           {isExpanded && !isPendingQC && (
                             <div className="mt-3 pt-4 border-t border-stone-800/60 animate-in slide-in-from-top-2 duration-200 flex flex-col gap-3">
-                              <h4 className="text-[11px] font-black uppercase text-stone-400">Manage Active Repair</h4>
+                              <h4 className="text-[11px] font-black uppercase text-stone-400">{t('manageActiveRepair', 'Manage Active Repair')}</h4>
                               
-                              <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No register description provided."}</p>
+                              <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || t('noRegisterDesc')}</p>
                               
                               <button
                                 onClick={async () => {
@@ -801,7 +803,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                   if (!error) {
                                     setFloorJobs(prev => prev.map(j => j.id === job.id ? { ...j, mechanicAssigned: userId, status: 'In Repair' } : j));
                                     setExpandedJobId(null);
-                                    showToast("Job successfully claimed to your bay!");
+                                    showToast(t('jobClaimedSuccess'));
                                     setTimeout(() => handleTabSelect('my-queue'), 1000); // Redirect to their Queue
                                   } else {
                                     alert('Failed to claim job: ' + error.message);
@@ -822,23 +824,23 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               
                               <div className="space-y-4 mb-4 bg-stone-950/50 p-3 rounded-xl border border-stone-800/80">
                                 <div className="bg-gray-800/50 p-3 rounded-md mb-2 border border-gray-700/50">
-                                  <span className="text-[10px] font-black uppercase tracking-wider block mb-1 text-orange-400">Customer Reported Problem</span>
-                                  <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || "No register description provided."}</p>
+                                  <span className="text-[10px] font-black uppercase tracking-wider block mb-1 text-orange-400">{t('customerReportedProblem', 'Customer Reported Problem')}</span>
+                                  <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || t('noRegisterDesc')}</p>
                                   {job.voiceNoteUrl && (
                                     <div className="mt-3">
-                                      <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Register Voice Note</span>
+                                      <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">{t('registerVoiceNoteLabel', 'Register Voice Note')}</span>
                                       <audio src={job.voiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
                                     </div>
                                   )}
                                 </div>
                                 <div>
-                                  <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Worker Notes</span>
-                                  <p className="text-sm font-medium text-stone-200 mt-1.5 whitespace-pre-wrap">{job.workerNotes || "No manual notes provided."}</p>
+                                  <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">{t('workerNotesLabel', 'Worker Notes')}</span>
+                                  <p className="text-sm font-medium text-stone-200 mt-1.5 whitespace-pre-wrap">{job.workerNotes || t('noManualNotes')}</p>
                                 </div>
 
                                 {job.workerVoiceNoteUrl ? (
                                   <div>
-                                    <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">Voice Memo</span>
+                                    <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">{t('voiceMemoLabel', 'Voice Memo')}</span>
                                     <audio src={job.workerVoiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
                                   </div>
                                 ) : null}
@@ -847,13 +849,13 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                   <div className="grid grid-cols-2 gap-3 mt-3">
                                       {job.oldPartPhotoUrl && (
                                         <div className="space-y-1">
-                                          <span className="text-[9px] font-black uppercase text-stone-500">Old Part</span>
+                                          <span className="text-[9px] font-black uppercase text-stone-500">{t('oldPartLabel', 'Old Part')}</span>
                                           <img src={job.oldPartPhotoUrl} alt="Before" className="w-full h-24 object-cover rounded-md border border-stone-800" />
                                         </div>
                                       )}
                                       {job.newPartPhotoUrl && (
                                         <div className="space-y-1">
-                                          <span className="text-[9px] font-black uppercase text-stone-500">New Part</span>
+                                          <span className="text-[9px] font-black uppercase text-stone-500">{t('newPartLabel', 'New Part')}</span>
                                           <img src={job.newPartPhotoUrl} alt="After" className="w-full h-24 object-cover rounded-md border border-emerald-900/40" />
                                         </div>
                                       )}
@@ -861,7 +863,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                 )}
                                 {job.generalJobPhotoUrl && (
                                   <div className="space-y-1 mt-3">
-                                    <span className="text-[9px] font-black uppercase text-stone-500">General Photo</span>
+                                    <span className="text-[9px] font-black uppercase text-stone-500">{t('generalPhotoLabel', 'General Photo')}</span>
                                     <img src={job.generalJobPhotoUrl} alt="General" className="w-full h-32 object-cover rounded-md border border-stone-800" />
                                   </div>
                                 )}
@@ -878,7 +880,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                       setHodJobSummary(e.target.value);
                                       setHodRejectionNote(e.target.value);
                                     }}
-                                    placeholder="Type rejection reason for worker OR final invoice summary..."
+                                    placeholder={t('hodNotesPlaceholder')}
                                     className="w-full rounded-xl bg-stone-950 border border-stone-700 p-3 text-sm font-medium text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all min-h-[90px]"
                                   />
                                 </div>
@@ -887,9 +889,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                     audioUrl={hodRejectionVoiceUrl}
                                     durationSeconds={0}
                                     onAudioChange={(url) => setHodRejectionVoiceUrl(url)}
-                                    label="HOD Voice Feedback"
-                                    promptTitle="Record Voice Feedback"
-                                    promptSubtitle="Speak the reason for rejection or worker instructions."
+                                    label={t('hodVoiceFeedbackLabel')}
+                                    promptTitle={t('recordVoiceFeedbackPrompt')}
+                                    promptSubtitle={t('speakReasonPrompt')}
                                     buttonId={`record-hod-voice-${job.id}`}
                                   />
                                 </div>
@@ -907,7 +909,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                       setHodJobSummary('');
                                       setHodRejectionNote('');
                                       setHodRejectionVoiceUrl('');
-                                      setSuccessToast("Job Approved & Sent to Exit!");
+                                      setSuccessToast(t('jobApprovedToast'));
                                       setTimeout(() => setSuccessToast(null), 3500);
                                     } else {
                                       console.error(error);
@@ -916,12 +918,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                   }}
                                   className="bg-emerald-500 active:scale-95 hover:bg-emerald-600 border border-emerald-600 text-white font-black text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-1.5"
                                 >
-                                  <span>Approve to Owner</span>
+                                  <span>{t('approveToOwnerBtn', 'Approve to Owner')}</span>
                                 </button>
                                 <button
                                   onClick={async () => {
                                     if (!hasNarrativeContent(hodRejectionNote, hodRejectionVoiceUrl)) {
-                                       alert("You must provide a rejection reason via text or voice memo.");
+                                       alert(t('mustProvideRejectionReason'));
                                        return;
                                     }
                                     let finalHodVoiceUrl = hodRejectionVoiceUrl;
@@ -954,7 +956,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                       setHodRejectionNote('');
                                       setHodRejectionVoiceUrl('');
                                       setHodJobSummary('');
-                                      setSuccessToast("Job Rejected back to Work.");
+                                      setSuccessToast(t('jobRejectedToast'));
                                       setTimeout(() => setSuccessToast(null), 3500);
                                     } else {
                                       console.error(error);
@@ -964,7 +966,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                   className="bg-stone-800 active:scale-95 border border-rose-900 hover:bg-rose-950 hover:border-rose-800 text-rose-500 font-extrabold text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all flex items-center justify-center gap-1.5"
                                 >
                                   <AlertTriangle className="w-4 h-4 stroke-[2.5]" />
-                                  <span>Reject to Work</span>
+                                  <span>{t('rejectToWorkBtn', 'Reject to Work')}</span>
                                 </button>
                               </div>
                             </div>

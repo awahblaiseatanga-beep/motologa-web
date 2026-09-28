@@ -7,6 +7,7 @@ import {
   TIMEFRAME_OPTIONS,
   sanitizeCameroonPhone,
 } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface RecallDashboardProps {
   repairs: DeferredRepair[];
@@ -19,6 +20,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
   onUpdateRepairs,
   className = '',
 }) => {
+  const { t } = useTranslation('owner');
   const [filter, setFilter] = useState<'all' | 'pending' | 'contacted'>('pending');
   const [justSentId, setJustSentId] = useState<string | null>(null);
   const [showQuickAdd, setShowQuickAdd] = useState<boolean>(false);
@@ -93,7 +95,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
   return (
     <section
       id="recall-dashboard-section"
-      aria-label="Owner Follow-Ups Due Feed"
+      aria-label={t('followUpsDueFeedAria', 'Owner Follow-Ups Due Feed')}
       className={`w-full max-w-md mx-auto space-y-3.5 ${className}`}
     >
       {/* Header Banner */}
@@ -105,15 +107,15 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
             </div>
             <div>
               <h3 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                Follow-Ups Due
+                {t('followUpsDueTitle', 'Follow-Ups Due')}
                 {pendingCount > 0 && (
                   <span className="text-xs font-mono font-black px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
-                    {pendingCount} Due
+                    {pendingCount} {t('dueBadge', 'Due')}
                   </span>
                 )}
               </h3>
               <p className="text-xs text-emerald-300 font-medium">
-                Preventive maintenance reminders for Cameroonian clients
+                {t('preventiveRemindersDesc', 'Preventive maintenance reminders for Cameroonian clients')}
               </p>
             </div>
           </div>
@@ -122,11 +124,11 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
             type="button"
             id="quick-add-followup-btn"
             onClick={() => setShowQuickAdd(!showQuickAdd)}
-            aria-label="Add Follow-Up"
+            aria-label={t('addFollowUpAria', 'Add Follow-Up')}
             className="min-h-[44px] px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-[#34D399] font-bold text-xs flex items-center gap-1.5 transition-all border border-emerald-500/30 cursor-pointer"
           >
             {showQuickAdd ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            <span>{showQuickAdd ? 'Close' : 'Add'}</span>
+            <span>{showQuickAdd ? t('closeBtn') : t('addBtn')}</span>
           </button>
         </div>
 
@@ -141,7 +143,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                 : 'bg-emerald-950/40 text-emerald-200 border-emerald-800/60 hover:bg-emerald-900/50'
             }`}
           >
-            <span>Pending</span>
+            <span>{t('pendingStatusFilter', 'Pending')}</span>
             <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-black/20">
               {pendingCount}
             </span>
@@ -156,7 +158,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                 : 'bg-emerald-950/40 text-emerald-200 border-emerald-800/60 hover:bg-emerald-900/50'
             }`}
           >
-            <span>Sent</span>
+            <span>{t('sentStatusFilter', 'Sent')}</span>
             <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-black/20">
               {contactedCount}
             </span>
@@ -171,7 +173,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                 : 'bg-emerald-950/40 text-emerald-200 border-emerald-800/60 hover:bg-emerald-900/50'
             }`}
           >
-            <span>All</span>
+            <span>{t('allStatusFilter', 'All')}</span>
             <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-black/20">
               {repairs.length}
             </span>
@@ -187,17 +189,17 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
         >
           <div className="flex items-center justify-between">
             <h4 className="font-black text-sm text-slate-900 uppercase tracking-wider">
-              Log New Follow-Up
+              {t('logNewFollowUp', 'Log New Follow-Up')}
             </h4>
-            <span className="text-xs font-bold text-emerald-700 font-mono">+237 Cameroon</span>
+            <span className="text-xs font-bold text-emerald-700 font-mono">{t('cameroonSuffix', '+237 Cameroon')}</span>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700">Vehicle License Plate</label>
+            <label className="text-xs font-bold text-slate-700">{t('vehicleLicensePlateLabel', 'Vehicle License Plate')}</label>
             <input
               type="text"
               required
-              placeholder="e.g. LT 7249 D"
+              placeholder={t('licensePlateEg', 'e.g. LT 7249 D')}
               value={newPlate}
               onChange={(e) => setNewPlate(e.target.value.toUpperCase())}
               className="w-full min-h-[48px] px-3.5 bg-stone-50 text-slate-900 font-mono font-black text-base rounded-xl border border-slate-300 focus:outline-none focus:border-emerald-600 uppercase"
@@ -205,7 +207,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700">Customer Phone (+237)</label>
+            <label className="text-xs font-bold text-slate-700">{t('customerPhoneCameroon', 'Customer Phone (+237)')}</label>
             <input
               type="tel"
               required
@@ -218,7 +220,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Component</label>
+              <label className="text-xs font-bold text-slate-700">{t('componentLabel', 'Component')}</label>
               <select
                 value={newComponent}
                 onChange={(e) => setNewComponent(e.target.value)}
@@ -233,7 +235,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Timeframe</label>
+              <label className="text-xs font-bold text-slate-700">{t('timeframeLabel', 'Timeframe')}</label>
               <select
                 value={newTimeframe}
                 onChange={(e) => setNewTimeframe(e.target.value)}
@@ -253,7 +255,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
             className="w-full min-h-[48px] h-12 bg-[#0E2829] hover:bg-[#143c3d] text-white rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
           >
             <Plus className="w-4 h-4 text-[#34D399]" />
-            <span>Save Follow-Up</span>
+            <span>{t('saveFollowUpBtn', 'Save Follow-Up')}</span>
           </button>
         </form>
       )}
@@ -266,11 +268,11 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
           </div>
           <h4 className="text-base font-black text-slate-800">
             {filter === 'pending'
-              ? 'All Follow-Ups Sent!'
-              : 'No deferred repair entries in this view.'}
+              ? t('allFollowUpsSent', 'All Follow-Ups Sent!')
+              : t('noDeferredRepairs', 'No deferred repair entries in this view.')}
           </h4>
           <p className="text-xs text-slate-700 max-w-xs mx-auto">
-            Flag repairs during checkout to schedule automated WhatsApp customer recalls.
+            {t('flagRepairsDesc', 'Flag repairs during checkout to schedule automated WhatsApp customer recalls.')}
           </p>
         </div>
       ) : (
@@ -303,7 +305,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(repair)}
-                      title="Click to toggle status"
+                      title={t('clickToggleStatusAria', 'Click to toggle status')}
                       className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1 border transition-colors cursor-pointer ${
                         isContacted
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
@@ -313,12 +315,12 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                       {isContacted ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Contacted</span>
+                          <span>{t('contactedBadge', 'Contacted')}</span>
                         </>
                       ) : (
                         <>
                           <Clock className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Due</span>
+                          <span>{t('dueBadge', 'Due')}</span>
                         </>
                       )}
                     </button>
@@ -335,7 +337,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                   <div className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-emerald-700 shrink-0" />
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Deferred Service:
+                      {t('deferredServiceLabel', 'Deferred Service:')}
                     </span>
                     <strong className="text-base sm:text-lg font-black text-slate-900">
                       {repair.componentToFix}
@@ -343,7 +345,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                   </div>
 
                   <div className="text-xs font-mono font-bold text-slate-700 flex items-center gap-2 pl-6">
-                    <span>Client: +237 {sanitizeCameroonPhone(repair.customerPhone)}</span>
+                    <span>{t('clientPrefix', 'Client:')} +237 {sanitizeCameroonPhone(repair.customerPhone)}</span>
                   </div>
                 </div>
 
@@ -351,7 +353,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                 {wasJustSent && (
                   <div className="p-2.5 bg-emerald-100 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
                     <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>WhatsApp opened! Status updated to Contacted.</span>
+                    <span>{t('whatsappOpenedConfirm', 'WhatsApp opened! Status updated to Contacted.')}</span>
                   </div>
                 )}
 
@@ -363,7 +365,7 @@ export const RecallDashboard: React.FC<RecallDashboardProps> = ({
                   className="w-full min-h-[48px] h-12 px-4 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] active:bg-[#1da851] text-white font-black text-base sm:text-lg tracking-tight flex items-center justify-center gap-2.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
                 >
                   <MessageCircle className="w-5 h-5 fill-white stroke-none" />
-                  <span>Send WhatsApp Reminder</span>
+                  <span>{t('sendWhatsappReminderBtn', 'Send WhatsApp Reminder')}</span>
                 </button>
               </article>
             );

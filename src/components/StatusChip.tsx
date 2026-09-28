@@ -1,6 +1,7 @@
 import React from 'react';
 import { JobStatus } from '../types';
 import { Stethoscope, Clock, Wrench, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface StatusChipProps {
   status: JobStatus;
@@ -17,6 +18,8 @@ export const StatusChip: React.FC<StatusChipProps> = ({
   onClick,
   id,
 }) => {
+  const { t } = useTranslation();
+
   const getStyles = () => {
     switch (status as string) {
       case 'Diagnosis':
@@ -70,7 +73,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({
       }`}
     >
       {icon}
-      <span>{status}</span>
+      <span>{t(`statuses.${(status as string).replace(/[\/\s]/g, '_')}`, { defaultValue: status })}</span>
     </span>
   );
 };

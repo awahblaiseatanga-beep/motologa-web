@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { InventoryItem } from '../types';
 import { Box, Plus, Search, Edit2, AlertCircle, X, Check, Save, Camera, Image as ImageIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface InventoryScreenProps {
   garageId: string;
@@ -12,6 +13,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lowStockThreshold, setLowStockThreshold] = useState<number>(5);
+  const { t } = useTranslation('owner');
 
   const [search, setSearch] = useState('');
   
@@ -55,7 +57,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
 
     } catch (err: any) {
       console.error('Error fetching inventory:', err);
-      setError(err.message || 'Failed to load inventory.');
+      setError(err.message || t('failedToLoadInventory'));
     } finally {
       setLoading(false);
     }
@@ -149,7 +151,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
       }, 1000);
     } catch (err: any) {
       console.error('Save error:', err);
-      setError(err.message || 'Failed to save part definition.');
+      setError(err.message || t('failedToSavePart'));
     } finally {
       setSaving(false);
     }
@@ -167,10 +169,10 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
         <div>
           <h2 className="text-2xl font-black text-white flex items-center gap-2">
             <Box className="w-6 h-6 text-[#34D399]" />
-            Inventory Logistics
+            {t('inventoryLogistics')}
           </h2>
           <p className="text-sm text-stone-400 max-w-xl mt-1">
-            Track garage stock, automate critical thresholds, and monitor catalog profit margins.
+            {t('trackGarageStock')}
           </p>
         </div>
         
@@ -179,7 +181,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
             <input 
               type="text"
-              placeholder="Search parts by name or SKU..."
+              placeholder={t('searchPartsPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-stone-900 border border-stone-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-stone-600 shadow-inner"
@@ -190,7 +192,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
             className="px-4 py-2.5 bg-[#34D399] hover:bg-emerald-400 text-stone-950 font-black rounded-xl text-sm transition flex items-center gap-2 shadow-md shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Part</span>
+            <span className="hidden sm:inline">{t('addPartBtn')}</span>
           </button>
         </div>
       </div>
@@ -200,19 +202,19 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
         {loading ? (
           <div className="text-center py-20">
             <div className="w-8 h-8 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin mx-auto mb-4" />
-            <div className="text-stone-500 font-mono text-sm">Synchronizing inventory schema...</div>
+            <div className="text-stone-500 font-mono text-sm">{t('syncingInventorySchema')}</div>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-20 px-4">
             <div className="w-16 h-16 rounded-3xl bg-stone-800/50 border border-stone-700/50 flex items-center justify-center mx-auto mb-4">
               <Box className="w-8 h-8 text-stone-500 opacity-60" />
             </div>
-            <h3 className="text-stone-200 font-bold mb-1">No Parts Found</h3>
+            <h3 className="text-stone-200 font-bold mb-1">{t('noPartsFound')}</h3>
             <p className="text-stone-500 text-sm max-w-sm mx-auto mb-6">
-              Your inventory database is currently empty. Start registering parts and fluids to track consumption.
+              {t('emptyInventoryExplanation')}
             </p>
             <button onClick={openNewModal} className="text-[#34D399] font-bold text-sm hover:underline">
-              Register First Item
+              {t('registerFirstItemBtn')}
             </button>
           </div>
         ) : (
@@ -220,13 +222,13 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead className="bg-stone-950/80 text-stone-400 uppercase tracking-wider text-[10px] font-mono border-b border-stone-800">
                 <tr>
-                  <th className="py-4 px-5">Photo</th>
-                  <th className="py-4 px-5">Part Designation</th>
-                  <th className="py-4 px-5 text-center">Stock Level</th>
-                  <th className="py-4 px-5 text-right">Unit Buy</th>
-                  <th className="py-4 px-5 text-right">Unit Sell</th>
-                  <th className="py-4 px-5 text-right">Delta (Margin)</th>
-                  <th className="py-4 px-5 text-center w-16">Actions</th>
+                  <th className="py-4 px-5">{t('photoLabel')}</th>
+                  <th className="py-4 px-5">{t('partDesignationTableLabel')}</th>
+                  <th className="py-4 px-5 text-center">{t('stockLevelTableLabel')}</th>
+                  <th className="py-4 px-5 text-right">{t('unitBuyTableLabel')}</th>
+                  <th className="py-4 px-5 text-right">{t('unitSellTableLabel')}</th>
+                  <th className="py-4 px-5 text-right">{t('deltaMarginTableLabel')}</th>
+                  <th className="py-4 px-5 text-center w-16">{t('actionsTableLabel')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-800/50 text-stone-300">
@@ -249,14 +251,14 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                         {(item.quantity_in_stock <= lowStockThreshold) && (
                           <span className="flex items-center gap-1 text-[10px] sm:text-xs font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 mt-1 sm:mt-0 shadow-sm animate-pulse">
                             <AlertCircle className="w-3 h-3 stroke-[3]" />
-                            LOW STOCK
+                            {t('lowStockBadge')}
                           </span>
                         )}
                       </td>
                       <td className="py-3 px-5">
                         <div className="font-bold text-white text-sm">{item.part_name}</div>
                         <div className="text-[10px] flex gap-2 text-stone-500 font-mono mt-0.5">
-                           {item.created_at && <span>Registered: {new Date(item.created_at).toLocaleDateString()}</span>}
+                           {item.created_at && <span>{t('registeredPrefix')}: {new Date(item.created_at).toLocaleDateString()}</span>}
                         </div>
                       </td>
                       <td className="py-3 px-5 text-center">
@@ -274,7 +276,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                         {item.selling_price.toLocaleString()} F
                       </td>
                       <td className="py-3 px-5 text-right">
-                        <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md ${margin > 0 ? 'text-[#34D399] bg-[#34D399]/10' : margin < 0 ? 'text-rose-400 bg-rose-500/10' : 'text-stone-500 bg-stone-800'}`}>
+                        <span className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md ${margin > 0 ? 'text-[#34D399] bg-[#34D399]/10' : margin < 0 ? 'text-rose-400 bg-rose-500/10' : 'text-stone-500 bg-stone-800'}`}> {/* i18n-ignore */}
                            {margin > 0 ? '+' : ''}{margin.toLocaleString()}
                         </span>
                       </td>
@@ -304,7 +306,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
             <div className="p-4 border-b border-stone-800 flex items-center justify-between bg-stone-950/50">
               <h3 className="font-black text-white flex items-center gap-2">
                 {editingItem ? <Edit2 className="w-4 h-4 text-emerald-400" /> : <Plus className="w-4 h-4 text-emerald-400" />}
-                {editingItem ? 'Edit Component Definition' : 'Register New Part'}
+                {editingItem ? t('editComponentDefinition') : t('registerNewPart')}
               </h3>
               <button onClick={() => !saving && setIsModalOpen(false)} className="text-stone-500 hover:text-white transition">
                 <X className="w-5 h-5" />
@@ -322,7 +324,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
               <form id="inventory-form" onSubmit={handleSave} className="space-y-4">
                 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">Part Image / Verification</label>
+                  <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{t('partImageLabel')}</label>
                   <input
                     type="file" accept="image/*" capture="environment"
                     onChange={e => {
@@ -339,27 +341,27 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">Part Name *</label>
+                  <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{t('partNameLabel')}</label>
                   <input required
-                    type="text" placeholder="e.g., Brake Pads (Front)" 
+                    type="text" placeholder={t('brakePadsExample')} 
                     value={formData.part_name} onChange={e => setFormData({...formData, part_name: e.target.value})}
                     className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" 
                   />
                 </div>
                 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">Registration Date</label>
+                  <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{t('registrationDateLabel')}</label>
                   <input required
                     type="date"
                     value={formData.registration_date} onChange={e => setFormData({...formData, registration_date: e.target.value})}
                     className="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500" 
                   />
-                  <p className="text-[10px] text-stone-500 mt-0.5">The exact date this product was registered into inventory.</p>
+                  <p className="text-[10px] text-stone-500 mt-0.5">{t('registrationDateExplanation')}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-stone-800/50">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">Pro Number</label>
+                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{t('proNumberLabel')}</label>
                     <input required min="0" step="1"
                       type="number" 
                       value={formData.quantity_in_stock} onChange={e => setFormData({...formData, quantity_in_stock: Number(e.target.value)})}
@@ -367,19 +369,19 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider flex items-center gap-1"><AlertCircle className="w-3 h-3 text-amber-500"/> Minimum Threshold Limit</label>
+                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider flex items-center gap-1"><AlertCircle className="w-3 h-3 text-amber-500"/> {t('minThresholdLimit')}</label>
                     <input required min="0" step="1"
                       type="number" 
                       value={formData.minimum_stock_level} onChange={e => setFormData({...formData, minimum_stock_level: Number(e.target.value)})}
                       className="w-full bg-stone-950 border border-rose-500/30 rounded-xl px-3 py-2 text-sm text-amber-100 font-mono focus:outline-none focus:border-rose-500" 
                     />
-                    <p className="text-[9px] text-stone-500 leading-tight">Sends notification alarm when stock reaches this limit.</p>
+                    <p className="text-[9px] text-stone-500 leading-tight">{t('minThresholdExplanation')}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-stone-800/50">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">Unit Buying Price (FCFA)</label>
+                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider">{t('unitBuyingPriceLabel')}</label>
                     <input required min="0"
                       type="number" 
                       value={formData.buying_price} onChange={e => setFormData({...formData, buying_price: Number(e.target.value)})}
@@ -387,7 +389,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider text-emerald-400 drop-shadow">Unit Selling Price</label>
+                    <label className="text-[10px] font-mono text-stone-400 uppercase tracking-wider text-emerald-400 drop-shadow">{t('unitSellingPriceLabel')}</label>
                     <input required min="0"
                       type="number" 
                       value={formData.selling_price} onChange={e => setFormData({...formData, selling_price: Number(e.target.value)})}
@@ -405,7 +407,7 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                 disabled={saving}
                 className="px-4 py-2 text-stone-400 hover:text-white font-semibold text-sm transition"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button 
                 form="inventory-form"
@@ -416,11 +418,11 @@ export const InventoryScreen: React.FC<InventoryScreenProps> = ({ garageId }) =>
                 }`}
               >
                 {saving ? (
-                  <><div className="w-4 h-4 border-2 border-stone-950/20 border-t-stone-950 rounded-full animate-spin"/> Saving...</>
+                  <><div className="w-4 h-4 border-2 border-stone-950/20 border-t-stone-950 rounded-full animate-spin"/> {t('saving')}</>
                 ) : saveSuccess ? (
-                  <><Check className="w-4 h-4" /> Committed</>
+                  <><Check className="w-4 h-4" /> {t('committed')}</>
                 ) : (
-                  <><Save className="w-4 h-4" /> Save Record</>
+                  <><Save className="w-4 h-4" /> {t('saveRecordBtn')}</>
                 )}
               </button>
             </div>

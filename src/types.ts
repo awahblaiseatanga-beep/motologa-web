@@ -193,6 +193,7 @@ export interface Garage {
   brand_color?: string;
   invoice_message?: string;
   watermark_url?: string;
+  default_language?: 'en' | 'fr';
 }
 
 export interface Department {
@@ -219,6 +220,7 @@ export interface GarageMember {
   profiles?: {
     full_name?: string;
     email?: string;
+    language_preference?: 'en' | 'fr' | null;
   };
 }
 

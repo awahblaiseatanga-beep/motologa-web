@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase';
 import { Job, JobStatus } from '../types';
 import { EliteInvoiceV2 } from '../components/invoices/EliteInvoiceV2';
 import { Printer, RefreshCw, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export const SharedDocumentPage = () => {
+  const { t } = useTranslation('common');
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export const SharedDocumentPage = () => {
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
         <div className="flex flex-col items-center justify-center gap-3">
           <RefreshCw className="w-8 h-8 text-sky-500 animate-spin" />
-          <p className="text-stone-500 text-sm font-bold uppercase tracking-widest animate-pulse">Retrieving Secure Document...</p>
+          <p className="text-stone-500 text-sm font-bold uppercase tracking-widest animate-pulse">{t('sharedDoc.retrieving', 'Retrieving Secure Document...')}</p>
         </div>
       </div>
     );
@@ -101,13 +103,13 @@ export const SharedDocumentPage = () => {
     return (
       <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-4">
         <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-        <h2 className="text-xl font-bold text-slate-800">Cannot Load Document</h2>
+        <h2 className="text-xl font-bold text-slate-800">{t('sharedDoc.cannotLoad', 'Cannot Load Document')}</h2>
         <p className="text-slate-500 mt-2 max-w-sm text-center">{error}</p>
         <button 
            onClick={() => window.location.reload()}
            className="mt-6 text-sky-600 font-bold hover:underline"
         >
-          Try Again
+          {t('tryAgain', 'Try Again')}
         </button>
       </div>
     );
@@ -126,7 +128,7 @@ export const SharedDocumentPage = () => {
           className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-6 py-3.5 sm:py-3 rounded-2xl sm:rounded-xl flex items-center justify-center gap-2 shadow-[0_5px_15px_rgba(16,185,129,0.3)] border-2 border-emerald-400 transition-all active:scale-95 w-full sm:w-auto"
         >
           <Printer className="w-5 h-5 flex-shrink-0" />
-          <span className="truncate">Download PDF / Print Document</span>
+          <span className="truncate">{t('sharedDoc.download', 'Download PDF / Print Document')}</span>
         </button>
       </div>
 

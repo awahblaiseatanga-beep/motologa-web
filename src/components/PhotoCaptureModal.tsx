@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Camera, RefreshCw, Check, X, Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PhotoCaptureModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string>(currentPhotoUrl || '');
+  const { t } = useTranslation('common');
   const [previewSizeKb, setPreviewSizeKb] = useState<number | null>(null);
 
   if (!isOpen) return null;
@@ -102,7 +104,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             id="close-photo-modal-btn"
             onClick={onClose}
             className="w-10 h-10 rounded-lg bg-stone-800 flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition-all"
-            aria-label="Close modal"
+            aria-label={t('common:cancel')}
           >
             <X className="w-6 h-6" />
           </button>
@@ -121,7 +123,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 />
                 {previewSizeKb !== null && (
                   <div className="absolute top-3 right-3 bg-stone-950/80 border border-emerald-500/50 backdrop-blur-md px-2 py-1 flex items-center gap-1.5 rounded-lg z-10 shadow-lg">
-                    <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400">📦 Size:</span>
+                    <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400">{t('photoCapture.sizeLabel', '📦 Size:')}</span>
                     <span className="text-xs font-mono font-bold text-white">{previewSizeKb} KB</span>
                   </div>
                 )}
@@ -130,10 +132,10 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <div className="text-center p-6 space-y-2">
                 <Camera className="w-14 h-14 text-emerald-400 mx-auto stroke-[1.5]" />
                 <p className="font-bold text-slate-200 text-sm">
-                  No image recorded yet
+                  {t('common:photoCapture.noImage')}
                 </p>
                 <p className="text-xs text-slate-400">
-                  Tap Camera below or choose a workshop snapshot
+                  {t('common:photoCapture.tapCamera')}
                 </p>
               </div>
             )}
@@ -163,7 +165,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               className="min-h-[48px] px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all shadow-md"
             >
               <Camera className="w-5 h-5" />
-              <span>Take Photo</span>
+              <span>{t('photoCapture.takePhoto', 'Take Photo')}</span>
             </button>
 
             <button
@@ -173,7 +175,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               className="min-h-[48px] px-3 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-slate-200 font-bold text-sm flex items-center justify-center gap-2 active:scale-98 transition-all border border-stone-700"
             >
               <Upload className="w-5 h-5 text-amber-400" />
-              <span>Upload Gallery</span>
+              <span>{t('photoCapture.uploadGallery', 'Upload Gallery')}</span>
             </button>
           </div>
         </div>
@@ -187,7 +189,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               className="min-h-[48px] px-4 rounded-xl bg-stone-800 text-rose-300 hover:bg-stone-700 font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Clear</span>
+              <span>{t('photoCapture.clear', 'Clear')}</span>
             </button>
           )}
 
@@ -203,7 +205,7 @@ export const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             }`}
           >
             <Check className="w-5 h-5 stroke-[3]" />
-            <span>Confirm & Attach Photo</span>
+            <span>{t('photoCapture.confirmAttach', 'Confirm & Attach Photo')}</span>
           </button>
         </div>
       </div>

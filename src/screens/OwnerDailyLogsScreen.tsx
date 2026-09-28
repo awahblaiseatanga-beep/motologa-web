@@ -4,6 +4,7 @@ import { fetchDepartments, fetchCompletedInvoicesToday } from '../lib/api';
 import { Department, Job } from '../types';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { RefreshCw, PlayCircle, Clock, Calendar, CheckCircle, FileAudio, LayoutDashboard } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface OwnerDailyLogsScreenProps {
   garageId: string;
@@ -23,6 +24,7 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
   const [viewingInvoiceJob, setViewingInvoiceJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { t } = useTranslation('owner');
 
   const fetchAudioLogs = async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
@@ -97,7 +99,7 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] text-stone-400">
         <RefreshCw className="w-8 h-8 animate-spin text-sky-500 mb-4" />
-        <span className="animate-pulse font-bold tracking-widest text-xs uppercase">Fetching End of Day Reports...</span>
+        <span className="animate-pulse font-bold tracking-widest text-xs uppercase">{t('fetchingDailyLogsLoading')}</span>
       </div>
     );
   }
@@ -109,10 +111,10 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
         <div className="flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <LayoutDashboard className="w-5 h-5 text-indigo-400" />
-            <h1 className="text-xl sm:text-2xl font-black text-white">End of Day HOD Logs</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-white">{t('dailyLogsTitle')}</h1>
           </div>
           <p className="text-stone-400 text-xs sm:text-sm font-medium">
-            Listen to daily audio summaries dispatched from your department leads natively.
+            {t('dailyLogsDesc')}
           </p>
         </div>
         
@@ -122,7 +124,7 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
           className="flex items-center gap-2 px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl font-bold text-sm transition-all border border-stone-700 active:scale-95 disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh Summaries
+          {t('refreshSummariesBtn')}
         </button>
       </div>
 
@@ -130,9 +132,9 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
       {logs.length === 0 ? (
         <div className="bg-stone-900/50 border border-stone-800/50 rounded-2xl p-12 flex flex-col items-center justify-center text-center">
           <FileAudio className="w-16 h-16 text-stone-600 mb-4" />
-          <h2 className="text-stone-300 font-black text-lg mb-2">No Reports Available</h2>
+          <h2 className="text-stone-300 font-black text-lg mb-2">{t('noReportsAvailableTitle')}</h2>
           <p className="text-stone-500 text-sm max-w-md text-balance">
-            Your Heads of Department have not submitted any voice summaries to your dashboard yet. Once they finish their shifts and send reports, they will actively populate here natively.
+            {t('noReportsAvailableDesc')}
           </p>
         </div>
       ) : (
@@ -161,7 +163,7 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
                     </div>
                     <div className="flex items-center gap-1.5 text-stone-500 font-mono text-[11px] uppercase">
                       <Clock className="w-3.5 h-3.5" />
-                      Received at {timeStr}
+                      {t('receivedAtLabel')} {timeStr}
                     </div>
                   </div>
                   <div className="p-2 bg-stone-950 rounded-lg shadow-inner">
@@ -187,12 +189,12 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
       <div className="border-t-2 border-stone-800/80 mt-6 pt-8">
         <h2 className="text-xl font-black text-white flex items-center gap-2 mb-4">
           <CheckCircle className="w-5 h-5 text-emerald-500" />
-          Today's Generated Invoices
+          {t('todaysInvoicesTitle')}
         </h2>
         
         {invoices.length === 0 ? (
           <div className="bg-stone-900 border border-stone-800 rounded-xl p-8 text-center">
-             <p className="text-stone-500 text-sm font-bold">No completed invoices documented today.</p>
+             <p className="text-stone-500 text-sm font-bold">{t('noInvoicesToday')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -207,14 +209,14 @@ export const OwnerDailyLogsScreen: React.FC<OwnerDailyLogsScreenProps> = ({ gara
                  >
                    <div>
                      <div className="flex justify-between items-start mb-1">
-                       <span className="font-extrabold text-white truncate max-w-[150px]">{inv.vehicleModel || 'Walk-in'}</span>
+                       <span className="font-extrabold text-white truncate max-w-[150px]">{inv.vehicleModel || t('walkInVehicleFallback')}</span>
                        <span className="text-xs bg-emerald-900/40 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold tracking-wider">{inv.licensePlate}</span>
                      </div>
-                     <p className="text-xs text-stone-400 font-bold">Closed at {timeStr}</p>
+                     <p className="text-xs text-stone-400 font-bold">{t('closedAtLabel')} {timeStr}</p>
                    </div>
                    <div className="flex justify-between items-end">
                      <span className="text-emerald-500 font-black text-lg font-mono">{totalAmount.toLocaleString()} FCFA</span>
-                     <span className="text-[10px] text-stone-500 uppercase tracking-widest font-black">View</span>
+                     <span className="text-[10px] text-stone-500 uppercase tracking-widest font-black">{t('viewInvoiceBtn')}</span>
                    </div>
                  </button>
                );

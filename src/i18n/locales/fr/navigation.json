@@ -1,0 +1,12 @@
+{
+  "analytics": "Analytique",
+  "appointments": "Rendez-vous",
+  "checkout": "Sortie",
+  "daily_logs": "Résumé Joualier",
+  "intake": "Réception",
+  "inventory": "Inventaire",
+  "outbox": "Travaux Additionnels",
+  "queue": "Travaux",
+  "roster": "Équipe",
+  "settings": "Paramètres"
+}

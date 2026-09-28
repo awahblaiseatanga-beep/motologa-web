@@ -6,6 +6,7 @@ import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { Clock, Check, Send, AlertCircle, RefreshCw } from 'lucide-react';
 import { InvoiceGenerator } from '../components/InvoiceGenerator';
 import { ScheduleAppointmentModal } from '../components/ScheduleAppointmentModal';
+import { useTranslation } from 'react-i18next';
 
 interface CustomerOutboxScreenProps {
   garageId: string;
@@ -27,6 +28,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
   const [localDescriptions, setLocalDescriptions] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [debugLog, setDebugLog] = useState<any>({});
+  const { t } = useTranslation('owner');
   
   // Invoice Modal State
   const [estimatingJob, setEstimatingJob] = useState<{ finding: any; matchedJobData: Job; customDescription?: string; customImage?: string } | null>(null);
@@ -135,7 +137,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
     const parsedCost = parseFloat(cost || '0');
 
     if (isNaN(parsedCost) || parsedCost <= 0) {
-      alert('Security Guard: Please enter a valid numerical price. Letters and generic values are blocked.');
+      alert(t('invalidPriceError'));
       return;
     }
     
@@ -150,7 +152,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
       // Update local state without reloading
       setCustomerFindings(prev => prev.map(f => f.id === findingId ? { ...f, estimated_cost: parsedCost } : f));
     } catch (err: any) {
-      alert(`Failed to save price: ${err.message}`);
+      alert(`${t('failedToSavePricePrefix')}: ${err.message}`);
     }
   };
 
@@ -159,14 +161,14 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
     const jobsRef = await fetchJobsForGarage(garageId);
     const matchedJob = jobsRef.find((j: Job) => j.id === finding.parent_job_id);
     if (!matchedJob) {
-      alert("Error: Reference Job Not Found");
+      alert(t('jobNotFoundErr'));
       return;
     }
     
     // Synthesize a structured proxy Job object pushing the specific Add-On finding into the description core
     const proxyJob: Job = {
       ...matchedJob,
-      issueDescription: localDescriptions[finding.id]?.trim() || finding.component || finding.description || "Additional Findings / Overflows",
+      issueDescription: localDescriptions[finding.id]?.trim() || finding.component || finding.description || t('additionalFindingsFallback'),
       laborFeeFcfa: finding.estimated_cost || 0,
       partsFeeFcfa: 0,
     };
@@ -198,14 +200,18 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
         const fullPhone = cleanPhone.startsWith('237') ? cleanPhone : `237${cleanPhone}`;
         const shopName = garageId || 'Workshop';
         
-        const text = `*CRITICAL ALERT* Hello! This is ${shopName}. We have temporarily PAUSED work on your ${finding.jobs.vehicle_make} (${finding.jobs.license_plate || finding.jobs.plate}) because our technicians discovered a critical issue. We need your authorization for an additional ${finding.estimated_cost} FCFA before we can safely proceed. Reply YES to approve this work and resume the repair.`;
-        
+        let text = t('criticalAlertWhatsapp')
+          .replace('{{shop}}', shopName)
+          .replace('{{vehicle}}', finding.jobs.vehicle_make)
+          .replace('{{plate}}', (finding.jobs.license_plate || finding.jobs.plate || ''))
+          .replace('{{price}}', finding.estimated_cost);
+          
         window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`, '_blank');
       }
 
       setCustomerFindings(prev => prev.map(f => f.id === finding.id ? { ...f, status: 'pending_customer' } : f));
     } catch (err: any) {
-      alert(`Failed to pause job and route finding to customer: ${err.message}`);
+      alert(`${t('failedToPauseJobErr')} ${err.message}`);
     }
   };
 
@@ -223,6 +229,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
       
       setCustomerFindings(prev => prev.filter(f => f.id !== finding.id));
     } catch (err: any) {
+      // Intentionally omitting approval failure mapping to match exact legacy error or reusing existing
       alert(`Failed to approve finding: ${err.message}`);
     }
   };
@@ -232,7 +239,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
       const { error } = await supabase.from('jobs').update({ status: 'in_progress' }).eq('id', finding.parent_job_id);
       if (error) throw error;
       
-      alert(`Job Unpaused! Mechanics can resume work immediately.`);
+      alert(t('jobUnpausedSuccess'));
       // Update local state so the lock button vanishes
       setCustomerFindings(prev => prev.map(f => {
          if (f.id === finding.id) {
@@ -241,7 +248,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
          return f;
       }));
     } catch (err: any) {
-      alert(`Failed to unpause job: ${err.message}`);
+      alert(`${t('failedToUnpauseErr')} ${err.message}`);
     }
   };
 
@@ -255,7 +262,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
       
       setCustomerFindings(prev => prev.filter(f => f.id !== finding.id));
     } catch (err: any) {
-      alert(`Failed to reject finding: ${err.message}`);
+      alert(`${t('failedToRejectFinding')} ${err.message}`);
     }
   };
 
@@ -263,7 +270,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-stone-300 text-sm font-medium bg-stone-900 border border-stone-800 rounded-2xl animate-in fade-in h-96">
         <RefreshCw className="w-6 h-6 text-sky-400 animate-spin mb-4" />
-        <span className="animate-pulse tracking-widest uppercase font-black text-xs text-stone-400">Loading Additional JOB</span>
+        <span className="animate-pulse tracking-widest uppercase font-black text-xs text-stone-400">{t('loadingAdditionalJob')}</span>
       </div>
     );
   }
@@ -274,18 +281,18 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-sky-500/10">
           <div className="flex items-center gap-2 text-sky-400 font-bold">
             <Clock className="w-5 h-5" />
-            <h2 className="uppercase tracking-wider text-sm">Unified Approvals & Additional JOB ({customerFindings.length})</h2>
+            <h2 className="uppercase tracking-wider text-sm">{t('unifiedApprovalsOutbox')} ({customerFindings.length})</h2>
           </div>
           <button onClick={() => loadData(false)} className="p-2 bg-sky-900/30 text-sky-400 hover:text-sky-300 rounded-lg transition active:scale-95 text-xs font-bold flex items-center gap-1 border border-sky-500/30">
-            <RefreshCw className="w-3.5 h-3.5" /> Reload
+            <RefreshCw className="w-3.5 h-3.5" /> {t('reloadBtn')}
           </button>
         </div>
 
         {customerFindings.length === 0 ? (
           <div className="text-center py-12">
             <AlertCircle className="w-12 h-12 text-sky-900 opacity-50 mx-auto mb-3" />
-            <h3 className="text-stone-300 font-bold mb-1">Queue Clear</h3>
-            <p className="text-stone-500 text-xs text-balance">There are no pending approvals or customer authorizations right now.</p>
+            <h3 className="text-stone-300 font-bold mb-1">{t('queueClearTitle')}</h3>
+            <p className="text-stone-500 text-xs text-balance">{t('queueClearDesc')}</p>
           </div>
         ) : (
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -293,21 +300,21 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
               <div key={finding.id} className="bg-stone-900 border border-stone-800 p-3.5 rounded-xl flex flex-col gap-3 shadow-md transition hover:border-stone-700">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-black text-stone-200">
-                     <span className="text-emerald-400">VEHICLE:</span> {finding.jobs?.vehicle_make || 'Vehicle'} {finding.jobs?.vehicle_model || ''}
+                     <span className="text-emerald-400">{t('vehicleLabel')}</span> {finding.jobs?.vehicle_make || 'Vehicle'} {finding.jobs?.vehicle_model || ''}
                   </div>
                   {finding.status === 'pending_approval' ? (
                      <div className="text-[10px] uppercase font-mono px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-300">
-                       PENDING
+                       {t('pendingStatus')}
                      </div>
                   ) : (
                      <div className="text-[10px] uppercase font-mono px-2 py-0.5 rounded border border-sky-500/30 bg-sky-500/10 text-sky-300">
-                       QUOTED / AWAITING
+                       {t('quotedAwaitingStatus')}
                      </div>
                   )}
                 </div>
                 
                 <div className="text-xs font-mono text-stone-400">
-                  Plate: {finding.jobs?.license_plate || finding.jobs?.plate || 'Unknown Plate'}
+                  {t('plateLabel')} {finding.jobs?.license_plate || finding.jobs?.plate || t('unknownPlate')}
                 </div>
 
                 {finding.photo_url && (
@@ -316,7 +323,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
 
                 {finding.worker_voice_note_url && (
                   <div className="bg-stone-800/80 rounded-lg p-2 border border-stone-700 w-full overflow-hidden">
-                    <span className="text-[10px] uppercase font-bold text-stone-400 block mb-1">Voice Note</span>
+                    <span className="text-[10px] uppercase font-bold text-stone-400 block mb-1">{t('voiceNoteLabel')}</span>
                     <audio controls src={finding.worker_voice_note_url} className="w-full h-7" />
                   </div>
                 )}
@@ -325,21 +332,21 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
                 {finding.status === 'pending_approval' && !finding.estimated_cost && (
                   <div className="flex flex-col gap-2 mt-auto pt-2 border-t border-stone-800/80">
                     <div className="flex flex-col gap-1">
-                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Set Price (FCFA)</label>
+                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">{t('setPriceLabel')}</label>
                        <input 
                          type="number"
                          value={localPrices[finding.id] || ''}
                          onChange={(e) => setLocalPrices(prev => ({ ...prev, [finding.id]: e.target.value }))}
                          className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-500"
-                         placeholder="Ex. 45000"
+                         placeholder={t('setPriceEx')}
                        />
                     </div>
                     <div className="flex gap-2 w-full mt-1">
                       <button onClick={() => handleSavePrice(finding.id)} className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider py-2 rounded-lg transition">
-                        Save Addition
+                        {t('saveAdditionBtn')}
                       </button>
                       <button onClick={() => handleRejectFinding(finding)} className="px-3 bg-rose-950/40 hover:bg-rose-900/50 text-rose-400 border border-rose-600/50 text-[11px] font-black uppercase py-2 rounded-lg transition">
-                        Reject
+                        {t('rejectBtn')}
                       </button>
                     </div>
                   </div>
@@ -348,25 +355,25 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
                 {finding.status === 'pending_approval' && !!finding.estimated_cost && (
                   <div className="flex flex-col gap-2 mt-auto pt-2 border-t border-stone-800/80">
                     <div className="text-sm font-black text-amber-400 my-1 bg-amber-950/20 px-3 py-2 border border-amber-500/10 rounded-lg">
-                      Draft Price: {finding.estimated_cost} FCFA
+                      {t('draftPriceLabel')} {finding.estimated_cost} FCFA
                     </div>
                     
                     <div className="flex flex-col gap-1 my-2">
-                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Estimate Description (Transcribe voice notes/findings here)</label>
+                       <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">{t('estimateDescriptionLabel')}</label>
                        <textarea
                          value={localDescriptions[finding.id] || ''}
                          onChange={(e) => setLocalDescriptions(prev => ({ ...prev, [finding.id]: e.target.value }))}
                          className="w-full bg-stone-950 border border-stone-700 rounded-lg px-3 py-2 text-sm font-sans text-white focus:outline-none focus:border-emerald-500 min-h-[60px]"
-                         placeholder="Detailed breakdown of necessary repairs..."
+                         placeholder={t('estimatePlaceholder')}
                        />
                     </div>
 
                     <div className="flex gap-2 w-full mt-1">
-                      <button disabled={!localDescriptions[finding.id]?.trim()} onClick={() => handleSendToCustomer(finding)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900/50 disabled:text-stone-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title="Send Quote but Mechanic keeps working on other parts of the job">
-                        <Send className="w-3.5 h-3.5" /> Quote (Continue)
+                      <button disabled={!localDescriptions[finding.id]?.trim()} onClick={() => handleSendToCustomer(finding)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-900/50 disabled:text-stone-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title={t('quoteWarningTooltip', 'Send Quote but Mechanic keeps working on other parts of the job')}>
+                        <Send className="w-3.5 h-3.5" /> {t('quoteContinueBtn')}
                       </button>
-                      <button onClick={() => handlePauseJobAndSend(finding)} className="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title="Pause the ENTIRE job while waiting for customer response">
-                        <AlertCircle className="w-3.5 h-3.5" /> Critical Pause
+                      <button onClick={() => handlePauseJobAndSend(finding)} className="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow" title={t('criticalPauseTooltip', 'Pause the ENTIRE job while waiting for customer response')}>
+                        <AlertCircle className="w-3.5 h-3.5" /> {t('criticalPauseBtn')}
                       </button>
                     </div>
                   </div>
@@ -375,20 +382,20 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
                 {finding.status === 'pending_customer' && (
                   <div className="flex flex-col gap-2 mt-auto pt-2 border-t border-stone-800/80">
                     <div className="text-sm font-black text-sky-400 my-1 bg-sky-950/20 px-3 py-2 border border-sky-500/10 rounded-lg flex items-center justify-between">
-                      <span>Quoted:</span>
+                      <span>{t('quotedLabel')}</span>
                       <span>{finding.estimated_cost} FCFA</span>
                     </div>
                     <div className="flex gap-2 mt-1">
                       <button onClick={() => handleCustomerApproved(finding)} className="flex-[2] bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1 shadow">
-                        <Check className="w-3.5 h-3.5" /> Approved
+                        <Check className="w-3.5 h-3.5" /> {t('approvedBtn')}
                       </button>
                       <button onClick={() => setSchedulingFinding(finding)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center shadow whitespace-nowrap">
-                        Schedule
+                        {t('scheduleBtn')}
                       </button>
                     </div>
                     {finding.jobs?.status === 'paused' && (
                        <button onClick={() => handleUnpauseJob(finding)} className="w-full bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider py-2.5 rounded-lg transition flex items-center justify-center gap-1.5 shadow mt-1">
-                         <RefreshCw className="w-4 h-4 shrink-0" /> Unpause Job (Continue Work)
+                         <RefreshCw className="w-4 h-4 shrink-0" /> {t('unpauseJobBtn')}
                        </button>
                     )}
                   </div>
@@ -431,7 +438,7 @@ export const CustomerOutboxScreen: React.FC<CustomerOutboxScreenProps> = ({
              if (phone) {
                const cleanPhone = phone.replace(/\D/g, '');
                const fullPhone = cleanPhone.startsWith('237') ? cleanPhone : `237${cleanPhone}`;
-               const text = `Hello, please review the attached estimate for your vehicle and reply 'APPROVED' so we can proceed.\n\nView and download your official document here: ${window.location.origin}/shared/document/${estimatingJob.matchedJobData.id}`;
+               const text = `${t('whatsappEstimateTemplate')}${window.location.origin}/shared/document/${estimatingJob.matchedJobData.id}`;
                window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`, '_blank');
              }
              

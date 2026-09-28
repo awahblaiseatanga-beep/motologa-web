@@ -2,12 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Mic, Square, Upload, CheckCircle2, FileAudio, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Job } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface DviLoggingWidgetProps {
   activeJobs: Job[];
 }
 
 export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }) => {
+  const { t } = useTranslation('worker');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -60,7 +62,7 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
         }, 1000);
       } catch (err: any) {
         console.error("Microphone error", err);
-        setError("Microphone access denied or unavailable.");
+        setError(t('micErrorDenied', 'Microphone access denied or unavailable.'));
       }
     }
   };
@@ -75,7 +77,7 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
 
   const handleSubmit = async () => {
     if (!selectedJobId) {
-      setError("Please select an active vehicle to log findings against.");
+      setError(t('selectVehicleError', 'Please select an active vehicle to log findings against.'));
       return;
     }
     setError(null);
@@ -129,7 +131,7 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
       setTimeout(() => setShowSuccess(false), 4000);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to submit additional findings to HOD.');
+      setError(err.message || t('submitDviError', 'Failed to submit additional findings to HOD.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -148,9 +150,9 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
       <div>
         <h3 className="text-lg font-black text-rose-400 flex items-center gap-2">
           <AlertCircle className="w-5 h-5" />
-          Log Additional Finding
+          {t('logFindingTitle', 'Log Additional Finding')}
         </h3>
-        <p className="text-xs text-stone-400 mt-1 font-medium">Record voice note and photo evidence for HOD approval.</p>
+        <p className="text-xs text-stone-400 mt-1 font-medium">{t('recordEvidenceForHod', 'Record voice note and photo evidence for HOD approval.')}</p>
       </div>
 
       {error && (
@@ -161,13 +163,13 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
 
       {showSuccess && (
         <div className="bg-emerald-900/30 text-emerald-300 border border-emerald-500/30 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4" /> Successfully submitted to HOD!
+          <CheckCircle2 className="w-4 h-4" /> {t('submitSuccessToast', 'Successfully submitted to HOD!')}
         </div>
       )}
 
       {activeJobs.length > 1 && (
         <div className="space-y-1">
-          <label className="text-[10px] uppercase font-bold text-stone-500 tracking-wider">Target Vehicle</label>
+          <label className="text-[10px] uppercase font-bold text-stone-500 tracking-wider">{t('targetVehicleLabel', 'Target Vehicle')}</label>
           <select 
             value={selectedJobId} 
             onChange={e => setSelectedJobId(e.target.value)}
@@ -215,12 +217,12 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
           ) : audioBlob ? (
              <>
                <FileAudio className="w-6 h-6 text-emerald-400 mb-1" />
-               <span className="text-[10px] font-bold text-emerald-500">Recorded • Tap to redo</span>
+               <span className="text-[10px] font-bold text-emerald-500">{t('recordedTapToRedo', 'Recorded • Tap to redo')}</span>
              </>
           ) : (
              <>
                <Mic className="w-6 h-6 text-stone-500 mb-1" />
-               <span className="text-[10px] font-bold text-stone-400">Record Voice</span>
+               <span className="text-[10px] font-bold text-stone-400">{t('recordVoiceLabel', 'Record Voice')}</span>
              </>
           )}
         </button>
@@ -237,9 +239,9 @@ export const DviLoggingWidget: React.FC<DviLoggingWidgetProps> = ({ activeJobs }
         }`}
       >
         {isSubmitting ? (
-          <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"/> Processing...</>
+          <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"/> {t('processingStatus', 'Processing...')}</>
         ) : (
-          <><Upload className="w-4 h-4" /> Submit to HOD</>
+          <><Upload className="w-4 h-4" /> {t('submitToHodBtn', 'Submit to HOD')}</>
         )}
       </button>
 

@@ -1,0 +1,12 @@
+{
+  "analytics": "Analytics Dashboard",
+  "appointments": "Appointments",
+  "checkout": "Exit",
+  "daily_logs": "Day Summary",
+  "intake": "Register",
+  "inventory": "Inventory",
+  "outbox": "Additional JOBS",
+  "queue": "JOBS",
+  "roster": "Roster",
+  "settings": "Shop Settings"
+}

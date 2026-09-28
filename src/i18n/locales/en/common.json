@@ -1,0 +1,64 @@
+{
+  "cancel": "Cancel",
+  "error": "An error occurred.",
+  "loading": "Loading...",
+  "save": "Save",
+  "submit": "Submit",
+  "installApp": "Install App on Device",
+  "addToHomeScreen": "Add to Home Screen",
+  "install": "Install",
+  "delete": "Delete",
+  "voiceRecorder": {
+    "label": "Diagnostic Voice Memo",
+    "promptTitle": "Record Sound Memo for Mechanic",
+    "promptSubtitle": "Tap to record engine knock, customer notes, or PID sounds",
+    "errorMessage": {
+      "permissionDenied": "Microphone permission was not granted. You can grant access in browser settings or use the demo recording button below.",
+      "notSupported": "Could not access microphone on this device. You can attach a demo audio memo instead."
+    },
+    "memoAttached": "✓ Memo Attached",
+    "attachDemo": "Attach Simulated Diagnostic Audio",
+    "recordingLive": "Recording Live...",
+    "recordingSubtitle": "Explain vehicle noise, warning sounds, or mechanical faults",
+    "stopAndAttach": "Stop & Attach",
+    "pauseMemo": "Pause Memo",
+    "playMemo": "Play Memo",
+    "voiceMemoSaved": "Voice Memo Saved",
+    "reRecord": "Re-record",
+    "recordAgain": "Record again",
+    "remove": "Remove Voice Note",
+    "helper": "This audio will be saved with the vehicle diagnostic record.",
+    "recordBtn": "Record Audio Memo",
+    "demoToneBtn": "Demo Tone",
+    "demoToneTitle": "Add simulated engine tone memo",
+    "audioInstructions": "Audio Instructions",
+    "playing": "Playing Diagnostic Audio...",
+    "tapPlay": "Tap Play to Listen",
+    "replayFromBeginning": "Replay from beginning",
+    "replay": "Replay"
+  },
+  "photoCapture": {
+    "sizeKb": "SIZE",
+    "noImage": "No image recorded yet",
+    "tapCamera": "Tap Camera below or choose a workshop snapshot",
+    "takePhoto": "Take Photo",
+    "uploadGallery": "Upload from Gallery",
+    "clear": "Clear",
+    "confirmAttach": "Attach Photo"
+  },
+  "licensePlate": { "cmr": "CMR" },
+  "logo": { "alt": "MOTOLOGA Logo" },
+  "notifications": {
+    "title": "Notifications",
+    "allCaughtUp": "You're all caught up!"
+  },
+  "profileCard": {
+    "repairs": "Repairs",
+    "rating": "Rating"
+  },
+  "sharedDoc": {
+    "retrieving": "Retrieving Secure Document...",
+    "cannotLoad": "Cannot Load Document",
+    "download": "Download PDF / Print Document"
+  }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Activity, CheckCircle, RefreshCw, Calendar, TrendingUp, Phone, Mail } from 'lucide-react';
 import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
+import { useTranslation } from 'react-i18next';
 
 // Replace missing lucide-react Wrench with standard import or generic fallback inline if WrenchIcon was a local sub-comp mapping, wait, lines 107 show `<WrenchIcon />`, let's just make sure imports are right without breaking it. We'll just append our import.
 interface WorkerProfileScreenProps {
@@ -9,6 +10,7 @@ interface WorkerProfileScreenProps {
 }
 
 export const WorkerProfileScreen: React.FC<WorkerProfileScreenProps> = ({ currentUserId }) => {
+  const { t } = useTranslation('owner');
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ full_name: string; role: string; phone?: string; email?: string } | null>(null);
   const [weeklyCount, setWeeklyCount] = useState(0);
@@ -41,7 +43,7 @@ interface WorkerProfileResponse {
         
         setProfile({
           role: memberData.role || 'worker',
-          full_name: profilePayload?.full_name ?? 'Unnamed Staff',
+          full_name: profilePayload?.full_name ?? t('unnamedStaff'),
           phone: '',
           email: profilePayload?.email ?? ''
         });
@@ -90,7 +92,7 @@ interface WorkerProfileResponse {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-12 text-stone-400 bg-stone-950/50 min-h-screen">
         <RefreshCw className="w-8 h-8 animate-spin text-sky-500 mb-4" /> 
-        <span className="animate-pulse tracking-widest text-xs uppercase font-black text-sky-400">Loading Profile</span>
+        <span className="animate-pulse tracking-widest text-xs uppercase font-black text-sky-400">{t('loadingProfile')}</span>
       </div>
     );
   }
@@ -115,7 +117,7 @@ interface WorkerProfileResponse {
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                 <div className="flex items-center gap-1.5 text-sky-300/80 font-mono text-[10px] sm:text-xs uppercase tracking-wider bg-sky-950/40 px-3 py-1 rounded-full border border-sky-500/20 w-fit">
                   <WrenchIcon />
-                  {profile?.role === 'hod' ? 'Head of Department' : 'Floor Technician'}
+                  {profile?.role === 'hod' ? t('hodTitle') : t('floorTechnician')}
                 </div>
                 {profile?.phone && (
                   <div className="flex items-center gap-1.5 text-sky-300/80 font-mono text-[10px] sm:text-xs uppercase tracking-wider bg-sky-950/40 px-3 py-1 rounded-full border border-sky-500/20 w-fit">
@@ -139,7 +141,7 @@ interface WorkerProfileResponse {
             className="self-center sm:self-start px-4 py-2 bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 border border-sky-400/40 rounded-xl flex items-center gap-2 transition active:scale-95 shadow font-bold text-sm disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-sky-400' : ''}`} />
-            Refresh Stats
+            {t('refreshStatsBtn')}
           </button>
         </div>
       </div>
@@ -154,14 +156,14 @@ interface WorkerProfileResponse {
             <div className="p-3 bg-emerald-950/50 rounded-xl border border-emerald-500/20">
               <Calendar className="w-6 h-6 text-emerald-400" />
             </div>
-            <h2 className="text-stone-300 font-bold uppercase tracking-wider text-sm">Weekly Output</h2>
+            <h2 className="text-stone-300 font-bold uppercase tracking-wider text-sm">{t('weeklyOutputTitle')}</h2>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center py-4 relative z-10">
             <div className="text-6xl font-black text-emerald-400 drop-shadow-lg mb-2">
               {weeklyCount}
             </div>
             <div className="text-stone-500 text-sm font-medium flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4" /> Jobs completed (Last 7 Days)
+              <CheckCircle className="w-4 h-4" /> {t('jobsCompletedWeeklyDesc')}
             </div>
           </div>
         </div>
@@ -173,14 +175,14 @@ interface WorkerProfileResponse {
             <div className="p-3 bg-indigo-950/50 rounded-xl border border-indigo-500/20">
               <TrendingUp className="w-6 h-6 text-indigo-400" />
             </div>
-            <h2 className="text-stone-300 font-bold uppercase tracking-wider text-sm">Monthly Output</h2>
+            <h2 className="text-stone-300 font-bold uppercase tracking-wider text-sm">{t('monthlyOutputTitle')}</h2>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center py-4 relative z-10">
             <div className="text-6xl font-black text-indigo-400 drop-shadow-lg mb-2">
               {monthlyCount}
             </div>
             <div className="text-stone-500 text-sm font-medium flex items-center gap-1.5">
-              <Activity className="w-4 h-4" /> Jobs completed (Last 30 Days)
+              <Activity className="w-4 h-4" /> {t('jobsCompletedMonthlyDesc')}
             </div>
           </div>
         </div>

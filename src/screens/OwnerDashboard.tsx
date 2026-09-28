@@ -47,6 +47,7 @@ import {
   CheckCircle,
   Calendar
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface OwnerAnalyticsMetrics {
   totalRevenueFcfa: number;
@@ -66,15 +67,17 @@ export interface OwnerDashboardProps {
 export type ManagementTab = 'analytics' | 'structure' | 'intake' | 'queue' | 'checkout' | 'appointments';
 
 export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeScreen = 'analytics', onNavigate }) => {
+  const { t } = useTranslation('owner');
+
   // External layout engine drives the screen renders
   const OWNER_TABS = useMemo(() => {
     const tabs: TabItem[] = [
-      { id: 'analytics', label: 'Dashboard', icon: <BarChart3 className="w-5 h-5" />, color: '#34d399' },
-      { id: 'structure', label: 'Bays', icon: <Building2 className="w-5 h-5" />, color: '#f43f5e' },
-      { id: 'queue', label: 'JOBS', icon: <Wrench className="w-5 h-5" />, color: '#10b981' },
-      { id: 'intake', label: 'Register', icon: <PlusCircle className="w-5 h-5" />, color: '#f59e0b' },
-      { id: 'checkout', label: 'Exit', icon: <Receipt className="w-5 h-5" />, color: '#0ea5e9' },
-      { id: 'appointments', label: 'Appointments', icon: <Calendar className="w-5 h-5" />, color: '#8b5cf6' },
+      { id: 'analytics', label: t('dashboard'), icon: <BarChart3 className="w-5 h-5" />, color: '#34d399' },
+      { id: 'structure', label: t('bays'), icon: <Building2 className="w-5 h-5" />, color: '#f43f5e' },
+      { id: 'queue', label: t('jobsUppercase'), icon: <Wrench className="w-5 h-5" />, color: '#10b981' },
+      { id: 'intake', label: t('register'), icon: <PlusCircle className="w-5 h-5" />, color: '#f59e0b' },
+      { id: 'checkout', label: t('exit'), icon: <Receipt className="w-5 h-5" />, color: '#0ea5e9' },
+      { id: 'appointments', label: t('appointments'), icon: <Calendar className="w-5 h-5" />, color: '#8b5cf6' },
     ];
     return tabs;
   }, []);
@@ -117,7 +120,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
         setDeferredRepairs(repairs);
       }
     } catch (err) {
-      console.error('Failed to load dashboard data:', err);
+      console.error(t('failedToLoadData'), err);
     } finally {
       if (!isSilent) setLoading(false);
     }
@@ -181,7 +184,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
   };
 
   const handleDeleteDepartment = async (deptId: string) => {
-    if (!confirm('Are you sure you want to delete this department? Members in this department will become unassigned.')) return;
+    if (!confirm(t('confirmDeleteDept'))) return;
     try {
       await deleteDepartment(deptId);
       setDepartments((prev) => prev.filter((d) => d.id !== deptId));
@@ -274,7 +277,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
           </div>
           <div>
             <div className="text-xs font-mono uppercase tracking-widest text-[#34D399] flex items-center gap-1.5 font-bold">
-              <span>Owner Command</span>
+              <span>{t('ownerCommand')}</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
             <div className="text-sm font-black text-white truncate max-w-[220px]">
@@ -340,14 +343,14 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                     <Link2 className="w-4 h-4" />
                   </span>
                   <h3 className="text-sm font-black uppercase tracking-wider text-white">
-                    Garage Invite Link
+                    {t('garageInviteLink')}
                   </h3>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    Onboarding Active
+                    {t('onboardingActive')}
                   </span>
                 </div>
                 <p className="text-xs text-stone-300 max-w-xl">
-                  Share this onboarding link with technicians and department leads to register them directly under <span className="text-white font-semibold">{garage.name}</span>.
+                  {t('shareOnboardingLink')} <span className="text-white font-semibold">{garage.name}</span>.
                 </p>
               </div>
 
@@ -360,9 +363,9 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                   className="px-3 py-1.5 bg-[#34D399] hover:bg-emerald-400 text-stone-950 rounded-lg text-xs font-black transition flex items-center gap-1.5 shrink-0 shadow"
                 >
                   {copiedLink ? (
-                    <><Check className="w-3.5 h-3.5" /><span>Copied!</span></>
+                    <><Check className="w-3.5 h-3.5" /><span>{t('copied')}</span></>
                   ) : (
-                    <><Copy className="w-3.5 h-3.5" /><span>Copy Link</span></>
+                    <><Copy className="w-3.5 h-3.5" /><span>{t('copyLink')}</span></>
                   )}
                 </button>
               </div>
@@ -378,19 +381,19 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Total Revenue</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">{t('totalRevenue')}</span>
                 <div className="p-2 rounded-xl bg-emerald-500/10 text-[#34D399] border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                   <DollarSign className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">
-                {metrics.totalRevenueFcfa.toLocaleString()} <span className="text-xs font-mono text-emerald-400 font-bold">FCFA</span>
+                {metrics.totalRevenueFcfa.toLocaleString()} <span className="text-xs font-mono text-emerald-400 font-bold">{t('fcfa')}</span>
               </div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> +{metrics.monthlyGrowthPercent}%
                 </span>
-                <span className="text-[11px] text-stone-500 font-mono">Mock baseline</span>
+                <span className="text-[11px] text-stone-500 font-mono">{t('mockBaseline')}</span>
               </div>
             </button>
 
@@ -399,16 +402,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-emerald-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">JOBS</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">{t('jobsUppercase')}</span>
                 <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                   <Car className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.activeJobsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
-                <span className="text-stone-300 font-medium">Currently in service</span>
+                <span className="text-stone-300 font-medium">{t('currentlyInService')}</span>
                 <span className="text-emerald-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
-                  Floor View <ArrowRight className="w-3 h-3" />
+                  {t('floorView')} <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
             </button>
@@ -418,16 +421,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-sky-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-sky-500 w-full"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Completed Jobs</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">{t('completedJobs')}</span>
                 <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 group-hover:bg-sky-500/20 transition-colors">
                   <CheckCircle className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.completedJobsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
-                <span className="text-stone-300 font-medium">Successfully delivered</span>
+                <span className="text-stone-300 font-medium">{t('successfullyDelivered')}</span>
                 <span className="text-sky-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
-                  Logs <ArrowRight className="w-3 h-3" />
+                  {t('logs')} <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
             </button>
@@ -437,16 +440,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-indigo-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Exit Jobs</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">{t('exitJobs')}</span>
                 <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors">
                   <Receipt className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.exitJobsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
-                <span className="text-stone-300 font-medium">Ready for checkout</span>
+                <span className="text-stone-300 font-medium">{t('readyForCheckout')}</span>
                 <span className="text-indigo-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">
-                  Exit <ArrowRight className="w-3 h-3" />
+                  {t('exit')} <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
             </button>
@@ -458,15 +461,15 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-amber-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500 w-full"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Deferred Repairs</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">{t('deferredRepairs')}</span>
                 <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
                   <Clock className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-amber-300 tracking-tight">{metrics.pendingDeferredRepairsCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
-                <span className="text-stone-400">Scheduled for recall</span>
-                <span className="text-[11px] font-mono text-amber-400 font-bold group-hover:translate-x-1 transition-transform">View Bays</span>
+                <span className="text-stone-400">{t('scheduledForRecall')}</span>
+                <span className="text-[11px] font-mono text-amber-400 font-bold group-hover:translate-x-1 transition-transform">{t('viewBays')}</span>
               </div>
             </button>
 
@@ -478,16 +481,16 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               className="bg-stone-900/80 border border-stone-800 rounded-2xl p-5 hover:border-purple-500/50 hover:bg-stone-800 transition-all shadow-lg text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-purple-500 w-full"
             >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">Total Staff</span>
+                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider group-hover:text-stone-300">{t('totalStaff')}</span>
                 <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:bg-purple-500/20 transition-colors">
                   <Users className="w-4 h-4" />
                 </div>
               </div>
               <div className="text-2xl font-black text-white tracking-tight">{metrics.totalStaffCount}</div>
               <div className="text-xs text-stone-400 mt-2.5 flex items-center justify-between">
-                <span className="text-stone-300">{members.filter((m) => m.role==='hod').length} Dept Leads</span>
+                <span className="text-stone-300">{members.filter((m) => m.role==='hod').length} {t('deptLeads')}</span>
                 <span className="text-purple-400 font-bold text-[11px] flex items-center gap-0.5 group-hover:translate-y-1 transition-transform">
-                  View Below <ChevronDown className="w-3 h-3" />
+                  {t('viewBelow')} <ChevronDown className="w-3 h-3" />
                 </span>
               </div>
             </button>
@@ -498,14 +501,14 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-[#34D399]" />
-                  Department Breakdown
+                  {t('departmentBreakdown')}
                 </h3>
               </div>
 
               {departments.length === 0 ? (
                 <div className="text-center py-10 text-stone-500 text-sm">
                   <Building2 className="w-8 h-8 mx-auto opacity-40 mb-2" />
-                  <p>No departments configured yet.</p>
+                  <p>{t('noDepartmentsConfigured')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -517,17 +520,17 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                         <div>
                           <div className="font-bold text-sm text-stone-200">{dept.name}</div>
                           <div className="text-xs text-stone-400 mt-0.5 flex items-center gap-2">
-                            <span>{deptMembers.length} technicians assigned</span>
+                            <span>{deptMembers.length} {t('techniciansAssigned')}</span>
                             {hod && (
                               <span className="text-amber-300 flex items-center gap-1 font-semibold">
                                 <Crown className="w-3 h-3 text-amber-400" />
-                                Lead: {hod.full_name || 'Unnamed Staff'}
+                                {t('lead')} {hod.full_name || t('unnamedStaff')}
                               </span>
                             )}
                           </div>
                         </div>
                         <span className="text-xs font-mono px-2.5 py-1 bg-stone-800 text-stone-300 rounded-lg">
-                          {deptMembers.length > 0 ? `${deptMembers.length} Active` : 'Vacant'}
+                          {deptMembers.length > 0 ? `${deptMembers.length} ${t('active')}` : t('vacant')}
                         </span>
                       </div>
                     );
@@ -540,38 +543,38 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               <div>
                 <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Workshop Oversight & Security
+                  {t('workshopOversightSecurity')}
                 </h3>
                 <p className="text-xs text-stone-400 mb-4">
-                  Multi-tier delegation with autonomous floor operations and subscription compliance.
+                  {t('oversightDesc')}
                 </p>
 
                 <div className="space-y-2.5">
                   <div className="flex justify-between items-center text-xs py-2 border-b border-stone-800">
-                    <span className="text-stone-400">Subscription Status</span>
+                    <span className="text-stone-400">{t('subscriptionStatus')}</span>
                     <span className="font-bold text-emerald-400 uppercase tracking-wider font-mono">
                       {garage.subscription_status || 'Active'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs py-2 border-b border-stone-800">
-                    <span className="text-stone-400">Workshop Owner ID</span>
+                    <span className="text-stone-400">{t('workshopOwnerId')}</span>
                     <span className="font-mono text-stone-300 text-[11px] truncate max-w-[180px]">
                       {garage.owner_id}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs py-2 border-b border-stone-800">
-                    <span className="text-stone-400">Unallocated Technicians</span>
+                    <span className="text-stone-400">{t('unallocatedTechnicians')}</span>
                     <span className="font-bold text-amber-400">
-                      {members.filter((m) => !m.department_id).length} workers
+                      {members.filter((m) => !m.department_id).length} {t('workers')}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-5 pt-3 border-t border-stone-800 flex justify-between items-center">
-                <span className="text-[11px] text-stone-500 font-mono">Garage ID: {garage.id.slice(0, 8)}...</span>
+                <span className="text-[11px] text-stone-500 font-mono">{t('garageIdPrefix')} {garage.id.slice(0, 8)}...</span>
                 <span className="text-xs font-bold text-[#34D399] flex items-center gap-1.5">
-                  Floor Operations Ready <Check className="w-3.5 h-3.5" />
+                  {t('floorOperationsReady')} <Check className="w-3.5 h-3.5" />
                 </span>
               </div>
             </div>
@@ -582,10 +585,10 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
             <div className="flex flex-col gap-1 mb-6 text-center sm:text-left">
               <h2 className="text-xl font-black flex items-center justify-center sm:justify-start gap-2 text-white">
                 <Users className="w-5 h-5 text-[#c084fc]" />
-                Staff Fleet Roster
+                {t('staffFleetRoster')}
               </h2>
               <p className="text-xs text-stone-400 font-medium">
-                Manage your technical crew and operating personnel seamlessly.
+                {t('manageTechnicalCrew')}
               </p>
             </div>
             <RosterScreen
@@ -608,10 +611,10 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
             <div className="bg-stone-900/80 border border-stone-800 rounded-2xl p-6 h-fit">
               <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[#34D399]" />
-                Create New Department
+                {t('createNewDepartment')}
               </h3>
               <p className="text-xs text-stone-400 mb-5">
-                Establish operational divisions (e.g., Diagnostics, Engine & Transmission).
+                {t('establishDivisions')}
               </p>
 
               {deptError && (
@@ -623,24 +626,24 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
 
               <form onSubmit={handleCreateDepartment} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-stone-300 mb-1.5 uppercase font-mono">Department Name *</label>
+                  <label className="block text-xs font-bold text-stone-300 mb-1.5 uppercase font-mono">{t('departmentName')}</label>
                   <input
                     type="text" required value={deptName} onChange={(e) => setDeptName(e.target.value)}
-                    placeholder="e.g., Engine Diagnostics"
+                    placeholder={t('placeholderDeptName')}
                     className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 placeholder:text-stone-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-stone-300 mb-1.5 uppercase font-mono">Description (Optional)</label>
+                  <label className="block text-xs font-bold text-stone-300 mb-1.5 uppercase font-mono">{t('descriptionOptional')}</label>
                   <textarea
                     rows={3} value={deptDesc} onChange={(e) => setDeptDesc(e.target.value)}
-                    placeholder="Responsibilities, required equipment, or scope..."
+                    placeholder={t('placeholderDeptDesc')}
                     className="w-full bg-stone-950 border border-stone-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 placeholder:text-stone-600 resize-none"
                   />
                 </div>
                 <button type="submit" disabled={isSubmittingDept || !deptName.trim()}
                   className="w-full py-2.5 bg-[#34D399] hover:bg-emerald-400 disabled:opacity-50 text-stone-950 font-black rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-md shadow-emerald-950">
-                  {isSubmittingDept ? 'Creating...' : '+ Save Department'}
+                  {isSubmittingDept ? t('creating') : t('saveDepartment')}
                 </button>
               </form>
             </div>
@@ -649,15 +652,15 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
               <div className="flex items-center justify-between pb-2 border-b border-stone-800">
                 <h3 className="font-bold text-white text-base flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-emerald-400" />
-                  Configured Departments ({departments.length})
+                  {t('configuredDepartments')} ({departments.length})
                 </h3>
               </div>
               {loading ? (
-                <div className="text-center py-12 text-stone-500 text-xs font-mono">Loading departments...</div>
+                <div className="text-center py-12 text-stone-500 text-xs font-mono">{t('loadingDepartments')}</div>
               ) : departments.length === 0 ? (
                 <div className="bg-stone-900/40 border border-dashed border-stone-800 rounded-2xl p-8 text-center text-stone-500 space-y-2">
                   <Building2 className="w-10 h-10 mx-auto opacity-40 mb-2" />
-                  <p className="font-bold text-stone-300">No departments configured yet.</p>
+                  <p className="font-bold text-stone-300">{t('noDepartmentsConfigured')}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -673,11 +676,11 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ garage, activeSc
                           </div>
                           {dept.description && <p className="text-xs text-stone-400 line-clamp-2 mb-3">{dept.description}</p>}
                           <div className="bg-stone-950/50 rounded-xl p-3 border border-stone-800/80 space-y-1.5 text-xs">
-                            <div className="flex justify-between text-stone-300"><span className="text-stone-500">Staff Count:</span><span className="font-semibold text-stone-200">{deptMembers.length} technicians</span></div>
+                            <div className="flex justify-between text-stone-300"><span className="text-stone-500">{t('staffCount')}</span><span className="font-semibold text-stone-200">{deptMembers.length} {t('technicians')}</span></div>
                             <div className="flex justify-between text-stone-300">
-                              <span className="text-stone-500">Head of Dept:</span>
+                              <span className="text-stone-500">{t('headOfDept')}</span>
                               <span className="font-semibold text-amber-300 flex items-center gap-1">
-                                {hod ? <><Crown className="w-3 h-3 text-amber-400" />{hod.full_name || 'Unnamed Staff'}</> : <span className="text-stone-500 italic">None Assigned</span>}
+                                {hod ? <><Crown className="w-3 h-3 text-amber-400" />{hod.full_name || t('unnamedStaff')}</> : <span className="text-stone-500 italic">{t('noneAssigned')}</span>}
                               </span>
                             </div>
                           </div>

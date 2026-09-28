@@ -4,6 +4,7 @@ import { motion, useReducedMotion, Variants } from "framer-motion"
 import { Check, Users, UserCheck } from "lucide-react"
 import { useState } from "react"
 import { cn } from "../../lib/utils"
+import { useTranslation } from 'react-i18next'
 
 interface ProfileCardProps {
   name?: string
@@ -36,6 +37,7 @@ export function ProfileCard({
   specialty = "",
   phone = "",
 }: ProfileCardProps) {
+  const { t } = useTranslation('common');
   const [hovered, setHovered] = useState(false)
   const shouldReduceMotion = useReducedMotion()
   const shouldAnimate = enableAnimations && !shouldReduceMotion
@@ -218,11 +220,11 @@ export function ProfileCard({
         >
           <div className="flex flex-col text-stone-300">
             <span className="font-bold text-white text-lg">{followers}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Repairs</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">{t('profileCard.repairs')}</span>
           </div>
           <div className="flex flex-col text-stone-300 items-end">
             <span className="font-bold text-white text-lg">{following}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Rating</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">{t('profileCard.rating')}</span>
           </div>
         </motion.div>
 
@@ -243,7 +245,7 @@ export function ProfileCard({
             "transform-gpu"
           )}
         >
-          {isFollowing ? "MANAGE PROFILE" : "SETUP AUTHORIZATION"}
+          {isFollowing ? t('profileCard.manage', 'MANAGE PROFILE') : t('profileCard.setup', 'SETUP AUTHORIZATION')}
         </motion.button>
       </motion.div>
     </motion.div>

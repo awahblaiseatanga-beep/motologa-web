@@ -1,0 +1,14 @@
+{
+  "JOB_ASSIGNED": {
+    "title": "New Assignment",
+    "message": "You have been assigned job {{jobNumber}}."
+  },
+  "JOB_SUBMITTED_FOR_REVIEW": {
+    "title": "Review Required",
+    "message": "Job {{jobNumber}} submitted for Quality Control."
+  },
+  "system_notification": {
+    "title": "System Notification",
+    "message": "An update occurred within the garage layout."
+  }
+}

@@ -3,6 +3,7 @@ import { Calendar, Clock, Edit3, Lock, RefreshCw, Mic } from 'lucide-react';
 import { promoteFindingToAppointment, createDirectAppointment } from '../lib/api';
 import { Department } from '../types';
 import { CustomerVehicleIdentity } from './CustomerVehicleIdentity';
+import { useTranslation } from 'react-i18next';
 
 export interface ScheduleAppointmentModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
   departments = [],
   onSchedulingSuccess
 }) => {
+  const { t } = useTranslation('owner');
   const [scheduledDate, setScheduledDate] = useState<string>('');
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [issueDescription, setIssueDescription] = useState<string>('');
@@ -103,7 +105,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
       setIsRecording(true);
     } catch (err) {
       console.error(err);
-      setErrorMsg('Microphone access denied or unavailable.');
+      setErrorMsg(t('micAccessDenied'));
     }
   };
 
@@ -117,7 +119,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scheduledDate) {
-      setErrorMsg('Please select a valid target date.');
+      setErrorMsg(t('targetDateRequired'));
       return;
     }
     
@@ -125,7 +127,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
     const hasVoice = Boolean(audioBlob || audioUrl);
     
     if (!hasText && !hasVoice) {
-      setErrorMsg('You must provide an issue context via text or a voice recording.');
+      setErrorMsg(t('issueContextRequired'));
       return;
     }
 
@@ -147,13 +149,13 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
         } else {
           console.error('Audio upload failed:', uploadErr);
           if (finalDescription) {
-             const userConfirmed = window.confirm("Voice upload failed, but you provided text. Continue and submit with text only?");
+             const userConfirmed = window.confirm(t('confirmVoiceUploadFailed'));
              if (!userConfirmed) {
                 setLoading(false);
                 return;
              }
           } else {
-             throw new Error("Voice recording upload failed. Please try again or type the issue description.");
+             throw new Error(t('voiceUploadFailed'));
           }
         }
       }
@@ -204,7 +206,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
       onSchedulingSuccess?.();
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || 'A database collision prevented scheduling.');
+      setErrorMsg(err.message || t('schedulingCollision'));
     } finally {
       setLoading(false);
     }
@@ -221,10 +223,10 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
         <div className="bg-sky-950/40 border-b border-sky-900/50 px-5 py-4">
           <h2 className="text-lg font-black text-white flex items-center gap-2">
             <Calendar className="w-5 h-5 text-sky-400" />
-            Schedule Follow-Up Booking
+            {t('scheduleFollowUpBooking')}
           </h2>
           <p className="text-xs text-sky-200/60 font-medium mt-1 uppercase tracking-wider">
-            {mode === 'additional_finding' ? 'Deferring Additional Job' : 'Appointment Engine'}
+            {mode === 'additional_finding' ? t('deferringAdditionalJob') : t('appointmentEngine')}
           </p>
         </div>
 
@@ -242,14 +244,14 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
              <div className="flex flex-col gap-4">
                {userRole === 'owner' && (
                  <div className="flex flex-col gap-1.5">
-                   <label className="text-[10px] font-black uppercase tracking-widest text-stone-400">Target Department <span className="text-rose-500">*</span></label>
+                   <label className="text-[10px] font-black uppercase tracking-widest text-stone-400">{t('targetDepartment')} <span className="text-rose-500">*</span></label>
                    <select
                      value={selectedDeptId}
                      onChange={e => setSelectedDeptId(e.target.value)}
                      className="w-full bg-stone-950 border border-stone-700/80 rounded-xl px-4 py-3 text-sm font-medium text-stone-200 focus:outline-none focus:border-sky-500/50"
                      required
                    >
-                     <option value="" disabled>-- Select Department --</option>
+                     <option value="" disabled>{t('selectDepartment')}</option>
                      {departments.map(d => (
                        <option key={d.id} value={d.id}>{d.name}</option>
                      ))}
@@ -268,13 +270,13 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
           ) : (
              <div className="flex flex-col gap-2">
                 <div className="bg-stone-950/50 border border-stone-800/80 px-3 py-2 rounded-lg flex items-center justify-between opacity-80 select-none">
-                    <span className="text-xs text-stone-500 font-black uppercase tracking-wider">Vehicle</span>
+                    <span className="text-xs text-stone-500 font-black uppercase tracking-wider">{t('vehicle')}</span>
                     <div className="flex items-center gap-1.5 text-stone-300 text-sm font-medium">
                       {vehicleLabel} <Lock className="w-3 h-3 text-stone-600" />
                     </div>
                 </div>
                 <div className="bg-stone-950/50 border border-stone-800/80 px-3 py-2 rounded-lg flex items-center justify-between opacity-80 select-none">
-                    <span className="text-xs text-stone-500 font-black uppercase tracking-wider">Attached Client</span>
+                    <span className="text-xs text-stone-500 font-black uppercase tracking-wider">{t('attachedClientLabel')}</span>
                     <div className="flex items-center gap-1.5 text-stone-300 text-sm font-medium">
                       {customerName} <Lock className="w-3 h-3 text-stone-600" />
                     </div>
@@ -287,30 +289,30 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-widest text-stone-400 flex items-center gap-1.5">
-                <Edit3 className="w-3.5 h-3.5 text-stone-500" /> Issue Context / Procedure Notes
+                <Edit3 className="w-3.5 h-3.5 text-stone-500" /> {t('issueContextNotes')}
               </label>
               <button
                 type="button"
                 disabled={loading}
                 onClick={isRecording ? stopRecording : startRecording}
                 className={`px-3 py-2 rounded-xl transition-all flex items-center gap-2 border shadow-sm active:scale-95 ${isRecording ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 animate-pulse shadow-rose-900/50' : 'bg-emerald-950/30 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/40 border-emerald-800/50 shadow-black/50'}`}
-                title={isRecording ? "Stop Recording" : "Record Voice Note"}
+                title={isRecording ? t('stopRecording') : t('recordVoiceNote')}
               >
                 <Mic className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase tracking-wider">
-                  {isRecording ? "Recording..." : "Voice Note"}
+                  {isRecording ? t('recording') : t('voiceNote')}
                 </span>
               </button>
             </div>
             {audioUrl && (
               <div className="mt-1 mb-2 bg-stone-950 border border-emerald-900/40 rounded-xl p-3 flex items-center justify-between">
                 <audio controls src={audioUrl} className="h-8 shadow-sm rounded max-w-[80%] [&::-webkit-media-controls-panel]:bg-stone-800 [&::-webkit-media-controls-current-time-display]:text-white [&::-webkit-media-controls-time-remaining-display]:text-white" />
-                <button type="button" onClick={() => { setAudioBlob(null); setAudioUrl(''); }} className="text-xs text-rose-400 hover:text-rose-300 font-bold uppercase transition-colors">Clear</button>
+                <button type="button" onClick={() => { setAudioBlob(null); setAudioUrl(''); }} className="text-xs text-rose-400 hover:text-rose-300 font-bold uppercase transition-colors">{t('clear')}</button>
               </div>
             )}
             <textarea
               className="mt-1 w-full bg-stone-950 border border-stone-700/80 rounded-xl px-4 py-3 text-sm text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/40 min-h-[90px] transition-all"
-              placeholder="Provide repair specifics for the mechanic..."
+              placeholder={t('provideRepairSpecifics')}
               value={issueDescription}
               onChange={(e) => setIssueDescription(e.target.value)}
               disabled={loading}
@@ -320,7 +322,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
           <div className="grid grid-cols-2 gap-4">
              <div className="flex flex-col gap-1.5">
                <label className="text-[10px] font-black uppercase tracking-widest text-emerald-400/80 flex items-center gap-1.5 bg-emerald-950/20 px-2 py-1 rounded w-fit border border-emerald-900/30">
-                 <Calendar className="w-3.5 h-3.5" /> Target Date <span className="text-rose-500">*</span>
+                 <Calendar className="w-3.5 h-3.5" /> {t('targetDate')} <span className="text-rose-500">*</span>
                </label>
                <input
                  type="date"
@@ -334,7 +336,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
              </div>
              <div className="flex flex-col gap-1.5">
                <label className="text-[10px] font-black uppercase tracking-widest text-sky-400/80 flex items-center gap-1.5 bg-sky-950/20 px-2 py-1 rounded w-fit border border-sky-900/30">
-                 <Clock className="w-3.5 h-3.5" /> Time (Optional)
+                 <Clock className="w-3.5 h-3.5" /> {t('timeOptional')}
                </label>
                <input
                  type="time"
@@ -357,7 +359,7 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
                onClick={onClose}
                className="flex-shrink-0 px-6 py-3.5 bg-transparent hover:bg-stone-800 text-stone-400 font-bold text-sm rounded-xl transition-all"
              >
-               Cancel
+               {t('cancel')}
              </button>
              <button
                type="submit"
@@ -365,9 +367,9 @@ export const ScheduleAppointmentModal: React.FC<ScheduleAppointmentModalProps> =
                className="flex-1 px-4 py-3.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-black uppercase tracking-wider text-sm rounded-xl transition-all shadow-md flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
              >
                {loading ? (
-                 <><RefreshCw className="w-5 h-5 animate-spin mr-2" /> Bridging RPC...</>
+                 <><RefreshCw className="w-5 h-5 animate-spin mr-2" /> {t('bridgingRPC')}</>
                ) : (
-                 'Schedule Appointment'
+                 t('scheduleAppointment')
                )}
              </button>
           </div>

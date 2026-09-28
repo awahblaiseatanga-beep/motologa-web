@@ -1,0 +1,14 @@
+{
+  "JOB_ASSIGNED": {
+    "title": "Nouvelle affectation",
+    "message": "Le travail {{jobNumber}} vous a été attribué."
+  },
+  "JOB_SUBMITTED_FOR_REVIEW": {
+    "title": "Révision requise",
+    "message": "Le travail {{jobNumber}} soumis pour le contrôle qualité."
+  },
+  "system_notification": {
+    "title": "Notification système",
+    "message": "Une mise à jour s'est produite dans le garage."
+  }
+}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface LicensePlateBadgeProps {
   plate: string;
@@ -15,6 +16,7 @@ export const LicensePlateBadge: React.FC<LicensePlateBadgeProps> = ({
   className = '',
   id,
 }) => {
+  const { t } = useTranslation('common');
   const formattedPlate = plate.trim().toUpperCase() || '•• •••• •';
 
   const sizeClasses = {
@@ -31,7 +33,7 @@ export const LicensePlateBadge: React.FC<LicensePlateBadgeProps> = ({
       {showCountryFlag && (
         <div className="flex items-center gap-1 shrink-0 bg-[#0E2829]/90 px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-sans font-bold border border-emerald-500/30 text-emerald-300">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>CMR</span>
+          <span>{t('licensePlate.cmr')}</span>
         </div>
       )}
       <span className="tracking-wider sm:tracking-widest font-mono font-bold text-slate-100 drop-shadow-xs whitespace-nowrap truncate">

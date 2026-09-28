@@ -1,0 +1,64 @@
+{
+  "cancel": "Annuler",
+  "error": "Une erreur s'est produite.",
+  "loading": "Chargement...",
+  "save": "Enregistrer",
+  "submit": "Soumettre",
+  "installApp": "Installer l'application",
+  "addToHomeScreen": "Ajouter à l'écran d'accueil",
+  "install": "Installer",
+  "delete": "Supprimer",
+  "voiceRecorder": {
+    "label": "Mémo vocal",
+    "promptTitle": "Enregistrer un mémo pour le technicien",
+    "promptSubtitle": "Appuyez pour enregistrer un bruit de moteur ou des notes.",
+    "errorMessage": {
+      "permissionDenied": "L'autorisation du microphone n'a pas été accordée. Modifiez les paramètres du navigateur ou utilisez le bouton de test.",
+      "notSupported": "Impossible d'accéder au microphone sur cet appareil. Vous pouvez joindre un audio test."
+    },
+    "memoAttached": "✓ Mémo joint",
+    "attachDemo": "Joindre un audio diagnostic simulé",
+    "recordingLive": "Enregistrement en direct...",
+    "recordingSubtitle": "Expliquez le bruit du véhicule, ou les pannes",
+    "stopAndAttach": "Arrêter et Joindre",
+    "pauseMemo": "Mettre en pause",
+    "playMemo": "Jouer le mémo",
+    "voiceMemoSaved": "Mémo enregistré",
+    "reRecord": "Ré-enregistrer",
+    "recordAgain": "Enregistrer à nouveau",
+    "remove": "Supprimer la note vocale",
+    "helper": "Cet audio sera enregistré dans le dossier d'intervention.",
+    "recordBtn": "Enregistrer un mémo audio",
+    "demoToneBtn": "Son de test",
+    "demoToneTitle": "Ajouter un son de test",
+    "audioInstructions": "Instructions vocales",
+    "playing": "Lecture audio...",
+    "tapPlay": "Lancer l'écoute",
+    "replayFromBeginning": "Écouter depuis le début",
+    "replay": "Rejouer"
+  },
+  "photoCapture": {
+    "sizeKb": "POIDS",
+    "noImage": "Aucune image enregistrée",
+    "tapCamera": "Prenez une photo ou choisissez dans la galerie",
+    "takePhoto": "Prendre une photo",
+    "uploadGallery": "Importer de la galerie",
+    "clear": "Effacer",
+    "confirmAttach": "Confirmer la photo"
+  },
+  "licensePlate": { "cmr": "CMR" },
+  "logo": { "alt": "Logo MOTOLOGA" },
+  "notifications": {
+    "title": "Notifications",
+    "allCaughtUp": "Vous êtes à jour !"
+  },
+  "profileCard": {
+    "repairs": "Interventions",
+    "rating": "Évaluation"
+  },
+  "sharedDoc": {
+    "retrieving": "Récupération du document sécurisé...",
+    "cannotLoad": "Impossible de charger le document",
+    "download": "Télécharger le PDF / Imprimer le document"
+  }
+}

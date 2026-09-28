@@ -4,6 +4,8 @@ import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useTranslation } from 'react-i18next';
+
 interface InstallAppButtonProps {
   variant?: 'header' | 'login' | 'banner';
   className?: string;
@@ -11,6 +13,7 @@ interface InstallAppButtonProps {
 
 export const InstallAppButton: React.FC<InstallAppButtonProps> = ({ variant = 'header', className }) => {
   const { installPromptEvent, promptInstall } = useInstallPrompt();
+  const { t } = useTranslation('common');
 
   // If there's no prompt event, it means either they already installed it, or browser doesn't support it
   if (!installPromptEvent) return null;
@@ -29,7 +32,7 @@ export const InstallAppButton: React.FC<InstallAppButtonProps> = ({ variant = 'h
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
             <Download className="w-4 h-4 animate-bounce group-hover:animate-none" />
-            <span>Install App on Device</span>
+            <span>{t('installApp')}</span>
           </button>
         </motion.div>
       </AnimatePresence>
@@ -49,10 +52,10 @@ export const InstallAppButton: React.FC<InstallAppButtonProps> = ({ variant = 'h
           "hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 text-emerald-300 font-bold text-xs rounded-lg border border-emerald-500/40 hover:bg-emerald-500/30 transition-all cursor-pointer shadow-inner shadow-emerald-900/50",
           className
         )}
-        title="Add to Home Screen"
+        title={t('addToHomeScreen')}
       >
         <Download className="w-3.5 h-3.5" />
-        <span>Install</span>
+        <span>{t('install')}</span>
       </motion.button>
     </AnimatePresence>
   );

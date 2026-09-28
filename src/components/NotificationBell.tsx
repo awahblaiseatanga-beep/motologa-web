@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, CheckCheck, X, Circle } from 'lucide-react';
-import { useNotifications, AppNotification } from './NotificationProvider';
+import { useNotifications, AppNotification, useNotificationTranslation } from './NotificationProvider';
+import { useTranslation } from 'react-i18next';
 
 export const NotificationBell: React.FC<{
   onNotificationClick?: (notification: AppNotification) => void;
 }> = ({ onNotificationClick }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const translator = useNotificationTranslation();
+  const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +38,7 @@ export const NotificationBell: React.FC<{
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-stone-400 hover:text-sky-300 hover:bg-stone-800 rounded-lg transition-all"
-        title="Notifications"
+        title={t('notifications.title', 'Notifications')}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -48,10 +51,10 @@ export const NotificationBell: React.FC<{
           <div className="p-4 border-b border-stone-800 bg-stone-950/80 flex items-center justify-between">
             <h3 className="font-black text-white flex items-center gap-2">
               <Bell className="w-4 h-4 text-sky-400" />
-              Notifications
+              {t('notifications.title', 'Notifications')}
               {unreadCount > 0 && (
                 <span className="bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold">
-                  {unreadCount} New
+                  {unreadCount} {t('notifications.new', 'New')}
                 </span>
               )}
             </h3>
@@ -62,7 +65,7 @@ export const NotificationBell: React.FC<{
                   className="text-[10px] font-bold text-stone-400 hover:text-white uppercase tracking-wider px-2 py-1 bg-stone-800 hover:bg-stone-700 rounded-lg transition"
                 >
                   <CheckCheck className="w-3 h-3 inline-block mr-1" />
-                  Mark All Read
+                  {t('notifications.markAllRead', 'Mark All Read')}
                 </button>
               )}
             </div>
@@ -72,7 +75,7 @@ export const NotificationBell: React.FC<{
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-stone-500 flex flex-col items-center">
                 <Bell className="w-8 h-8 opacity-20 mb-2" />
-                <p className="text-sm font-medium">You're all caught up!</p>
+                <p className="text-sm font-medium">{t('notifications.allCaughtUp')}</p>
               </div>
             ) : (
               <div className="divide-y divide-stone-800/50">
@@ -93,14 +96,14 @@ export const NotificationBell: React.FC<{
                       <div className="flex-1">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <h4 className={`text-sm font-bold ${!notif.read_at ? 'text-white' : 'text-stone-300'}`}>
-                            {notif.title}
+                            {translator(notif).title}
                           </h4>
                           <span className="text-[10px] font-mono text-stone-500 shrink-0">
                             {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         <p className={`text-xs ${!notif.read_at ? 'text-sky-100/70' : 'text-stone-500'} leading-relaxed`}>
-                          {notif.message}
+                          {translator(notif).message}
                         </p>
                       </div>
                     </div>

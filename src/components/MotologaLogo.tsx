@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface MotologaLogoProps {
   /**
@@ -22,6 +23,7 @@ export const MotologaLogo: React.FC<MotologaLogoProps> = ({
   size = 'md',
   accentColor,
 }) => {
+  const { t } = useTranslation('common');
   // Sizing maps
   const iconDimensions = {
     xs: 'w-6 h-6',
@@ -50,7 +52,7 @@ export const MotologaLogo: React.FC<MotologaLogoProps> = ({
             MOTOLOGA
           </span>
           <span className="text-[9px] font-mono text-[#34D399] tracking-widest font-bold">
-            GARAGE OS • CMR
+            {t('logo.garageOsCmr', 'GARAGE OS • CMR')}
           </span>
         </div>
       </div>
@@ -64,7 +66,7 @@ export const MotologaLogo: React.FC<MotologaLogoProps> = ({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className={`${iconDimensions} ${className}`}
-        aria-label="MOTOLOGA Logo"
+        aria-label="MOTOLOGA Logo" // i18n-ignore
       >
         {/* TECH GEAR WITH CONSTELLATION NODES (Behind right side of T) */}
         <g transform="translate(132, 102)">
@@ -150,7 +152,7 @@ export const MotologaLogo: React.FC<MotologaLogoProps> = ({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className={`${fullDimensions}`}
-        aria-label="MOTOLOGA Logo"
+        aria-label="MOTOLOGA Logo" // i18n-ignore
       >
         {/* Monogram Group */}
         <g transform="translate(20, -5)">

@@ -17,6 +17,8 @@ import { MotologaLogo } from './MotologaLogo';
 import { InstallAppButton } from './InstallAppButton';
 import { NotificationProvider } from './NotificationProvider';
 import { NotificationBell } from './NotificationBell';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 import { AnimatedTabBar, TabItem } from './ui/animated-tab-bar';
 import {
   ShieldAlert,
@@ -54,6 +56,7 @@ export const SubscriptionSuspended: React.FC<{
   garageName?: string;
   onSignOut: () => void;
 }> = ({ garageName = 'Your Workshop', onSignOut }) => {
+  const { t } = useTranslation('owner');
   return (
     <div className="min-h-[100dvh] bg-[#0E2829] flex flex-col items-center justify-center p-6 text-white text-center">
       <div className="w-full max-w-md bg-stone-900/90 border border-rose-500/40 p-8 rounded-2xl shadow-2xl backdrop-blur-md">
@@ -62,10 +65,10 @@ export const SubscriptionSuspended: React.FC<{
         </div>
 
         <h1 className="text-2xl font-black uppercase tracking-wider text-rose-300 mb-2">
-          Service Suspended
+          {t('subscriptionSuspended', 'Service Suspended')}
         </h1>
         <p className="text-stone-300 text-sm leading-relaxed mb-6 font-medium">
-          Access to <span className="text-white font-bold">{garageName}</span> has been temporarily locked because the garage subscription is past due.
+          {t('accessLockedDesc', 'Access to <span className="text-white font-bold">{{garageName}}</span> has been temporarily locked because the garage subscription is past due.', { garageName }).split('<span').map((part, i) => i === 0 ? part : <React.Fragment key={i}><span dangerouslySetInnerHTML={{ __html: '<span' + part }} /></React.Fragment>)}
         </p>
 
         <div className="bg-stone-950/60 border border-stone-800 rounded-xl p-4 mb-6 text-left space-y-2">
@@ -105,6 +108,7 @@ export const OwnerBillingModal: React.FC<{
   onStatusUpdated: (status: SubscriptionStatus) => void;
 }> = ({ garage, onClose, onStatusUpdated }) => {
   const [updating, setUpdating] = useState(false);
+  const { t } = useTranslation('owner');
 
   const handleSimulatePayment = async () => {
     setUpdating(true);
@@ -133,7 +137,7 @@ export const OwnerBillingModal: React.FC<{
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Garage Subscription & Billing</h2>
+              <h2 className="text-lg font-bold">{t('garageBillingTitle', 'Garage Subscription & Billing')}</h2>
               <p className="text-xs text-stone-400">{garage.name}</p>
             </div>
           </div>
@@ -160,16 +164,16 @@ export const OwnerBillingModal: React.FC<{
 
         <div className="space-y-3 text-sm">
           <div className="flex justify-between py-2 border-b border-stone-800">
-            <span className="text-stone-400">Current Plan</span>
-            <span className="font-semibold text-stone-200">MOTOLOGA Workshop Pro</span>
+            <span className="text-stone-400">{t('currentPlanLabel', 'Current Plan')}</span>
+            <span className="font-semibold text-stone-200">{t('planName', 'MOTOLOGA Workshop Pro')}</span>
           </div>
           <div className="flex justify-between py-2 border-b border-stone-800">
-            <span className="text-stone-400">Billing Cycle</span>
-            <span className="font-semibold text-stone-200">Monthly Recurring</span>
+            <span className="text-stone-400">{t('billingCycleLabel', 'Billing Cycle')}</span>
+            <span className="font-semibold text-stone-200">{t('monthlyRecurring', 'Monthly Recurring')}</span>
           </div>
           <div className="flex justify-between py-2 border-b border-stone-800">
-            <span className="text-stone-400">Payment Gateway</span>
-            <span className="font-semibold text-emerald-400">MTN MoMo / Orange Money / Card</span>
+            <span className="text-stone-400">{t('paymentGatewayLabel', 'Payment Gateway')}</span>
+            <span className="font-semibold text-emerald-400">{t('gatewayMethods', 'MTN MoMo / Orange Money / Card')}</span>
           </div>
         </div>
 
@@ -226,6 +230,31 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
+  const { i18n, t } = useTranslation();
+
+  // 0. Synchronize Effective Language dynamically against Realtime mutations
+  useEffect(() => {
+    if (garage && membership) {
+      const pref = membership.profiles?.language_preference ?? null;
+      const def = garage.default_language || 'en';
+      const target = pref ?? def;
+      if (i18n.language !== target) {
+        i18n.changeLanguage(target);
+      }
+    }
+  }, [garage?.default_language, membership?.profiles?.language_preference, i18n]);
+
+  // 0. Bind Realtime Garage Language/Settings Listener
+  useEffect(() => {
+    if (!garage?.id) return;
+    const channel = supabase.channel(`public:garages:${garage.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'garages', filter: `id=eq.${garage.id}` }, (payload) => {
+        setGarage(payload.new as Garage); // inherently forces downstream UI derivation instantly! 
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [garage?.id]);
+  
   const WORKER_TABS = useMemo(() => {
     const tabs: TabItem[] = [
       { id: 'queue', label: 'JOBS', icon: <Wrench className="w-5 h-5" />, color: '#10b981' }
@@ -249,10 +278,17 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
         setGarage(ownerGarage);
         setRole('owner');
         
+        // Ensure Owner possesses an explicit profiles extraction irrespective of garage_members native bind
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('full_name, email, language_preference')
+          .eq('user_id', userId)
+          .maybeSingle();
+
         // Check for Dual-Role HOD privileges smoothly
         const { data: dualRoleMember, error: dualErr } = await supabase
           .from('garage_members')
-          .select('*, departments(*)')
+          .select('*, departments(*), profiles(full_name, email, language_preference)')
           .eq('user_id', userId)
           .maybeSingle();
 
@@ -263,7 +299,13 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           if (dualRoleMember.department_id && dualRoleMember.role === 'hod') {
             setDepartment(dualRoleMember.departments);
             setMembership(dualRoleMember);
+          } else {
+             // Fallback dummy struct wrapping Owner securely
+             setMembership({ id: 'dummy', garage_id: ownerGarage.id, user_id: userId, role: 'owner', department_id: null, profiles: ownerProfile } as any);
           }
+        } else {
+            // Unbound Owner natively overriding UI language mappings stably
+            setMembership({ id: 'dummy', garage_id: ownerGarage.id, user_id: userId, role: 'owner', department_id: null, profiles: ownerProfile } as any);
         }
 
         setLoading(false);
@@ -276,7 +318,8 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
         .select(`
           *,
           garages (*),
-          departments (*)
+          departments (*),
+          profiles(full_name, email, language_preference)
         `)
         .eq('user_id', userId)
         .maybeSingle();
@@ -372,12 +415,12 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                 }`}
-                title="Toggle Dashboard View"
+                title={t('toggleViewTooltip', 'Toggle Dashboard View')}
               >
                 {activeOwnerHat === 'owner' ? (
-                  <>👔 Switch to HOD View</>
+                  <>{t('switchToHodViewBtn', '👔 Switch to HOD View')}</>
                 ) : (
-                  <>👑 Switch to Owner View</>
+                  <>{t('switchToOwnerViewBtn', '👑 Switch to Owner View')}</>
                 )}
               </button>
             ) : (
@@ -393,7 +436,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Subscription Past Due</span>
+              <span>{t('subscriptionPastDue', 'Subscription Past Due')}</span>
             </button>
           )}
 
@@ -401,30 +444,40 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
             <button
               onClick={() => setShowBillingModal(true)}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
-              title="Billing & Subscription"
+              title={t('billingSubscriptionAria', 'Billing & Subscription')}
             >
               <CreditCard className="w-3.5 h-3.5 text-stone-400" />
-              <span>Billing</span>
+              <span>{t('billingBtn', 'Billing')}</span>
             </button>
           )}
 
           <button
             onClick={() => setIsEditingProfile(true)}
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
-            title="Edit Identity Profile"
+            title={t('editIdentityProfile', 'Edit Identity Profile')}
           >
             <User className="w-3.5 h-3.5 text-stone-400" />
-            <span>Profile</span>
+            <span>{t('profileBtn', 'Profile')}</span>
           </button>
 
           <NotificationBell />
+          
+          {membership && (
+            <LanguageSwitcher
+              currentPreference={membership.profiles?.language_preference ?? null}
+              garageDefault={(garage.default_language as 'en' | 'fr') || 'en'}
+              onPreferenceChange={(pref) => {
+                setMembership(prev => prev ? { ...prev, profiles: { ...prev.profiles, language_preference: pref } } : prev);
+              }}
+            />
+          )}
 
           <InstallAppButton variant="header" />
 
           <button
             onClick={onSignOut}
             className="p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition"
-            title="Sign Out"
+            title={t('signOutTooltip', 'Sign Out')}
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -450,7 +503,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           <div className="p-4 border-b border-stone-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MotologaLogo className="w-6 h-6 text-[#34D399]" />
-              <span className="font-black text-white text-sm tracking-widest uppercase">Admin</span>
+              <span className="font-black text-white text-sm tracking-widest uppercase">{t('adminLabel', 'Admin')}</span>
             </div>
             <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-stone-400 hover:text-white p-1 rounded-md">
               <X className="w-5 h-5" />
@@ -458,7 +511,7 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           </div>
 
           <div className="px-4 py-3 border-b border-stone-800">
-            <div className="text-xs font-mono text-emerald-500 uppercase tracking-wider mb-1">Workshop</div>
+            <div className="text-xs font-mono text-emerald-500 uppercase tracking-wider mb-1">{t('workshopLabel', 'Workshop')}</div>
             <div className="font-bold text-stone-200 truncate">{garage.name}</div>
           </div>
 
@@ -467,55 +520,55 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
               onClick={() => { setOwnerScreen('analytics'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'analytics' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <BarChart3 className="w-4 h-4" /> Analytics Dashboard
+              <BarChart3 className="w-4 h-4" /> {t('navigation.analytics')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('queue'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'queue' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Building2 className="w-4 h-4" /> JOBS
+              <Building2 className="w-4 h-4" /> {t('navigation.queue')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('intake'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'intake' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <PlusCircle className="w-4 h-4" /> Register
+              <PlusCircle className="w-4 h-4" /> {t('navigation.intake')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('checkout'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'checkout' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Receipt className="w-4 h-4" /> Exit
+              <Receipt className="w-4 h-4" /> {t('navigation.checkout')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('appointments'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'appointments' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Calendar className="w-4 h-4" /> Appointments
+              <Calendar className="w-4 h-4" /> {t('navigation.appointments')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('inventory'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'inventory' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Box className="w-4 h-4" /> Inventory
+              <Box className="w-4 h-4" /> {t('navigation.inventory')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('outbox'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'outbox' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Send className="w-4 h-4" /> Additional JOBS
+              <Send className="w-4 h-4" /> {t('navigation.outbox')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('daily_logs'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'daily_logs' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <FileAudio className="w-4 h-4" /> Day Summary
+              <FileAudio className="w-4 h-4" /> {t('navigation.daily_logs')}
             </button>
             <button 
               onClick={() => { setOwnerScreen('settings'); setIsSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${ownerScreen === 'settings' ? 'bg-[#34D399]/10 text-[#34D399]' : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'}`}
             >
-              <Settings className="w-4 h-4" /> Shop Settings
+              <Settings className="w-4 h-4" /> {t('navigation.settings')}
             </button>
           </nav>
 
@@ -534,14 +587,14 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                 <Menu className="w-5 h-5" />
               </button>
               <div className="text-sm font-black text-white">
-                {ownerScreen === 'analytics' ? 'Analytics Engine' : 
-                 ownerScreen === 'queue' ? 'JOBS' :
-                 ownerScreen === 'intake' ? 'Vehicle Register' :
-                 ownerScreen === 'checkout' ? 'Exit' :
-                 ownerScreen === 'inventory' ? 'Inventory Management' :
-                 ownerScreen === 'outbox' ? 'Additional JOBS' :
-                 ownerScreen === 'daily_logs' ? 'End of Day HOD Logs' :
-                 ownerScreen === 'settings' ? 'Shop Settings' :
+                {ownerScreen === 'analytics' ? t('navigation.analytics') : 
+                 ownerScreen === 'queue' ? t('navigation.queue') :
+                 ownerScreen === 'intake' ? t('navigation.intake') :
+                 ownerScreen === 'checkout' ? t('navigation.checkout') :
+                 ownerScreen === 'inventory' ? t('navigation.inventory') :
+                 ownerScreen === 'outbox' ? t('navigation.outbox') :
+                 ownerScreen === 'daily_logs' ? t('navigation.daily_logs') :
+                 ownerScreen === 'settings' ? t('navigation.settings') :
                  'Shop Dashboard'}
               </div>
             </div>
@@ -552,9 +605,9 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                 <button
                   onClick={() => setActiveOwnerHat('hod')}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all active:scale-95 bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30"
-                  title="Switch to HOD Dashboard"
+                  title={t('switchToHodDashboardAria', 'Switch to HOD Dashboard')}
                 >
-                  👔 Switch to HOD View
+                  {t('switchToHodViewBtn', '👔 Switch to HOD View')}
                 </button>
               ) : (
                  <div className="hidden sm:flex text-[10px] text-stone-500 bg-stone-800 px-2 py-1 rounded">
@@ -568,22 +621,31 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
                   className="px-3 py-1.5 bg-rose-600/20 text-rose-300 border border-rose-500/40 text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse"
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Past Due</span>
+                  <span className="hidden sm:inline">{t('pastDueBtn', 'Past Due')}</span>
                 </button>
               ) : (
                 <button onClick={() => setShowBillingModal(true)} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 text-stone-300 text-xs rounded-lg">
-                  <CreditCard className="w-3.5 h-3.5" /> Billing
+                  <CreditCard className="w-3.5 h-3.5" /> {t('billingBtn', 'Billing')}
                 </button>
               )}
               <button
                 onClick={() => setIsEditingProfile(true)}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
-                title="Edit Identity Profile"
+                title={t('editIdentityProfile', 'Edit Identity Profile')}
               >
                 <User className="w-3.5 h-3.5 text-stone-400" />
-                <span>Profile</span>
+                <span>{t('profileBtn', 'Profile')}</span>
               </button>
               <NotificationBell />
+              {membership && (
+                <LanguageSwitcher
+                  currentPreference={membership.profiles?.language_preference ?? null}
+                  garageDefault={(garage.default_language as 'en' | 'fr') || 'en'}
+                  onPreferenceChange={(pref) => {
+                    setMembership(prev => prev ? { ...prev, profiles: { ...prev.profiles, language_preference: pref } } : prev);
+                  }}
+                />
+              )}
               <InstallAppButton variant="header" />
             </div>
           </header>

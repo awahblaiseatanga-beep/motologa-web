@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Job } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface InvoiceProps {
   job: Job;
@@ -9,19 +10,21 @@ interface InvoiceProps {
   documentType?: 'INVOICE' | 'ESTIMATE';
   customDescription?: string;
   customImage?: string;
+  docLanguage?: 'en' | 'fr';
 }
 
 export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
-  ({ job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage }, ref) => {
+  ({ job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage, docLanguage = 'en' }, ref) => {
+    const { t } = useTranslation('invoices');
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
 
     const formatSenderName = () => {
       if (documentType === 'ESTIMATE') {
-        return 'Head of Department';
+        return t('hod_sender', { lng: docLanguage, defaultValue: 'Head of Department' });
       }
-      return 'Garage Owner';
+      return t('garage_owner_sender', { lng: docLanguage, defaultValue: 'Garage Owner' });
     };
 
     const formattedDate = new Date().toLocaleDateString('en-GB', {
@@ -36,24 +39,24 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         <div className="flex justify-between items-start border-b-2 border-slate-200 pb-8 mb-8">
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-              {documentType === 'ESTIMATE' ? 'ADDITIONAL WORK ESTIMATE' : 'INVOICE'}
+              {documentType === 'ESTIMATE' ? t('title_estimate', { lng: docLanguage, defaultValue: 'ADDITIONAL WORK ESTIMATE' }) : t('title_invoice', { lng: docLanguage, defaultValue: 'INVOICE' })}
             </h1>
             {(documentType === 'ESTIMATE' && departmentName) && (
                <p className="text-[11px] font-bold uppercase tracking-widest text-[#d97706] mt-1.5 opacity-90">
-                 From: {departmentName}
+                 {t('from_label', { lng: docLanguage, defaultValue: 'From:' })} {departmentName}
                </p>
             )}
-            <p className="text-sm font-medium text-slate-500 mt-1">Ref: {job.id.substring(0, 8).toUpperCase()}</p>
-            <p className="text-sm font-medium text-slate-500">Date: {formattedDate}</p>
+            <p className="text-sm font-medium text-slate-500 mt-1">{t('ref_label', { lng: docLanguage, defaultValue: 'Ref:' })} {job.id.substring(0, 8).toUpperCase()}</p>
+            <p className="text-sm font-medium text-slate-500">{t('date', { lng: docLanguage, defaultValue: 'Date:' })} {formattedDate}</p>
           </div>
           <div className="text-right">
             <h2 className="text-2xl font-bold text-emerald-700">{job.garageInfo?.name || garageName}</h2>
-            <p className="text-sm text-slate-600 mt-1">{job.garageInfo?.location || 'Location not set'}</p>
+            <p className="text-sm text-slate-600 mt-1">{job.garageInfo?.location || t('location_not_set', { lng: docLanguage, defaultValue: 'Location not set' })}</p>
             {(job.garageInfo?.email || job.garageInfo?.ownerEmail) && (
               <p className="text-sm text-slate-600">{job.garageInfo.email || job.garageInfo.ownerEmail}</p>
             )}
             {(job.garageInfo?.phone || job.garageInfo?.ownerPhone) && (
-              <p className="text-sm text-slate-600">Phone: {job.garageInfo.phone || job.garageInfo.ownerPhone}</p>
+              <p className="text-sm text-slate-600">{t('phone', { lng: docLanguage, defaultValue: 'Phone:' })} {job.garageInfo.phone || job.garageInfo.ownerPhone}</p>
             )}
           </div>
         </div>
@@ -62,19 +65,19 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         <div className="grid grid-cols-2 gap-8 mb-10">
           <div className="bg-slate-50 p-4 rounded-lg">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 border-b border-slate-200 pb-2">
-              Customer Details
+              {t('customer_details', { lng: docLanguage, defaultValue: 'Customer Details' })}
             </h3>
-            <p className="font-semibold text-slate-800">{job.customerName || 'Walk-in Client'}</p>
-            <p className="text-sm text-slate-600 mt-1">Phone: {job.customerPhone}</p>
+            <p className="font-semibold text-slate-800">{job.customerName || t('walk_in_client', { lng: docLanguage, defaultValue: 'Walk-in Client' })}</p>
+            <p className="text-sm text-slate-600 mt-1">{t('phone', { lng: docLanguage, defaultValue: 'Phone:' })} {job.customerPhone}</p>
           </div>
           <div className="bg-slate-50 p-4 rounded-lg">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 border-b border-slate-200 pb-2">
-              Vehicle Details
+              {t('vehicle_details', { lng: docLanguage, defaultValue: 'Vehicle Details' })}
             </h3>
             <div className="grid grid-cols-2 gap-y-2 text-sm text-slate-600">
-              <span className="font-medium">Model:</span>
+              <span className="font-medium">{t('make_model', { lng: docLanguage, defaultValue: 'Model:' })}</span>
               <span className="font-semibold text-slate-800">{job.vehicleModel}</span>
-              <span className="font-medium">License Plate:</span>
+              <span className="font-medium">{t('plate', { lng: docLanguage, defaultValue: 'License Plate:' })}</span>
               <span className="font-semibold text-slate-800">{job.licensePlate}</span>
             </div>
           </div>
@@ -82,23 +85,23 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
 
         {/* Breakdown Tables */}
         <div className="mb-10">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Service & Parts Breakdown</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4">{t('breakdown', { lng: docLanguage, defaultValue: 'Service & Parts Breakdown' })}</h3>
           <table className="w-full text-left text-sm border-collapse">
             <thead>
               <tr className="bg-slate-100 text-slate-600 uppercase text-xs tracking-wider">
-                <th className="p-3 font-semibold rounded-tl-lg">Description</th>
-                <th className="p-3 font-semibold text-right">Details</th>
-                <th className="p-3 font-semibold text-right rounded-tr-lg">Amount ({currencySymbol})</th>
+                <th className="p-3 font-semibold rounded-tl-lg">{t('description', { lng: docLanguage, defaultValue: 'Description' })}</th>
+                <th className="p-3 font-semibold text-right">{t('details', { lng: docLanguage, defaultValue: 'Details' })}</th>
+                <th className="p-3 font-semibold text-right rounded-tr-lg">{t('amount', { lng: docLanguage, defaultValue: 'Amount' })} ({currencySymbol})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {partsFee > 0 && (
                 <tr className="group">
                   <td className="p-4 bg-white font-medium text-slate-800">
-                    Spare Parts Supplied
+                    {t('spare_parts_supplied', { lng: docLanguage, defaultValue: 'Spare Parts Supplied' })}
                   </td>
                   <td className="p-4 bg-white text-slate-600 text-right">
-                    Source: {job.partSource}
+                    {t('source', { lng: docLanguage, defaultValue: 'Source:' })} {job.partSource}
                   </td>
                   <td className="p-4 bg-white font-mono text-slate-900 text-right">
                     {partsFee.toLocaleString()}
@@ -107,10 +110,10 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
               )}
               <tr className="group">
                 <td className="p-4 bg-white font-medium text-slate-800">
-                  {customDescription || job.diagnosticNotes || job.issueDescription || 'Labor & Services'}
+                  {customDescription || job.diagnosticNotes || job.issueDescription || t('labor_and_services', { lng: docLanguage, defaultValue: 'Labor & Services' })}
                 </td>
                 <td className="p-4 bg-white text-slate-600 text-right">
-                  Authorized By: {formatSenderName()}
+                  {t('authorized_by', { lng: docLanguage, defaultValue: 'Authorized By:' })} {formatSenderName()}
                 </td>
                 <td className="p-4 bg-white font-mono text-slate-900 text-right">
                   {laborFee.toLocaleString()}
@@ -124,17 +127,17 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         <div className="flex justify-end gap-x-12 px-4 mb-4">
           <div className="w-1/2 space-y-3">
             <div className="flex justify-between text-slate-600">
-              <span>Subtotal</span>
+              <span>{t('subtotal', { lng: docLanguage, defaultValue: 'Subtotal' })}</span>
               <span className="font-mono">{total.toLocaleString()}</span>
             </div>
             {documentType !== 'ESTIMATE' && (
               <div className="flex justify-between text-slate-600 pb-3 border-b border-slate-200">
-                <span>Advance Deposit</span>
+                <span>{t('advance_deposit', { lng: docLanguage, defaultValue: 'Advance Deposit' })}</span>
                 <span className="font-mono">0</span>
               </div>
             )}
             <div className="flex justify-between items-center text-xl font-black text-emerald-800 pt-2 border-t border-slate-200">
-              <span>{documentType === 'ESTIMATE' ? 'ESTIMATED TOTAL' : 'Remaining Balance'}</span>
+              <span>{documentType === 'ESTIMATE' ? t('estimated_total', { lng: docLanguage, defaultValue: 'ESTIMATED TOTAL' }) : t('remaining_balance', { lng: docLanguage, defaultValue: 'Remaining Balance' })}</span>
               <span className="font-mono">{total.toLocaleString()} {currencySymbol}</span>
             </div>
           </div>
@@ -143,9 +146,11 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         {documentType === 'ESTIMATE' && (
           <div className="mb-10 mx-4 border-2 border-rose-500 rounded-lg p-6 bg-rose-50">
             <p className="font-black text-rose-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span className="text-xl">!</span> ACTION REQUIRED
+              <span className="text-xl">!</span> {t('action_required', { lng: docLanguage, defaultValue: 'ACTION REQUIRED' })}
             </p>
-            <p className="font-bold text-rose-900 text-sm">Please review the additional findings above. Reply <strong>'APPROVED'</strong> via WhatsApp to authorize the workshop to proceed with these repairs.</p>
+            <p className="font-bold text-rose-900 text-sm">
+               {t('please_review', { lng: docLanguage, defaultValue: 'Please review the additional findings above. Reply' })} <strong>'APPROVED'</strong> {t('via_whatsapp_authorize', { lng: docLanguage, defaultValue: 'via WhatsApp to authorize the workshop to proceed with these repairs.' })}
+            </p>
           </div>
         )}
 
@@ -153,31 +158,31 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         {(job.oldPartPhotoUrl || job.newPartPhotoUrl || job.generalJobPhotoUrl || customImage) && (
           <div className={`mb-10 print:break-inside-avoid border-t border-slate-200 pt-8 ${documentType !== 'ESTIMATE' ? 'mt-12' : 'mt-4'}`}>
             <h3 className="text-lg font-bold text-slate-900 mb-4">
-              Photographic Evidence / Preuves Photographiques
+              {t('photographic_evidence', { lng: docLanguage, defaultValue: 'Photographic Evidence / Preuves Photographiques' })}
             </h3>
             <div className="grid grid-cols-3 gap-6">
               {customImage && (
                 <div className="flex flex-col gap-2 print:break-inside-avoid text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <img src={customImage} alt="Estimate Finding Evidence" className="w-full h-32 object-cover rounded-md shadow-sm" />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">Reported Issue</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">{t('reported_issue', { lng: docLanguage, defaultValue: 'Reported Issue' })}</span>
                 </div>
               )}
               {job.oldPartPhotoUrl && (
                 <div className="flex flex-col gap-2 print:break-inside-avoid text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <img src={job.oldPartPhotoUrl} alt="Old Part Evidence" className="w-full h-32 object-cover rounded-md shadow-sm" />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">Old Part</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">{t('old_part_label', { lng: docLanguage, defaultValue: 'Old Part' })}</span>
                 </div>
               )}
               {job.newPartPhotoUrl && (
                 <div className="flex flex-col gap-2 print:break-inside-avoid text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <img src={job.newPartPhotoUrl} alt="New Part Evidence" className="w-full h-32 object-cover rounded-md shadow-sm" />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">New Part</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">{t('new_part_label', { lng: docLanguage, defaultValue: 'New Part' })}</span>
                 </div>
               )}
               {job.generalJobPhotoUrl && (
                 <div className="flex flex-col gap-2 print:break-inside-avoid text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <img src={job.generalJobPhotoUrl} alt="General Job Evidence" className="w-full h-32 object-cover rounded-md shadow-sm" />
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">General</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider mt-1">{t('general_label', { lng: docLanguage, defaultValue: 'General' })}</span>
                 </div>
               )}
             </div>
@@ -188,14 +193,14 @@ export const EliteInvoice = forwardRef<HTMLDivElement, InvoiceProps>(
         <div className="grid grid-cols-2 gap-16 mt-16 pt-10 border-t border-slate-200">
           <div className="text-center">
             <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
-            <p className="text-sm font-semibold text-slate-700">Authorised Signature</p>
-            <p className="text-xs text-slate-500">MOTOLOGA GARAGE</p>
+            <p className="text-sm font-semibold text-slate-700">{t('authorised_signature', { lng: docLanguage, defaultValue: 'Authorised Signature' })}</p>
+            <p className="text-xs text-slate-500">{job.garageInfo?.name || garageName || 'MOTOLOGA GARAGE'}</p>
           </div>
           {documentType !== 'ESTIMATE' && (
             <div className="text-center">
               <div className="border-b border-slate-400 w-48 mx-auto mb-2"></div>
-              <p className="text-sm font-semibold text-slate-700">Customer Signature</p>
-              <p className="text-xs text-slate-500">Upon reception of vehicle</p>
+              <p className="text-sm font-semibold text-slate-700">{t('customer_signature', { lng: docLanguage, defaultValue: 'Customer Signature' })}</p>
+              <p className="text-xs text-slate-500">{t('upon_reception', { lng: docLanguage, defaultValue: 'Upon reception of vehicle' })}</p>
             </div>
           )}
         </div>

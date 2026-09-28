@@ -5,6 +5,7 @@ import { fetchAppointments, updateAppointmentStatus, convertAppointmentToJob } f
 import { ScheduleAppointmentModal } from '../components/ScheduleAppointmentModal';
 import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 export interface AppointmentsScreenProps {
   garageId: string;
@@ -21,6 +22,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
   userRole = 'hod',
   departments = [],
 }) => {
+  const { t } = useTranslation('owner');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,10 +76,10 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
          <div>
             <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
                <Calendar className="w-6 h-6 text-sky-400" />
-               Appointments
+               {t('appointments')}
             </h2>
             <p className="text-sm font-medium text-stone-400 mt-1">
-               {departmentName ? `${departmentName} Operational Queue` : 'Global Garage Schedule'}
+               {departmentName ? `${departmentName} ${t('operationalQueue')}` : t('globalGarageSchedule')}
             </p>
          </div>
          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
@@ -87,7 +89,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                  onChange={e => setSelectedFilterDept(e.target.value)}
                  className="w-full sm:w-auto px-4 py-3 bg-stone-950 border border-stone-800 text-stone-200 font-bold rounded-xl outline-none focus:border-sky-500 transition-colors"
                >
-                 <option value="ALL">All Departments</option>
+                 <option value="ALL">{t('allDepartments')}</option>
                  {departments.map(d => (
                    <option key={d.id} value={d.id}>{d.name}</option>
                  ))}
@@ -103,7 +105,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
             className="w-full sm:w-auto px-5 py-3 bg-sky-600 hover:bg-sky-500 active:scale-95 transition-all text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm"
          >
             <Plus className="w-5 h-5" />
-            New Appointment
+            {t('newAppointment')}
          </button>
          </div>
       </div>
@@ -111,13 +113,13 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
       {loading ? (
         <div className="flex flex-col items-center justify-center p-12 bg-stone-900/50 border border-stone-800 rounded-2xl">
            <RefreshCw className="w-8 h-8 text-sky-500 animate-spin mb-4" />
-           <p className="text-stone-400 font-bold uppercase tracking-widest text-xs">Loading Schedule...</p>
+           <p className="text-stone-400 font-bold uppercase tracking-widest text-xs">{t('loadingSchedule')}</p>
         </div>
       ) : appointments.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 bg-stone-900/50 border border-stone-800 rounded-2xl text-center">
            <ShieldCheck className="w-12 h-12 text-stone-700 mb-4" />
-           <h3 className="text-stone-300 font-bold text-lg">No Upcoming Appointments</h3>
-           <p className="text-stone-500 text-sm mt-1">Your schedule is currently clear.</p>
+           <h3 className="text-stone-300 font-bold text-lg">{t('noUpcomingAppointments')}</h3>
+           <p className="text-stone-500 text-sm mt-1">{t('scheduleClearMsg')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -126,9 +128,9 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
               const veh = (appt as any).vehicles;
               const deptObj = (appt as any).departments;
               const globalDeptBadge = userRole === 'owner' && deptObj ? deptObj.name : null;
-              const sourceLbl = appt.source === 'additional_finding' ? 'Sourced from Active Job' 
-                              : appt.source === 'checkout' ? 'Deferred at Checkout' 
-                              : 'Direct Booking';
+              const sourceLbl = appt.source === 'additional_finding' ? t('sourcedFromActiveJob') 
+                              : appt.source === 'checkout' ? t('deferredAtCheckout') 
+                              : t('directBooking');
               const isToday = appt.scheduled_date === new Date().toISOString().split('T')[0];
               
               return (
@@ -157,23 +159,23 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
 
                    <div className="flex-1 space-y-3">
                       <div>
-                         <p className="text-[10px] uppercase font-black tracking-widest text-stone-500 mb-0.5">Assigned Vehicle</p>
+                         <p className="text-[10px] uppercase font-black tracking-widest text-stone-500 mb-0.5">{t('assignedVehicle')}</p>
                          <p className="text-stone-200 font-bold flex items-center gap-1.5">
                             <Car className="w-4 h-4 text-stone-400" />
-                            {veh ? `${veh.plate} • ${veh.model}` : 'Unknown Vehicle'}
+                            {veh ? `${veh.plate} • ${veh.model}` : t('unknownVehicle')}
                          </p>
                       </div>
                       
                       <div>
-                         <p className="text-[10px] uppercase font-black tracking-widest text-stone-500 mb-0.5">Attached Client</p>
+                         <p className="text-[10px] uppercase font-black tracking-widest text-stone-500 mb-0.5">{t('attachedClient')}</p>
                          <p className="text-stone-300 font-medium text-sm">
-                            {cust ? `${cust.name || cust.full_name || 'Unknown'} (${cust.phone})` : 'Unknown Client'}
+                            {cust ? `${cust.name || cust.full_name || 'Unknown'} (${cust.phone})` : t('unknownClient')}
                          </p>
                       </div>
 
                       <div className="bg-stone-950 p-3 rounded-xl border border-stone-800/80">
                          <p className="text-[10px] uppercase font-black tracking-widest text-amber-500 mb-2 flex items-center gap-1">
-                            <Wrench className="w-3 h-3" /> Issue Context
+                            <Wrench className="w-3 h-3" /> {t('issueContext')}
                          </p>
                          {(() => {
                              const legacyRegex = /\[Voice Note: (.*?)\]/g;
@@ -192,13 +194,13 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                                    {extractedUrl && (
                                       <div className={`${desc ? 'pt-2 border-t border-stone-800/60 mt-1' : ''}`}>
                                          <p className="text-[10px] text-sky-500 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
-                                            <Wrench className="w-3 h-3" /> Voice Memo attached
+                                            <Wrench className="w-3 h-3" /> {t('voiceMemoAttached')}
                                          </p>
                                          <audio controls src={extractedUrl} className="w-full h-8 shadow-sm rounded max-w-[90%] [&::-webkit-media-controls-panel]:bg-stone-800 [&::-webkit-media-controls-current-time-display]:text-stone-300 [&::-webkit-media-controls-time-remaining-display]:text-stone-300" />
                                       </div>
                                    )}
                                    {!desc && !extractedUrl && (
-                                      <p className="text-stone-600 text-xs italic">No narrative context provided.</p>
+                                      <p className="text-stone-600 text-xs italic">{t('noNarrativeContext')}</p>
                                    )}
                                </div>
                              );
@@ -216,23 +218,23 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                            <>
                              <button
                                onClick={async () => {
-                                 const confirmed = window.confirm('Mark this customer as No-Show?');
+                                 const confirmed = window.confirm(t('confirmMarkNoShow'));
                                  if (!confirmed) return;
                                  try { await updateAppointmentStatus(appt.id, 'no_show'); loadAppointments(true); } catch(e){}
                                }}
                                className="text-[10px] font-black uppercase text-stone-400 hover:text-white px-2 py-1 rounded transition-colors"
                              >
-                               No-Show
+                               {t('noShow')}
                              </button>
                              <button
                                onClick={async () => {
-                                 const confirmed = window.confirm('Cancel this appointment definitively?');
+                                 const confirmed = window.confirm(t('confirmCancelAppt'));
                                  if (!confirmed) return;
                                  try { await updateAppointmentStatus(appt.id, 'cancelled'); loadAppointments(true); } catch(e){}
                                }}
                                className="text-[10px] font-black uppercase text-stone-400 hover:text-red-400 px-2 py-1 rounded transition-colors"
                              >
-                               Cancel
+                               {t('cancel')}
                              </button>
                              <button
                                onClick={() => {
@@ -243,7 +245,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                                }}
                                className="text-xs font-black uppercase text-white bg-sky-600 hover:bg-sky-500 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
                              >
-                               Reschedule
+                               {t('reschedule')}
                              </button>
                              {isToday && (
                                <button 
@@ -252,7 +254,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                                  }}
                                  className="text-xs font-black uppercase text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg active:scale-95 transition-all"
                                >
-                                  Check In
+                                  {t('checkIn')}
                                </button>
                              )}
                            </>
@@ -267,7 +269,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                                   await convertAppointmentToJob(appt.id);
                                   loadAppointments(true);
                                 } catch(e: any) {
-                                  alert(e.message || 'Failed to convert to job');
+                                  alert(e.message || t('failedToConvert'));
                                 } finally {
                                   setConvertingId(null);
                                 }
@@ -275,7 +277,7 @@ export const AppointmentsScreen: React.FC<AppointmentsScreenProps> = ({
                              className="text-xs font-black uppercase text-white bg-amber-600 hover:bg-amber-500 px-4 py-2 rounded-lg active:scale-95 transition-all shadow shadow-amber-900/20 disabled:opacity-50 flex items-center justify-center gap-2"
                            >
                               {convertingId === appt.id ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                              Convert to Job
+                              {t('convertToJob')}
                            </button>
                         )}
 

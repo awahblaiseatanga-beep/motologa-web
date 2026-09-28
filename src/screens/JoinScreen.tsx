@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface JoinScreenProps {
   garageId: string;
@@ -31,6 +32,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   const [garage, setGarage] = useState<Garage | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingInitial, setLoadingInitial] = useState<boolean>(true);
+  const { t } = useTranslation('common');
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -57,7 +59,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       } catch (err: any) {
         console.error('JoinScreen load error:', err);
         // Fallback for when unauthenticated users hit RLS before signup
-        setGarage({ id: garageId, name: 'the Workshop' } as Garage);
+        setGarage({ id: garageId, name: t('workshopFallback', 'the Workshop') } as Garage);
       } finally {
         setLoadingInitial(false);
       }
@@ -134,7 +136,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       onJoinSuccess();
     } catch (err: any) {
       console.error('Join submission error:', err);
-      setError(err.message || 'Failed to complete staff onboarding. Please try again.');
+      setError(err.message || t('staffOnboardingFail', 'Failed to complete staff onboarding. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +147,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       <div className="min-h-screen bg-[#0E2829] flex flex-col items-center justify-center p-6 text-white text-center">
         <Sparkles className="w-10 h-10 text-[#34D399] animate-pulse mb-4" />
         <p className="text-sm font-mono tracking-widest text-emerald-300 uppercase">
-          Loading Workshop Staff Invite...
+          {t('loadingStaffInvite', 'Loading Workshop Staff Invite...')}
         </p>
       </div>
     );
@@ -160,10 +162,10 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             <MotologaLogo className="w-8 h-8" />
           </div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
-            Join {garage?.name || 'Workshop'}
+            {t('joinGaragePrefix', 'Join')} {garage?.name || t('workshopFallback', 'Workshop')}
           </h1>
           <p className="text-xs text-stone-400 mt-1 font-mono">
-            Technician & Staff Onboarding Portal
+            {t('staffOnboardingSubtitle', 'Technician & Staff Onboarding Portal')}
           </p>
         </div>
 
@@ -178,14 +180,14 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           {/* Full Name */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-stone-400 mb-1.5">
-              Full Name / Nickname
+              {t('fullNameLabel', 'Full Name / Nickname')}
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Ibrahim Njoya"
+                placeholder={t('fullNameEg', 'e.g. Ibrahim Njoya')}
                 required
                 className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-stone-600 focus:outline-none focus:border-emerald-500"
               />
@@ -196,14 +198,14 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           {/* Email */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-stone-400 mb-1.5">
-              Email Address
+              {t('emailLabel', 'Email Address')}
             </label>
             <div className="relative">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="tech@motologa.local"
+                placeholder={t('emailEg', 'tech@motologa.local')}
                 required
                 className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-stone-600 focus:outline-none focus:border-emerald-500"
               />
@@ -214,7 +216,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           {/* Password */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-stone-400 mb-1.5">
-              Password
+              {t('passwordLabel', 'Password')}
             </label>
             <div className="relative">
               <input
@@ -240,8 +242,8 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           {/* Department Selection Dropdown */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-stone-400 mb-1.5 flex items-center justify-between">
-              <span>Assigned Department</span>
-              <span className="text-[10px] text-emerald-400 font-mono">Floor Section</span>
+              <span>{t('assignedDeptLabel', 'Assigned Department')}</span>
+              <span className="text-[10px] text-emerald-400 font-mono">{t('floorSectionLabel', 'Floor Section')}</span>
             </label>
             <div className="relative">
               <select
@@ -250,7 +252,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
                 className="w-full bg-stone-950 border border-stone-700 rounded-xl pl-10 pr-8 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 appearance-none"
               >
                 {departments.length === 0 ? (
-                  <option value="">General Floor (No departments created)</option>
+                  <option value="">{t('generalFloorLabel', 'General Floor (No departments created)')}</option>
                 ) : (
                   departments.map((dept) => (
                     <option key={dept.id} value={dept.id}>
@@ -262,7 +264,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
               <Building2 className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
             <p className="text-[11px] text-stone-500 mt-1">
-              Select the workshop division you will be working under.
+              {t('selectDivisionLabel', 'Select the workshop division you will be working under.')}
             </p>
           </div>
 
@@ -272,10 +274,10 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             className="w-full py-3.5 bg-[#34D399] hover:bg-emerald-400 text-stone-950 font-black rounded-xl text-sm transition flex items-center justify-center gap-2 mt-2 shadow-lg shadow-emerald-950 disabled:opacity-50"
           >
             {isSubmitting ? (
-              <span>Joining Workshop...</span>
+              <span>{t('joiningWorkshopBtn', 'Joining Workshop...')}</span>
             ) : (
               <>
-                <span>Complete Staff Registration</span>
+                <span>{t('completeRegistrationBtn', 'Complete Staff Registration')}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -287,7 +289,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             onClick={onCancel}
             className="text-xs text-stone-400 hover:text-stone-200 transition"
           >
-            Return to Regular Sign In
+            {t('returnToSignInBtn', 'Return to Regular Sign In')}
           </button>
         </div>
       </div>

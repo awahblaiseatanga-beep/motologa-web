@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
+import { useTranslation } from 'react-i18next';
 
 export interface AppNotification {
   id: string;
@@ -20,8 +21,8 @@ export interface AppNotification {
 interface NotificationContextType {
   notifications: AppNotification[];
   unreadCount: number;
-  markAsRead: (id: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>; // i18n-ignore
+  markAllAsRead: () => Promise<void>; // i18n-ignore
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -32,6 +33,25 @@ const NotificationContext = createContext<NotificationContextType>({
 });
 
 export const useNotifications = () => useContext(NotificationContext);
+
+export const useNotificationTranslation = () => {
+  const { t, i18n } = useTranslation();
+
+  return (notif: AppNotification) => {
+    const titleKey = `notifications.${notif.type}.title`;
+    const messageKey = `notifications.${notif.type}.message`;
+    
+    const translatedTitle = (i18n.exists(titleKey) 
+      ? t(titleKey, notif.metadata as Record<string, unknown>) 
+      : notif.title) as string;
+      
+    const translatedMessage = (i18n.exists(messageKey) 
+      ? t(messageKey, notif.metadata as Record<string, unknown>) 
+      : notif.message) as string;
+      
+    return { title: translatedTitle, message: translatedMessage };
+  };
+};
 
 export const NotificationProvider: React.FC<{
   children: React.ReactNode;
@@ -182,6 +202,7 @@ export const NotificationProvider: React.FC<{
   };
 
   const unreadCount = notifications.filter(n => !n.read_at).length;
+  const translator = useNotificationTranslation();
 
   return (
     <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead }}>
@@ -195,8 +216,8 @@ export const NotificationProvider: React.FC<{
                </span>
              </div>
              <div className="flex-1 pr-6">
-               <h4 className="text-white text-sm font-black tracking-tight">{toast.title}</h4>
-               <p className="text-stone-300 text-xs mt-1 leading-relaxed font-medium">{toast.message}</p>
+               <h4 className="text-white text-sm font-black tracking-tight">{toast ? translator(toast).title : ''}</h4>
+               <p className="text-stone-300 text-xs mt-1 leading-relaxed font-medium">{toast ? translator(toast).message : ''}</p>
              </div>
              <button onClick={() => setToast(null)} className="absolute top-3 right-3 text-stone-500 hover:text-white transition">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"></path></svg>

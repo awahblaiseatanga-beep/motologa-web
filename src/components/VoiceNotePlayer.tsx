@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Volume2, RotateCcw, Headphones } from 'lucide-react';
 import { formatAudioTime } from '../utils/audioUtils';
+import { useTranslation } from 'react-i18next';
 
 interface VoiceNotePlayerProps {
   audioUrl: string;
@@ -11,8 +12,10 @@ interface VoiceNotePlayerProps {
 export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   audioUrl,
   durationSeconds = 0,
-  label = 'Register Voice Memo',
+  label,
 }) => {
+  const { t } = useTranslation('common');
+  const effectiveLabel = label || t('voiceRecorder.label');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [totalDuration, setTotalDuration] = useState<number>(durationSeconds);
@@ -82,10 +85,10 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300 uppercase tracking-wider">
           <Headphones className="w-4 h-4 text-[#34D399] shrink-0" />
-          <span>{label}</span>
+          <span>{effectiveLabel}</span>
         </div>
         <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-[#0E2829] text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">
-          Audio Instructions
+          {t('voiceRecorder.audioInstructions')}
         </span>
       </div>
 
@@ -96,7 +99,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
             type="button"
             onClick={togglePlay}
             className="w-12 h-12 rounded-xl bg-[#34D399] hover:bg-emerald-300 text-[#0E2829] flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-xs cursor-pointer"
-            title={isPlaying ? 'Pause Voice Memo' : 'Play Voice Memo'}
+            title={isPlaying ? t('voiceRecorder.pauseMemo') : t('voiceRecorder.playMemo')}
           >
             {isPlaying ? (
               <Pause className="w-5 h-5 fill-current" />
@@ -107,7 +110,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
 
           <div className="min-w-0">
             <span className="text-[11px] text-slate-300 block font-medium">
-              {isPlaying ? 'Playing Diagnostic Audio...' : 'Tap Play to Listen'}
+              {isPlaying ? t('voiceRecorder.playing') : t('voiceRecorder.tapPlay')}
             </span>
             <div className="flex items-center gap-1.5 font-mono text-xs text-emerald-300 font-black mt-0.5">
               <span>{formatAudioTime(currentTime)}</span>
@@ -140,10 +143,10 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
           type="button"
           onClick={handleRestart}
           className="min-h-[40px] px-3 py-1.5 bg-[#0E2829] hover:bg-[#1E4748] text-slate-200 hover:text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-emerald-500/30 cursor-pointer active:scale-95 shrink-0"
-          title="Replay from beginning"
+          title={t('voiceRecorder.replayFromBeginning')}
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Replay</span>
+          <span>{t('voiceRecorder.replay')}</span>
         </button>
       </div>
     </div>

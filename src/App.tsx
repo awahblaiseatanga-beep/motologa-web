@@ -7,8 +7,10 @@ import { JoinScreen } from './screens/JoinScreen';
 import { SharedDocumentPage } from './screens/SharedDocumentPage';
 import { syncOfflineQueue } from './services/offlineSync';
 import { ProfileSetupScreen } from './components/ProfileSetupScreen';
+import { useTranslation } from 'react-i18next';
 
 export default function App() {
+  const { t } = useTranslation('common');
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [session, setSession] = useState<any>(null);
   
@@ -84,7 +86,7 @@ export default function App() {
       <div key="auth-loading-boundary">
         <div className="min-h-screen bg-[#0E2829] flex flex-col items-center justify-center text-emerald-400 gap-4">
           <Sparkles className="w-12 h-12 animate-pulse" />
-          <h2 className="text-xl font-black tracking-widest uppercase mb-12">Checking Authorization...</h2>
+          <h2 className="text-xl font-black tracking-widest uppercase mb-12">{t('checkingAuthorization', 'Checking Authorization...')}</h2>
         </div>
       </div>
     );

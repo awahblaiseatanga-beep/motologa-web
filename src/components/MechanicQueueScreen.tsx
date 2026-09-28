@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect } from 'react';
 import { Job, PartSource, JobStatus, DeferredRepair, InventoryItem } from '../types';
 import { supabase } from '../lib/supabase';
@@ -16,7 +17,7 @@ interface MechanicQueueScreenProps {
   onUpdateRepairs?: (repairs: DeferredRepair[]) => void;
   onUpdateJob: (updatedJob: Job) => void;
   onNavigateToCheckout: (jobId?: string) => void;
-  onSyncBay?: () => void | Promise<void>;
+  onSyncBay?: () => void | Promise<void>; // i18n-ignore
   userRole?: 'owner' | 'hod' | 'worker';
   mechanicFilters?: string[];
   currentUserDisplayName?: string;
@@ -35,6 +36,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
   currentUserDisplayName,
   refreshFindingsTrigger = 0,
 }) => {
+  const { t } = useTranslation('owner');
   const [filterMechanic, setFilterMechanic] = useState<string>('All');
   const [authorizedFindings, setAuthorizedFindings] = useState<any[]>([]);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
     activeJobs.forEach(job => {
       const oldStatus = previousStatuses.current[job.id];
       if (oldStatus === 'Paused' && job.status === 'In Repair') {
-        alert(`Job Unpaused! \n\nOwner/HOD has authorized you to continue working on vehicle: ${job.licensePlate} (${job.vehicleModel}) even though the customer quote might still be pending.`);
+        alert(t('jobUnpausedAlert', { plate: job.licensePlate, model: job.vehicleModel }));
       }
       previousStatuses.current[job.id] = job.status;
     });
@@ -188,7 +190,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       finalVoiceUrl = await abstractUploadAndLink(finalVoiceUrl, 'diagnostic_voice_note');
 
       if (!hasNarrativeContent(finalNotes, finalVoiceUrl)) {
-         alert("You must record a diagnostic voice note or type manual notes to explain the repair before sending to HOD.");
+         alert(t('mandatoryDiagnosticMemoAlert'));
          return;
       }
 
@@ -234,7 +236,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
       
       if (updateError) {
         console.error("Supabase Update Error:", updateError.message, updateError.details);
-        alert(`Failed to save: ${updateError.message}`);
+        alert(`${t('failedToSaveAlert')} ${updateError.message}`);
         return;
       }
       
@@ -293,7 +295,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
             <CheckCircle2 className="w-6 h-6 text-emerald-300 shrink-0" />
             <div>
               <p className="font-extrabold text-sm sm:text-base">
-                Job Complete for {completedToast.plate}!
+                {t('jobCompleteToastTitle', { plate: completedToast.plate })}
               </p>
               <p className="text-xs text-emerald-200">
                 Job sent to HOD for Checkout. The vehicle is removed from your active queue.
@@ -315,7 +317,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
         <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-              <span>Mechanic Queue</span>
+              <span>{t('mechanicQueueTitle')}</span>
               <span className="text-xs font-bold font-mono px-2 py-0.5 rounded-full bg-slate-800 text-white">
                 {filteredJobs.length} active
               </span>
@@ -357,7 +359,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     : 'bg-white text-slate-700 border-slate-300 hover:bg-stone-50'
                 }`}
               >
-                {m === 'All' ? 'All Bays' : m}
+                {m === 'All' ? t('allBaysFilter') : m}
               </button>
             ))}
           </div>
@@ -370,11 +372,11 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
           <div className="w-16 h-16 rounded-2xl bg-[#0E2829] border-l-4 border-[#34D399] mx-auto flex items-center justify-center p-2 text-white shadow-xs">
             <MotologaLogo variant="icon" size="md" accentColor="#34D399" />
           </div>
-          <h3 className="font-extrabold text-slate-800 text-lg">No Active Repairs in Queue</h3>
+          <h3 className="font-extrabold text-slate-800 text-lg">{t('noActiveRepairsTitle')}</h3>
           <p className="text-sm text-slate-500">
             {filterMechanic === 'All'
-              ? 'All jobs have been released or no vehicles logged today.'
-              : `No vehicles currently assigned to ${filterMechanic}.`}
+              ? t('noActiveRepairsDescAll')
+              : `${t('noActiveRepairsDescSpecific')} ${filterMechanic}.`}
           </p>
         </div>
       ) : (
@@ -395,22 +397,22 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     <div className="bg-rose-100 p-4 rounded-full mb-3 shadow-sm border border-rose-200 animate-pulse">
                       <AlertTriangle className="w-8 h-8 text-rose-600" />
                     </div>
-                    <h3 className="font-black text-rose-700 text-lg sm:text-xl uppercase tracking-tight text-center">Job Paused</h3>
-                    <p className="text-center text-rose-700 font-bold text-xs mt-1.5 max-w-[220px] leading-tight drop-shadow-sm">Work suspended! Owner/HOD is awaiting customer authorization on a critical quote.</p>
+                    <h3 className="font-black text-rose-700 text-lg sm:text-xl uppercase tracking-tight text-center">{t('jobPausedTitle')}</h3>
+                    <p className="text-center text-rose-700 font-bold text-xs mt-1.5 max-w-[220px] leading-tight drop-shadow-sm">{t('jobPausedDesc')}</p>
                   </div>
                 )}
                 {/* HOD Rejection Alert for Worker */}
                 {(job.hod_rejection_note || job.hod_voice_note_url) && job.status !== 'Ready/Released' && job.status !== 'Pending QC' && (
                   <div className="bg-red-100 border border-red-500 text-red-700 p-3 rounded mb-4 shadow-sm animate-in fade-in">
                     <h4 className="text-xs font-black uppercase flex items-center gap-1.5 mb-2">
-                      <AlertTriangle className="w-4 h-4" /> ⚠️ HOD Revision Required
+                      <AlertTriangle className="w-4 h-4" />  {t('hodRevisionAlert')}
                     </h4>
                     {job.hod_rejection_note && (
                       <p className="text-[13px] font-semibold mb-2 whitespace-pre-wrap leading-relaxed">{job.hod_rejection_note}</p>
                     )}
                     {job.hod_voice_note_url && (
                       <div className="bg-white/60 rounded-lg p-2 flex items-center gap-3 mt-1">
-                         <span className="text-[10px] uppercase font-bold block shrink-0 tracking-wider">Voice Feedback</span>
+                         <span className="text-[10px] uppercase font-bold block shrink-0 tracking-wider">{t('voiceFeedbackLabel')}</span>
                          <audio controls src={job.hod_voice_note_url} className="w-full mt-2" />
                       </div>
                     )}
@@ -439,7 +441,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     {/* Time Elapsed */}
                     <div className="flex items-center gap-1 text-[11px] sm:text-xs font-mono font-bold text-slate-600 bg-stone-100 px-2 py-0.5 rounded border border-slate-200">
                       <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>Elapsed: {timeStr}</span>
+                      <span>{t('elapsedLabel')} {timeStr}</span>
                     </div>
                   </div>
                 </div>
@@ -448,19 +450,19 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                 {authorizedFindings.filter(f => f.parent_job_id === job.id).length > 0 && (
                   <div className="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-3 shadow-sm animate-in fade-in">
                     <h4 className="text-xs font-black text-emerald-700 uppercase flex items-center gap-1.5 mb-2">
-                      <CheckCircle2 className="w-4 h-4" /> Work Updates Logged
+                      <CheckCircle2 className="w-4 h-4" />  {t('workUpdatesLogged')}
                     </h4>
                     <div className="space-y-2">
                       {authorizedFindings.filter(f => f.parent_job_id === job.id).map(f => (
                         <div key={f.id} className="bg-white border border-emerald-200 rounded-lg p-2.5">
                           {f.status === 'scheduled' && (
                              <div className="text-[11px] font-black text-sky-600 bg-sky-100 p-2 rounded-lg border border-sky-300 mb-2.5 shadow-sm text-balance leading-tight">
-                               📅 Additional Work Scheduled. You are cleared to continue main repairs.
+                               {t('additionalWorkScheduled')}
                              </div>
                           )}
                           {f.worker_voice_note_url && (
                              <div className="mb-2">
-                               <span className="text-[10px] uppercase font-bold text-emerald-600 block mb-1">Approved Voice Note</span>
+                               <span className="text-[10px] uppercase font-bold text-emerald-600 block mb-1">{t('approvedVoiceNote')}</span>
                                <audio controls src={f.worker_voice_note_url} className="w-full h-8" />
                              </div>
                           )}
@@ -495,12 +497,12 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       Customer Complaint & Register Notes
                     </h4>
                     <p className="text-sm font-medium text-emerald-50 mb-3 whitespace-pre-wrap leading-relaxed">
-                      {job.issueDescription || <span className="italic text-emerald-700">No text notes recorded at registration.</span>}
+                      {job.issueDescription || <span className="italic text-emerald-700">{t('noTextNotesAtRegister')}</span>}
                     </p>
                     
                     {job.voiceNoteUrl && (
                       <div className="bg-[#0b1c1d] rounded-lg p-2 flex items-center gap-3">
-                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest shrink-0">Register Audio</span>
+                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest shrink-0">{t('registerAudioLabel')}</span>
                          <audio controls src={job.voiceNoteUrl} className="h-8 max-w-[200px]" />
                       </div>
                     )}
@@ -512,7 +514,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       htmlFor={`diagnostic-note-${job.id}`}
                       className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between"
                     >
-                      <span>Diagnostic Note</span>
+                      <span>{t('diagnosticNoteLabel')}</span>
                       {saveStatus[`diagnostic-note-${job.id}`] ? (
                         <span className="text-[10px] text-emerald-600 font-black flex items-center gap-1 animate-in fade-in duration-300">
                           <CheckCircle2 className="w-3 h-3" />
@@ -529,7 +531,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       rows={2}
                       value={localNotes[job.id] !== undefined ? localNotes[job.id] : (job.diagnosticNotes || '')}
                       onChange={(e) => setLocalNotes((prev) => ({ ...prev, [job.id]: e.target.value }))}
-                      placeholder="Mechanic diagnostic findings, mechanical faults, or repairs needed..."
+                      placeholder={t('diagnosticNotePlaceholder')}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-medium text-slate-800 text-xs sm:text-sm focus:border-emerald-600 focus:outline-none transition-all resize-y"
                     />
                   </div>
@@ -547,10 +549,10 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                         }
                       }));
                     }}
-                    label="Diagnostic Voice Note"
-                    promptTitle="Record Diagnostic Voice Memo"
-                    promptSubtitle="Speak fault diagnosis or record engine noise instead of typing"
-                    helperText="Voice note saved directly to this repair record."
+                    label={t('diagnosticVoiceNoteLabel')}
+                    promptTitle={t('recordDiagnosticMemoPrompt')}
+                    promptSubtitle={t('speakFaultDiagnosisPrompt')}
+                    helperText={t('voiceNoteSavedDirectly')}
                     buttonId={`record-voice-note-${job.id}`}
                   />
                   
@@ -593,7 +595,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                           Old Part
                         </span>
                         <span className="text-[10px] text-slate-500 block leading-tight truncate">
-                          {job.oldPartPhotoUrl ? 'Worn Verified' : 'Tap to snap'}
+                          {job.oldPartPhotoUrl ? t('wornVerified') : t('tapToSnap')}
                         </span>
                       </div>
                       {job.oldPartPhotoUrl && (
@@ -632,7 +634,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                           New Part
                         </span>
                         <span className="text-[10px] text-slate-500 block leading-tight truncate">
-                          {job.newPartPhotoUrl ? 'Fitted Verified' : 'Tap to snap'}
+                          {job.newPartPhotoUrl ? t('fittedVerified') : t('tapToSnap')}
                         </span>
                       </div>
                       {job.newPartPhotoUrl && (
@@ -674,7 +676,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                             General Job Photo (Optional)
                           </span>
                           <span className="text-[10px] text-slate-500 block leading-tight mt-0.5 truncate">
-                            {job.generalJobPhotoUrl ? 'Photo Logged' : 'Use this for labor-only jobs like wiring, cleaning, or diagnostics.'}
+                            {job.generalJobPhotoUrl ? t('photoLogged') : t('generalJobPhotoDesc')}
                           </span>
                         </div>
                       </div>
@@ -702,7 +704,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       }`}
                     >
                       <User className={`w-3.5 h-3.5 shrink-0 ${(localEdits[job.id]?.partSource || job.partSource) === 'Customer-Supplied Part' ? 'text-emerald-400' : ''}`} />
-                      <span className="truncate">Customer</span>
+                      <span className="truncate">{t('customerSuppliedPart')}</span>
                     </button>
                     
                     <button
@@ -715,7 +717,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       }`}
                     >
                       <User className={`w-3.5 h-3.5 shrink-0 ${(localEdits[job.id]?.partSource || job.partSource) === 'Worker Bought' ? 'text-sky-400' : ''}`} />
-                      <span className="truncate">Worker Bought</span>
+                      <span className="truncate">{t('workerBoughtPart')}</span>
                     </button>
 
                     <button
@@ -728,7 +730,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       }`}
                     >
                       <Package className={`w-3.5 h-3.5 shrink-0 ${((localEdits[job.id]?.partSource || job.partSource) === 'Garage Inventory' || (localEdits[job.id]?.partSource || job.partSource) === 'Garage Stock') ? 'text-amber-400' : ''}`} />
-                      <span className="truncate">Garage Inventory</span>
+                      <span className="truncate">{t('garageInventoryPart')}</span>
                     </button>
                   </div>
                   
@@ -740,7 +742,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                         value={selectedInventoryPart[job.id] || ''}
                         onChange={(e) => setSelectedInventoryPart(prev => ({ ...prev, [job.id]: e.target.value }))}
                       >
-                        <option value="" disabled>Select a part from inventory...</option>
+                        <option value="" disabled>{t('selectPartInventory')}</option>
                         {inventoryItems.map(item => (
                           <option key={item.id} value={item.id}>
                             {item.part_name} {item.part_number ? `(${item.part_number})` : ''} - {item.quantity_in_stock} in stock
@@ -755,7 +757,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                   {isCompleted ? (
                     <div className="w-full min-h-[48px] rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold flex items-center justify-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <span>Job Completed • Ready for Customer Exit</span>
+                      <span>{t('jobCompletedExit')}</span>
                     </div>
                   ) : job.status === 'Pending QC' && userRole === 'hod' ? (
                     <button
@@ -774,7 +776,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       className={`w-full min-h-[50px] rounded-xl ${expandedJobId === job.id ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-[#0E2829] hover:bg-slate-800 text-[#34D399]'} font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-sm border ${expandedJobId === job.id ? 'border-slate-300' : 'border-[#142F30]'} cursor-pointer transition-all`}
                     >
                       <ShieldAlert className="w-5 h-5 stroke-[2.5]" />
-                      <span>{expandedJobId === job.id ? 'Close Inspection' : 'Inspect Quality'}</span>
+                      <span>{expandedJobId === job.id ? t('closeBtn') : t('inspectQualityBtn')}</span>
                     </button>
                   ) : (
                     <button
@@ -784,7 +786,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                       className="w-full min-h-[50px] rounded-xl bg-[#25D366] hover:bg-[#20bd5a] active:scale-[0.99] text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-sm border border-[#1EBE5D] cursor-pointer transition-all"
                     >
                       <CheckCircle2 className="w-5 h-5 stroke-[2.5]" />
-                      <span>{userRole === 'worker' ? 'Complete Job & Send to HOD' : 'Complete Job'}</span>
+                      <span>{userRole === 'worker' ? t('completeJobSentToHodBtn') : t('completeJobBtn')}</span>
                     </button>
                   )}
                 </div>
@@ -792,26 +794,26 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                 {/* HOD Expanding QC Card */}
                 {expandedJobId === job.id && userRole === 'hod' && (
                   <div className="mt-4 pt-4 border-t-2 border-slate-100 animate-in slide-in-from-top-4 duration-300">
-                    <h4 className="text-[11px] font-black uppercase text-slate-800 mb-3 flex items-center gap-1.5"><ShieldAlert className="w-4 h-4 text-emerald-500" /> Mechanic Proof of Work</h4>
+                    <h4 className="text-[11px] font-black uppercase text-slate-800 mb-3 flex items-center gap-1.5"><ShieldAlert className="w-4 h-4 text-emerald-500" />  {t('mechanicProofWork')}</h4>
                     
                     {/* Worker Evidence */}
                     <div className="space-y-4 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-inner">
                       <div>
-                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Worker Notes</span>
-                        <p className="text-sm font-bold text-slate-800 mt-1 whitespace-pre-wrap">{job.workerNotes || "No notes provided."}</p>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">{t('workerNotesTitle')}</span>
+                        <p className="text-sm font-bold text-slate-800 mt-1 whitespace-pre-wrap">{job.workerNotes || t('noNotesProvided')}</p>
                       </div>
 
                       {job.workerVoiceNoteUrl ? (
                          <div>
-                          <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Voice Memo</span>
+                          <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">{t('voiceMemoExtLabel')}</span>
                           <audio src={job.workerVoiceNoteUrl} controls className="w-full h-10 mt-1 rounded-lg" />
                          </div>
                       ) : null}
 
                       {(job.oldPartPhotoUrl || job.newPartPhotoUrl) && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                           {job.oldPartPhotoUrl && <img src={job.oldPartPhotoUrl} alt="Before" className="w-full h-24 object-cover rounded-md" />}
-                           {job.newPartPhotoUrl && <img src={job.newPartPhotoUrl} alt="After" className="w-full h-24 object-cover rounded-md" />}
+                           {job.oldPartPhotoUrl && <img src={job.oldPartPhotoUrl} alt={t('beforePhoto')} className="w-full h-24 object-cover rounded-md" />}
+                           {job.newPartPhotoUrl && <img src={job.newPartPhotoUrl} alt={t('afterPhoto')} className="w-full h-24 object-cover rounded-md" />}
                         </div>
                       )}
                     </div>
@@ -819,14 +821,14 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                     {/* HOD Input */}
                     <div className="space-y-4 mb-5 border-t border-slate-200 pt-4">
                       <div>
-                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1 mb-1"><MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> HOD Notes (Invoice Summary or Rejection Reason)</span>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1 mb-1"><MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> {t('hodNotesPromptFull')}</span>
                         <textarea
                           value={expandedJobId === job.id ? (hodRejectionNote || hodJobSummary) : ''}
                           onChange={(e) => {
                             setHodJobSummary(e.target.value);
                             setHodRejectionNote(e.target.value);
                           }}
-                          placeholder="Type rejection reason for worker OR final invoice summary..."
+                          placeholder={t('typeRejectionOrSummary')}
                           className="w-full rounded-xl border border-slate-300 p-3 text-[13px] font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all min-h-[80px]"
                         />
                       </div>
@@ -835,9 +837,9 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                         audioUrl={hodRejectionVoiceUrl}
                         durationSeconds={0}
                         onAudioChange={(url) => setHodRejectionVoiceUrl(url)}
-                        label="HOD Voice Feedback"
-                        promptTitle="Record Voice Feedback"
-                        promptSubtitle="Speak the reason for rejection or worker instructions."
+                        label={t('hodVoiceFeedbackPrompt')}
+                        promptTitle={t('recordVoiceFeedbackTitle')}
+                        promptSubtitle={t('speakReasonOrInstructions')}
                         buttonId={`record-hod-voice-${job.id}`}
                       />
                     </div>
@@ -855,12 +857,12 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                             setHodRejectionVoiceUrl('');
                           } else {
                             console.error(error);
-                            alert("DB Error: " + error.message);
+                            alert(`${t('dbErrorAlert')} ${error.message}`);
                           }
                         }}
                         className="bg-emerald-500 active:scale-95 hover:bg-emerald-600 border border-emerald-600 text-white font-black text-xs min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-1"
                       >
-                        <span>Approve & Send to Owner</span>
+                        <span>{t('approveSendOwnerBtn')}</span>
                       </button>
                       <button
                         onClick={async () => {
@@ -899,7 +901,7 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
                         className="bg-white active:scale-95 border-2 border-rose-200 hover:bg-rose-50 text-rose-600 font-extrabold text-[11px] min-h-[44px] rounded-xl w-full transition-all flex items-center justify-center gap-1"
                       >
                         <AlertTriangle className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Reject to Bay</span>
+                        <span>{t('rejectToBayBtn')}</span>
                       </button>
                     </div>
                   </div>
@@ -917,10 +919,10 @@ export const MechanicQueueScreen: React.FC<MechanicQueueScreenProps> = ({
           onClose={() => setActivePhotoTarget(null)}
           title={
             activePhotoTarget.type === 'old-part'
-              ? 'Capture Old Replaced Part'
+              ? t('captureOldPartModal')
               : activePhotoTarget.type === 'new-part'
-              ? 'Capture New Replacement Part'
-              : 'Capture General Job Photo'
+              ? t('captureNewPartModal')
+              : t('captureGeneralJobModal')
           }
           category={activePhotoTarget.type}
           currentPhotoUrl={

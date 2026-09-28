@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Play, Pause, RotateCcw, Trash2, Volume2, AlertCircle, Sparkles } from 'lucide-react';
 import { formatAudioTime, createDiagnosticSampleAudio } from '../utils/audioUtils';
+import { useTranslation } from 'react-i18next';
 
 interface VoiceRecorderFieldProps {
   audioUrl: string;
@@ -17,12 +18,18 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
   audioUrl,
   durationSeconds,
   onAudioChange,
-  label = 'Diagnostic Voice Memo',
+  label,
   helperText,
-  promptTitle = 'Record Sound Memo for Mechanic',
-  promptSubtitle = 'Tap to record engine knock, customer notes, or PID sounds',
+  promptTitle,
+  promptSubtitle,
   buttonId = 'record-voice-note-btn',
 }) => {
+  const { t } = useTranslation('common');
+  const effectiveLabel = label || t('voiceRecorder.label');
+  const effectivePromptTitle = promptTitle || t('voiceRecorder.promptTitle');
+  const effectivePromptSubtitle = promptSubtitle || t('voiceRecorder.promptSubtitle');
+  const effectiveHelperText = helperText || t('voiceRecorder.helper');
+
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -163,8 +170,8 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
 
       setErrorMessage(
         isPermissionDenied
-          ? 'Microphone permission was not granted. You can grant access in browser settings or use the demo recording button below.'
-          : 'Could not access microphone on this device. You can attach a demo audio memo instead.'
+          ? t('voiceRecorder.errorMessage.permissionDenied')
+          : t('voiceRecorder.errorMessage.notSupported')
       );
       setIsRecording(false);
     }
@@ -223,11 +230,11 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
           <Mic className="w-3.5 h-3.5 text-emerald-600" />
-          <span>{label}</span>
+          <span>{effectiveLabel}</span>
         </label>
         {audioUrl && (
           <span className="text-[10px] sm:text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-            ✓ Memo Attached ({formatAudioTime(durationSeconds)})
+            {t('voiceRecorder.memoAttached')} ({formatAudioTime(durationSeconds)})
           </span>
         )}
       </div>
@@ -246,7 +253,7 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
                 className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded border border-emerald-300 cursor-pointer"
               >
                 <Sparkles className="w-3 h-3 text-emerald-700" />
-                Attach Simulated Diagnostic Audio
+                {t('voiceRecorder.attachDemo')}
               </button>
             </div>
           </div>
@@ -263,14 +270,14 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black uppercase tracking-wider text-rose-400">
-                    Recording Live...
+                    {t('voiceRecorder.recordingLive')}
                   </span>
                   <span className="text-sm font-mono font-bold text-white bg-[#0E2829] px-2 py-0.5 rounded border border-rose-500/40">
                     {formatAudioTime(recordingSeconds)}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-300 mt-0.5">
-                  Explain vehicle noise, warning sounds, or mechanical faults
+                  {t('voiceRecorder.recordingSubtitle')}
                 </p>
               </div>
             </div>
@@ -290,7 +297,7 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
               className="w-full sm:w-auto min-h-[44px] px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 shadow-xs cursor-pointer shrink-0"
             >
               <Square className="w-4 h-4 fill-white stroke-none" />
-              <span>Stop & Attach</span>
+              <span>{t('voiceRecorder.stopAndAttach')}</span>
             </button>
           </div>
         ) : audioUrl ? (
@@ -303,7 +310,7 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
                   type="button"
                   onClick={togglePlay}
                   className="w-11 h-11 rounded-xl bg-[#34D399] hover:bg-emerald-300 text-[#0E2829] flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-xs cursor-pointer"
-                  title={isPlaying ? 'Pause Memo' : 'Play Memo'}
+                  title={isPlaying ? t('voiceRecorder.pauseMemo') : t('voiceRecorder.playMemo')}
                 >
                   {isPlaying ? (
                     <Pause className="w-5 h-5 fill-current" />
@@ -316,7 +323,7 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
                   <div className="flex items-center gap-2">
                     <Volume2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span className="text-xs font-black tracking-wide text-white uppercase">
-                      Voice Memo Saved
+                      {t('voiceRecorder.voiceMemoSaved')}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 font-mono text-xs text-emerald-300 font-bold mt-0.5">
@@ -352,26 +359,26 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
                   type="button"
                   onClick={startRecording}
                   className="min-h-[40px] px-3 py-1.5 bg-[#0E2829] hover:bg-[#1E4748] text-slate-200 hover:text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-emerald-500/30 cursor-pointer active:scale-95"
-                  title="Record again"
+                  title={t('voiceRecorder.recordAgain')}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Re-record</span>
+                  <span>{t('voiceRecorder.reRecord')}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleDeleteAudio}
                   className="min-h-[40px] px-2.5 py-1.5 bg-rose-950/40 hover:bg-rose-900 text-rose-300 rounded-lg text-xs font-bold flex items-center gap-1 border border-rose-800/60 cursor-pointer active:scale-95"
-                  title="Remove Voice Note"
+                  title={t('voiceRecorder.remove')}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span className="sr-only sm:not-sr-only">Delete</span>
+                  <span className="sr-only sm:not-sr-only">{t('delete')}</span>
                 </button>
               </div>
             </div>
 
             <p className="text-[11px] text-slate-500 italic">
-              {helperText || "This audio will be saved with the vehicle diagnostic record."}
+              {effectiveHelperText}
             </p>
           </div>
         ) : (
@@ -383,10 +390,10 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
               </div>
               <div className="text-left">
                 <p className="text-xs font-bold text-slate-800">
-                  {promptTitle}
+                  {effectivePromptTitle}
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  {promptSubtitle}
+                  {effectivePromptSubtitle}
                 </p>
               </div>
             </div>
@@ -399,16 +406,16 @@ export const VoiceRecorderField: React.FC<VoiceRecorderFieldProps> = ({
                 className="w-full sm:w-auto min-h-[46px] px-4 py-2 rounded-xl bg-[#142F30] hover:bg-[#0E2829] active:scale-95 text-emerald-300 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-[#34D399] shadow-xs cursor-pointer"
               >
                 <Mic className="w-4 h-4 text-[#34D399]" />
-                <span>Record Audio Memo</span>
+                <span>{t('voiceRecorder.recordBtn')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleAttachDemoAudio}
                 className="hidden xs:flex min-h-[46px] px-3 py-2 rounded-xl bg-white hover:bg-stone-100 text-slate-600 font-medium text-xs border border-slate-300 items-center justify-center cursor-pointer"
-                title="Add simulated engine tone memo"
+                title={t('voiceRecorder.demoToneTitle')}
               >
-                Demo Tone
+                {t('voiceRecorder.demoToneBtn')}
               </button>
             </div>
           </div>

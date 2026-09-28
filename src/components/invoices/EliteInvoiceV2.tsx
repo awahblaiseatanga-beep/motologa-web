@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Job } from '../../types';
+import { useTranslation } from 'react-i18next';
 
 interface InvoiceProps {
   job: Job;
@@ -10,13 +11,15 @@ interface InvoiceProps {
   customDescription?: string;
   customImage?: string;
   shopSettings?: any;
+  docLanguage?: 'en' | 'fr';
 }
 
 export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
   (
-    { job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage, shopSettings },
+    { job, currencySymbol = 'FCFA', garageName, departmentName, documentType = 'INVOICE', customDescription, customImage, shopSettings, docLanguage = 'en' },
     ref
   ) => {
+    const { t } = useTranslation('invoices');
     const laborFee = typeof job.laborFeeFcfa === 'number' ? job.laborFeeFcfa : 0;
     const partsFee = job.partsFeeFcfa || 0;
     const total = laborFee + partsFee;
@@ -83,7 +86,7 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
                   <svg className="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-[10px] uppercase font-bold text-center px-2">Your Garage Logo Here</span>
+                  <span className="text-[10px] uppercase font-bold text-center px-2">{t('logo_placeholder', { lng: docLanguage, defaultValue: 'Your Garage Logo Here' })}</span>
                 </>
               )}
             </div>
@@ -94,7 +97,7 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
                 {shopSettings?.shop_name || job.garageInfo?.name || garageName || 'MOTOLOGA GARAGE'}
               </h1>
               <p className="text-xs font-bold text-gray-600 uppercase tracking-widest mb-3">
-                Service • Repair • Maintenance
+                {t('vehicle_service', { lng: docLanguage })}
               </p>
 
               <div className="text-xs text-gray-600 space-y-1.5 flex flex-col font-medium">
@@ -120,7 +123,7 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
             {/* Minimal Info (Right) */}
             <div className="w-64 border-l border-gray-200 pl-6 text-[11px] space-y-3 font-semibold text-gray-700 flex flex-col justify-end">
               <div className="flex justify-between items-center text-gray-500">
-                <span>Date Created</span>
+                <span>{t('date_created', { lng: docLanguage, defaultValue: 'Date Created' })}</span>
                 <span>: {formattedDate}</span>
               </div>
             </div>
@@ -130,10 +133,10 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
           <div className="px-8 py-8 flex justify-between items-start">
             <div>
               <h2 className="text-[40px] leading-none font-black uppercase tracking-tight" style={{ color: brandColor }}>
-                {documentType === 'ESTIMATE' ? 'ESTIMATE' : 'INVOICE'}
+                {documentType === 'ESTIMATE' ? t('title_estimate', { lng: docLanguage }) : t('title_invoice', { lng: docLanguage })}
               </h2>
               <p className="text-[13px] font-bold text-gray-700 tracking-wider uppercase mt-2 mb-1">
-                Vehicle Service & Repair
+                {t('vehicle_service', { lng: docLanguage })}
               </p>
               <p className="text-xs text-gray-500 italic">
                 {invoiceMessage}
@@ -142,19 +145,19 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
             
             <div className="w-64 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 text-[11px] font-semibold text-gray-700 space-y-2.5">
               <div className="flex justify-between items-center">
-                <span>Invoice No.</span>
+                <span>{t('invoice_no', { lng: docLanguage })}</span>
                 <span className="font-bold">: INV-{job.id.substring(0,6).toUpperCase()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>Job No.</span>
+                <span>{t('job_no', { lng: docLanguage })}</span>
                 <span>: JOB-{job.id.substring(6,12).toUpperCase()}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>Date</span>
+                <span>{t('date', { lng: docLanguage })}</span>
                 <span>: {formattedDate}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span>Due Date</span>
+                <span>{t('due_date', { lng: docLanguage })}</span>
                 <span>: {formattedDate}</span>
               </div>
             </div>
@@ -166,29 +169,29 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-sm font-black text-gray-800">
                 <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/></svg>
-                Customer Information
+                {t('customer_info', { lng: docLanguage })}
               </div>
               <div className="p-4 text-[11px] space-y-3 font-semibold text-gray-600">
                 <div className="flex items-baseline">
-                  <span className="w-20">Name</span>
+                  <span className="w-20">{t('name', { lng: docLanguage })}</span>
                   <span className="mr-2">:</span>
                   <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">{job.customerName || (job as any).customer_name || 'Walk-in'}</span>
                 </div>
                 <div className="flex items-baseline">
-                  <span className="w-20">Phone</span>
+                  <span className="w-20">{t('phone', { lng: docLanguage })}</span>
                   <span className="mr-2">:</span>
                   <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">{job.customerPhone}</span>
                 </div>
                 {(job as any).customerEmail && (
                   <div className="flex items-baseline">
-                    <span className="w-20">Email</span>
+                    <span className="w-20">{t('email', { lng: docLanguage })}</span>
                     <span className="mr-2">:</span>
                     <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">{(job as any).customerEmail}</span>
                   </div>
                 )}
                 {(job as any).customerAddress && (
                   <div className="flex items-baseline">
-                    <span className="w-20">Address</span>
+                    <span className="w-20">{t('address', { lng: docLanguage })}</span>
                     <span className="mr-2">:</span>
                     <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">{(job as any).customerAddress}</span>
                   </div>
@@ -200,21 +203,21 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-sm font-black text-gray-800">
                 <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v7h-2l-1 2H8l-1-2H5V5z" clipRule="evenodd"/></svg>
-                Vehicle Information
+                {t('vehicle_info', { lng: docLanguage })}
               </div>
               <div className="p-4 text-[11px] space-y-3 font-semibold text-gray-600">
                 <div className="flex items-baseline">
-                  <span className="w-28">Make / Model</span>
+                  <span className="w-28">{t('make_model', { lng: docLanguage })}</span>
                   <span className="mr-2">:</span>
                   <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">{job.vehicleModel}</span>
                 </div>
                 <div className="flex items-baseline">
-                  <span className="w-28">Plate Number</span>
+                  <span className="w-28">{t('plate', { lng: docLanguage })}</span>
                   <span className="mr-2">:</span>
                   <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">{job.licensePlate}</span>
                 </div>
                 <div className="flex items-baseline">
-                  <span className="w-28">Mileage</span>
+                  <span className="w-28">{t('mileage', { lng: docLanguage })}</span>
                   <span className="mr-2">:</span>
                   <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5 text-right">km</span>
                 </div>
@@ -228,30 +231,30 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
             <div className="rounded-lg overflow-hidden border border-gray-200">
               <div className="flex items-center gap-2 px-4 py-3 text-white font-black text-sm" style={{ backgroundColor: brandColor }}>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd"/></svg>
-                Labour / Services
+                {t('labour_services', { lng: docLanguage })}
               </div>
               <table className="w-full text-left text-[11px]">
                 <thead className="bg-[#f0f4f8] text-gray-600 font-bold">
                   <tr>
                     <th className="py-2.5 px-4 w-10 text-center">#</th>
-                    <th className="py-2.5 px-4">Description of Service</th>
-                    <th className="py-2.5 px-4 text-center w-24">Qty / Hours</th>
-                    <th className="py-2.5 px-4 text-right">Unit Price ({currencySymbol})</th>
-                    <th className="py-2.5 px-4 text-right w-32 border-l border-gray-200 bg-[#e7eff6]">Total ({currencySymbol})</th>
+                    <th className="py-2.5 px-4">{t('desc_service', { lng: docLanguage })}</th>
+                    <th className="py-2.5 px-4 text-center w-24">{t('qty_hours', { lng: docLanguage })}</th>
+                    <th className="py-2.5 px-4 text-right">{t('unit_price', { lng: docLanguage })} ({currencySymbol})</th>
+                    <th className="py-2.5 px-4 text-right w-32 border-l border-gray-200 bg-[#e7eff6]">{t('total', { lng: docLanguage })} ({currencySymbol})</th>
                   </tr>
                 </thead>
                 <tbody className="font-medium text-gray-700 divide-y divide-gray-100">
                   <tr className="border-b-2 border-gray-200">
                     <td className="py-3 px-4 text-center">1</td>
                     <td className="py-3 px-4 font-bold text-gray-900 border-x border-gray-100 whitespace-pre-wrap text-[13px] leading-relaxed">
-                      {customDescription || (job as any).hod_job_summary || (job as any).hodJobSummary || "No technical notes provided for this repair."}
+                      {customDescription || (job as any).hod_job_summary || (job as any).hodJobSummary || t('no_technical_notes_provided', { lng: docLanguage, defaultValue: "No technical notes provided for this repair." })}
                     </td>
                     <td className="py-3 px-4 text-center border-r border-gray-100">1</td>
                     <td className="py-3 px-4 text-right border-r border-gray-100 font-mono">{laborFee.toLocaleString()}</td>
                     <td className="py-3 px-4 text-right font-mono font-bold text-gray-900 bg-[#e7eff6]/40">{laborFee.toLocaleString()}</td>
                   </tr>
                   <tr className="bg-[#e7eff6] font-bold text-[12px]">
-                    <td colSpan={4} className="py-3 px-4 text-right text-gray-600">Subtotal</td>
+                    <td colSpan={4} className="py-3 px-4 text-right text-gray-600">{t('subtotal', { lng: docLanguage })}</td>
                     <td className="py-3 px-4 text-right text-gray-900 font-mono">{laborFee.toLocaleString()}</td>
                   </tr>
                 </tbody>
@@ -263,14 +266,14 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
               <div className="rounded-lg overflow-hidden border border-gray-200 mt-6" style={{ pageBreakInside: 'avoid' }}>
                 <div className="flex items-center gap-2 px-4 py-3 text-white font-black text-sm" style={{ backgroundColor: brandColor }}>
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/></svg>
-                  PARTS CHANGED (BEFORE & AFTER)
+                  {t('parts_changed_before_after', { lng: docLanguage, defaultValue: 'PARTS CHANGED (BEFORE & AFTER)' })}
                 </div>
                 <div className={`p-4 grid gap-4 bg-white ${(partsPhotos.old && partsPhotos.new) ? 'grid-cols-2' : 'grid-cols-1 w-1/2 mx-auto'}`}>
                   {/* Old Part */}
                   {partsPhotos.old && (
                     <div className="flex flex-col text-center">
                        <img src={partsPhotos.old} alt="Old Part" className="w-full h-48 object-cover border border-gray-300 rounded-lg placeholder-hidden" />
-                       <span className="text-[11px] font-black text-gray-800 uppercase tracking-widest mt-2">{partsPhotos.new ? 'Fig 1: Original Part (Worn)' : 'Original Part (Worn)'}</span>
+                       <span className="text-[11px] font-black text-gray-800 uppercase tracking-widest mt-2">{partsPhotos.new ? t('fig1_old_part', { lng: docLanguage, defaultValue: 'Fig 1: Original Part (Worn)' }) : t('original_part_worn', { lng: docLanguage, defaultValue: 'Original Part (Worn)' })}</span>
                     </div>
                   )}
 
@@ -278,7 +281,7 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
                   {partsPhotos.new && (
                     <div className="flex flex-col text-center">
                        <img src={partsPhotos.new} alt="New Part" className="w-full h-48 object-cover border border-gray-300 rounded-lg placeholder-hidden" />
-                       <span className="text-[11px] font-black text-gray-800 uppercase tracking-widest mt-2">{partsPhotos.old ? 'Fig 2: Replacement Part (Installed)' : 'Replacement Part (Installed)'}</span>
+                       <span className="text-[11px] font-black text-gray-800 uppercase tracking-widest mt-2">{partsPhotos.old ? t('fig2_new_part', { lng: docLanguage, defaultValue: 'Fig 2: Replacement Part (Installed)' }) : t('replacement_part_installed', { lng: docLanguage, defaultValue: 'Replacement Part (Installed)' })}</span>
                     </div>
                   )}
                 </div>
@@ -290,7 +293,7 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
               <div className="rounded-lg overflow-hidden border border-gray-200 mt-6">
                 <div className="flex items-center gap-2 px-4 py-3 text-white font-black text-sm" style={{ backgroundColor: brandColor }}>
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd"/></svg>
-                  ADDITIONAL SERVICE PHOTOS
+                  {t('additional_service_photos', { lng: docLanguage, defaultValue: 'ADDITIONAL SERVICE PHOTOS' })}
                 </div>
                 <div className="p-4 grid grid-cols-4 gap-4 bg-[#f0f4f8]">
                   {generalPhotos.slice(0, 4).map((photo, i) => (
@@ -316,21 +319,21 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-sm font-black text-gray-800">
                   <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/></svg>
-                  Payment Information
+                  {t('payment_info', { lng: docLanguage })}
                 </div>
                 <div className="p-4 text-[11px] space-y-3 font-semibold text-gray-600">
                   <div className="flex items-baseline">
-                    <span className="w-28">Payment Method</span>
+                    <span className="w-28">{t('payment_method', { lng: docLanguage })}</span>
                     <span className="mr-2">:</span>
-                    <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">&nbsp;</span>
+                    <span className="border-b border-gray-200 flex-1 font-bold text-gray-900 pb-0.5">&nbsp;</span> {/* i18n-ignore */}
                   </div>
                   <div className="flex items-baseline">
-                    <span className="w-28">Amount Paid</span>
+                    <span className="w-28">{t('amount_paid', { lng: docLanguage })}</span>
                     <span className="mr-2">:</span>
                     <span className="flex-1 font-bold text-gray-900 font-mono">0 {currencySymbol}</span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="w-28">Balance</span>
+                    <span className="w-28">{t('balance', { lng: docLanguage })}</span>
                     <span className="mr-2">:</span>
                     <span className="flex-1 font-bold text-gray-900 font-mono">{total.toLocaleString()} {currencySymbol}</span>
                   </div>
@@ -341,13 +344,13 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-sm font-black text-gray-800">
                   <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"/></svg>
-                  Notes / Remarks
+                  {t('notes_remarks', { lng: docLanguage })}
                 </div>
                 <div className="p-4 text-[11px] font-medium text-gray-600 space-y-4">
                   {documentType === 'ESTIMATE' ? (
-                     <p className="text-rose-700 italic font-bold">Please reply YES confirming approval of this estimate before work proceeds.</p>
+                     <p className="text-rose-700 italic font-bold">{t('reply_yes', { lng: docLanguage })}</p>
                   ) : (
-                     <p className="italic text-gray-500">{job.estimateNotes || "All goods remain property of the company until paid in full."}</p>
+                     <p className="italic text-gray-500">{job.estimateNotes || t('all_goods_remain_property', { lng: docLanguage, defaultValue: 'All goods remain property of the company until paid in full.' })}</p>
                   )}
                   <div className="border-b border-gray-200"></div>
                   <div className="border-b border-gray-200"></div>
@@ -361,20 +364,20 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
               <div className="border border-[#1e3a8a] rounded-lg overflow-hidden bg-white shadow-sm" style={{ borderColor: brandColor }}>
                 <div className="flex items-center gap-2 px-4 py-2.5 text-white text-sm font-black" style={{ backgroundColor: brandColor }}>
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd"/></svg>
-                  Summary
+                  {t('summary', { lng: docLanguage })}
                 </div>
                 <div className="px-4 py-4 space-y-3 text-[11px] font-bold text-gray-600">
                   <div className="flex justify-between items-center">
-                    <span>Subtotal</span>
+                    <span>{t('subtotal', { lng: docLanguage })}</span>
                     <span className="font-mono text-gray-900">{(total).toLocaleString()} {currencySymbol}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Discount</span>
+                    <span>{t('discount', { lng: docLanguage })}</span>
                     <span className="font-mono text-gray-900">0 {currencySymbol}</span>
                   </div>
                 </div>
                 <div className="px-4 py-4 flex justify-between items-center text-white text-[15px] font-black" style={{ backgroundColor: brandColor }}>
-                  <span>TOTAL</span>
+                  <span>{t('total', { lng: docLanguage })}</span>
                   <span className="font-mono tracking-wider">{total.toLocaleString()} {currencySymbol}</span>
                 </div>
               </div>
@@ -384,19 +387,19 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
                 <div>
                   <div className="flex items-center gap-1.5 text-[11px] font-black text-gray-800 mb-6">
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/></svg>
-                    Technician
+                    {t('technician', { lng: docLanguage })}
                   </div>
                   <div className="text-[10px] space-y-3 font-semibold text-gray-600">
                     <div className="flex items-baseline">
-                      <span className="w-12">Name:</span>
-                      <span className="border-b border-gray-300 flex-1 h-3">{job.mechanic_name || (job.assigned_to ? job.mechanic?.full_name : '') || 'Technician'}</span>
+                      <span className="w-12">{t('name', { lng: docLanguage })}:</span>
+                      <span className="border-b border-gray-300 flex-1 h-3">{job.mechanic_name || (job.assigned_to ? job.mechanic?.full_name : '') || ''}</span>
                     </div>
                     <div className="flex items-baseline">
-                      <span className="w-12">Signature:</span>
+                      <span className="w-12">{t('signature', { lng: docLanguage })}:</span>
                       <span className="border-b border-gray-300 flex-1 h-3"></span>
                     </div>
                     <div className="flex items-baseline">
-                      <span className="w-12">Date:</span>
+                      <span className="w-12">{t('date', { lng: docLanguage })}:</span>
                       <span className="border-b border-gray-300 flex-1 h-3 text-gray-800">{formattedDate}</span>
                     </div>
                   </div>
@@ -405,19 +408,19 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
                 <div>
                   <div className="flex items-center gap-1.5 text-[11px] font-black text-gray-800 mb-6">
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/></svg>
-                    Supervisor
+                    {t('supervisor', { lng: docLanguage })}
                   </div>
                   <div className="text-[10px] space-y-3 font-semibold text-gray-600">
                     <div className="flex items-baseline">
-                      <span className="w-12">Name:</span>
-                      <span className="border-b border-gray-300 flex-1 h-3 text-gray-800">{job.hod_name || 'Supervisor'}</span>
+                      <span className="w-12">{t('name', { lng: docLanguage })}:</span>
+                      <span className="border-b border-gray-300 flex-1 h-3 text-gray-800">{job.hod_name || ''}</span>
                     </div>
                     <div className="flex items-baseline">
-                      <span className="w-12">Signature:</span>
+                      <span className="w-12">{t('signature', { lng: docLanguage })}:</span>
                       <span className="border-b border-gray-300 flex-1 h-3"></span>
                     </div>
                     <div className="flex items-baseline">
-                      <span className="w-12">Date:</span>
+                      <span className="w-12">{t('date', { lng: docLanguage })}:</span>
                       <span className="border-b border-gray-300 flex-1 h-3 text-gray-800">{formattedDate}</span>
                     </div>
                   </div>
@@ -431,11 +434,11 @@ export const EliteInvoiceV2 = forwardRef<HTMLDivElement, InvoiceProps>(
             <div className="flex items-center gap-2 text-xs">
               <span className="font-black tracking-widest text-[13px]">MOTOLOGA</span>
               <span className="text-white/40">|</span>
-              <span className="text-white/70 font-medium">Powered by Motologa</span>
+              <span className="text-white/70 font-medium">{t('powered_by', { lng: docLanguage, defaultValue: 'Powered by Motologa' })}</span>
             </div>
             <div className="flex items-center gap-3 text-white/70 text-[10px] font-medium max-w-[200px] text-right">
               <svg className="w-5 h-5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              <span>This invoice is filled digitally and generated through the Motologa Garage Management System.</span>
+              <span>{t('digital_invoice_notice', { lng: docLanguage, defaultValue: 'This invoice is filled digitally and generated through the Motologa Garage Management System.' })}</span>
             </div>
           </div>
         </div>

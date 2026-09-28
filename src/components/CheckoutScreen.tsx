@@ -25,6 +25,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { InvoiceGenerator } from './InvoiceGenerator';
 import { ScheduleAppointmentModal } from './ScheduleAppointmentModal';
+import { useTranslation } from 'react-i18next';
 
 interface CheckoutScreenProps {
   jobs: Job[];
@@ -47,6 +48,8 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   onAddDeferredRepair,
   selectedJobId,
 }) => {
+  const { t } = useTranslation('checkout');
+
   // Find ready vehicles first, otherwise active non-released vehicles
   const candidateVehicles = jobs.filter((j) => j.status === 'Ready/Released' && !j.released);
   const activeUnreleased = candidateVehicles;
@@ -240,7 +243,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         >
           <div className="flex items-center justify-between gap-1">
             <span className="text-[9px] xs:text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500 truncate">
-              Revenue
+              {t('revenue')}
             </span>
             <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 shrink-0">
               <Banknote className="w-3 h-3 sm:w-4 sm:h-4 stroke-[2.5]" />
@@ -251,7 +254,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               {todayRevenue.toLocaleString()}
             </span>
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase truncate">
-              {currencySymbol} Today
+              {currencySymbol} {t('today')}
             </span>
           </div>
         </div>
@@ -263,7 +266,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         >
           <div className="flex items-center justify-between gap-1">
             <span className="text-[9px] xs:text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500 truncate">
-              Ready
+              {t('ready')}
             </span>
             <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-lg bg-teal-50 flex items-center justify-center text-teal-500 shrink-0">
               <Car className="w-3 h-3 sm:w-4 sm:h-4 stroke-[2.5]" />
@@ -274,7 +277,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               {vehiclesReadyCount}
             </span>
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase truncate">
-              Collection
+              {t('collection')}
             </span>
           </div>
         </div>
@@ -286,7 +289,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
         >
           <div className="flex items-center justify-between gap-1">
             <span className="text-[9px] xs:text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500 truncate">
-              Attention
+              {t('attention')}
             </span>
             <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
               <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 stroke-[2.5]" />
@@ -297,7 +300,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               {needsAttentionCount}
             </span>
             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase truncate">
-              Pending
+              {t('pending')}
             </span>
           </div>
         </div>
@@ -306,9 +309,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       {/* Select Vehicle to Checkout carousel if multiple */}
       <div className="space-y-1.5">
         <label className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center justify-between">
-          <span>Active Exit</span>
+          <span>{t('activeExit')}</span>
           <span className="text-[11px] text-slate-400 font-normal">
-            Tap a vehicle plate to inspect bill
+            {t('tapVehicleToInspect')}
           </span>
         </label>
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
@@ -341,7 +344,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 </div>
                 {j.status === 'Ready/Released' && (
                   <span className="bg-emerald-500 text-slate-950 font-black text-[10px] px-1.5 py-0.5 rounded">
-                    READY
+                    {t('readyUppercase')}
                   </span>
                 )}
               </button>
@@ -370,14 +373,14 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             <div className="flex items-center sm:flex-col sm:items-end justify-between gap-1 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <StatusChip status={currentJob.status} size="md" />
               <span className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                Serviced by <strong className="text-slate-800">{currentJob.mechanic?.full_name || currentJob.assigned_to}</strong>
+                {t('servicedBy')} <strong className="text-slate-800">{currentJob.mechanic?.full_name || currentJob.assigned_to}</strong>
               </span>
             </div>
           </div>
 
           {/* Parts Source Status reminder */}
           <div className="flex items-center justify-between bg-stone-50 p-2.5 rounded-xl border border-slate-200 text-xs">
-            <span className="text-slate-500 font-bold uppercase tracking-wider">Parts Used:</span>
+            <span className="text-slate-500 font-bold uppercase tracking-wider">{t('partsUsed')}</span>
             <span className="font-extrabold text-slate-800 px-2 py-0.5 bg-white rounded border border-slate-200 shadow-2xs">
               {currentJob.partSource}
             </span>
@@ -387,34 +390,34 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-4 shadow-sm mt-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Executive Verification
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" /> {t('executiveVerification')}
               </h4>
               <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">
-                HOD Cleared
+                {t('hodCleared')}
               </span>
             </div>
 
             {/* Proof of Work Photos */}
             {(currentJob.oldPartPhotoUrl || currentJob.newPartPhotoUrl || currentJob.generalJobPhotoUrl) && (
               <div className="space-y-2 pb-2">
-                <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Visual Proof of Work</span>
+                <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">{t('visualProofOfWork')}</span>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
                   {currentJob.oldPartPhotoUrl && (
                     <div className="shrink-0 space-y-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                       <img src={currentJob.oldPartPhotoUrl} alt="Old Part" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />
-                      <span className="text-[9px] font-bold text-slate-500 block text-center uppercase tracking-wider">Old Part</span>
+                      <span className="text-[9px] font-bold text-slate-500 block text-center uppercase tracking-wider">{t('oldPart')}</span>
                     </div>
                   )}
                   {currentJob.newPartPhotoUrl && (
                     <div className="shrink-0 space-y-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                       <img src={currentJob.newPartPhotoUrl} alt="New Part" className="w-24 h-24 object-cover rounded-lg border-2 border-emerald-400/50" />
-                      <span className="text-[9px] font-bold text-emerald-600 block text-center uppercase tracking-wider">New Installed</span>
+                      <span className="text-[9px] font-bold text-emerald-600 block text-center uppercase tracking-wider">{t('newInstalled')}</span>
                     </div>
                   )}
                   {currentJob.generalJobPhotoUrl && (
                     <div className="shrink-0 space-y-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                       <img src={currentJob.generalJobPhotoUrl} alt="General Work" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />
-                      <span className="text-[9px] font-bold text-slate-500 block text-center uppercase tracking-wider">General</span>
+                      <span className="text-[9px] font-bold text-slate-500 block text-center uppercase tracking-wider">{t('general')}</span>
                     </div>
                   )}
                 </div>
@@ -424,12 +427,12 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             {/* HOD Summary Override */}
             <div className="space-y-2 border-t border-slate-200 pt-3">
               <label className="text-[10px] font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> Final Invoice Summary (Edit before printing)
+                <MessageSquare className="w-3.5 h-3.5 text-indigo-500" /> {t('finalInvoiceSummary')}
               </label>
               <textarea
                 value={hodJobSummary}
                 onChange={(e) => setHodJobSummary(e.target.value)}
-                placeholder="Adjust HOD's technical summary for the customer invoice here..."
+                placeholder={t('adjustHodSummary')}
                 className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[90px] shadow-inner"
               />
             </div>
@@ -440,7 +443,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center rounded-2xl border border-slate-200 shadow-[0_0_15px_rgba(0,0,0,0.05)]">
                 <span className="bg-slate-800 text-white font-black text-sm px-5 py-2.5 rounded-xl shadow-xl flex items-center gap-2">
                   <Wrench className="w-4 h-4 text-amber-400" />
-                  Incomplete - Waiting on Technician
+                  {t('incompleteWaitingOnTech')}
                 </span>
               </div>
             )}
@@ -450,21 +453,21 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             {/* Automated Checkout Engine */}
             <div className="bg-stone-50 border border-slate-200 rounded-xl p-3.5 space-y-4 shadow-sm mt-3">
                <div className="flex justify-between items-center bg-emerald-50 px-3 py-2 rounded border border-emerald-100">
-                 <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Total Time Worked</span>
-                 <span className="font-mono font-bold text-emerald-700">{hoursWorked > 0 ? hoursWorked : "None or 0.0"} Hours</span>
+                 <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wider flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {t('totalTimeWorked')}</span>
+                 <span className="font-mono font-bold text-emerald-700">{hoursWorked > 0 ? hoursWorked : t('noneOrZero')} {t('hours')}</span>
                </div>
                
                <div className="flex items-center gap-3">
                  <div className="flex-1 space-y-1">
                    <label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider flex flex-col">
-                     Hourly Rate ({currencySymbol})
+                     {t('hourlyRate')} ({currencySymbol})
                    </label>
-                   <input type="number" placeholder="e.g. 5000" value={hourlyRate} onChange={e => setHourlyRate(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold font-mono focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                   <input type="number" placeholder={t('placeholderHourlyRate')} value={hourlyRate} onChange={e => setHourlyRate(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold font-mono focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400" />
                  </div>
                  {currentJob.partSource === 'Garage Inventory' ? (
                    <div className="flex-1 space-y-1">
-                     <label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Parts Cost</label>
-                     <input type="number" placeholder="e.g. 15000" value={partsCost} onChange={e => setPartsCost(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold font-mono focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                     <label className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">{t('partsCost')}</label>
+                     <input type="number" placeholder={t('placeholderLaborFee')} value={partsCost} onChange={e => setPartsCost(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold font-mono focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
                    </div>
                  ) : (
                    <div className="flex-1 space-y-1 hidden sm:block"></div>
@@ -477,7 +480,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               <div className="flex items-center justify-between pb-2 pt-1 border-b border-dashed border-slate-200 mb-2">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                  Premium Parts Cost ({currencySymbol})
+                  {t('premiumPartsCost')} ({currencySymbol})
                 </label>
                 <div className="bg-stone-50 rounded px-2.5 py-1 border border-slate-200">
                    <span className="font-extrabold font-mono text-sm text-slate-800">
@@ -492,7 +495,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Banknote className="w-4 h-4 text-amber-500" />
-                Total Labor Fee ({currencySymbol})
+                {t('totalLaborFee')} ({currencySymbol})
                 {saveStatus['laborFee'] && (
                   <span className="text-[10px] text-emerald-600 ml-2 animate-in fade-in duration-300">
                     {saveStatus['laborFee']}
@@ -500,7 +503,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                 )}
               </label>
               <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                Quick-Tap Presets
+                {t('quickTapPresets')}
               </span>
             </div>
 
@@ -511,7 +514,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
                   id="labor-fee-input"
                   type="number"
                   step="1000"
-                  placeholder="e.g. 15000"
+                  placeholder={t('placeholderLaborFee')}
                   value={laborFee}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -564,15 +567,15 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
 				{/* Native Schedule Appointment Branch */}
 				<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-sky-950/20 border border-sky-900/30 rounded-2xl mx-auto w-full max-w-md shadow-inner">
 				   <div className="text-left flex-1 min-w-0">
-					   <h4 className="text-sm font-black tracking-tight text-sky-800 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-sky-500"/> Need a Hard Booking?</h4>
-					   <p className="text-[11px] font-medium text-slate-500 leading-snug mt-0.5">Secure a rigid target date into the operational calendar.</p>
+					   <h4 className="text-sm font-black tracking-tight text-sky-800 flex items-center gap-1.5"><Calendar className="w-4 h-4 text-sky-500"/> {t('needHardBooking')}</h4>
+					   <p className="text-[11px] font-medium text-slate-500 leading-snug mt-0.5">{t('secureRigidTargetDate')}</p>
 				   </div>
 				   <button
 					 type="button"
 					 onClick={() => setScheduleModalOpen(true)}
 					 className="w-full sm:w-auto shrink-0 bg-sky-600 hover:bg-sky-500 text-white font-black uppercase text-xs px-4 py-2.5 rounded-lg transition-all active:scale-95"
 				   >
-					  Schedule Now
+					  {t('scheduleNow')}
 				   </button>
 				</div>
 			  </div>
@@ -587,7 +590,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
               className="w-full min-h-[56px] rounded-xl bg-[#142F30] hover:bg-[#1f4244] active:scale-[0.99] text-amber-400 font-black text-sm sm:text-base tracking-wide flex items-center justify-center gap-3 shadow-lg border-2 border-[#142F30] cursor-pointer transition-all px-2"
             >
               <FileEdit className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5] shrink-0" />
-              <span>Save Pricing & Generate Invoice</span>
+              <span>{t('savePricingGenerateInvoice')}</span>
             </button>
           </div>
           </div>
@@ -595,9 +598,9 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2">
           <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-          <h3 className="font-extrabold text-slate-800 text-lg">All Vehicles Dispatched</h3>
+          <h3 className="font-extrabold text-slate-800 text-lg">{t('allVehiclesDispatched')}</h3>
           <p className="text-sm text-slate-500">
-            Register new vehicles from the first tab to begin repairs.
+            {t('registerNewVehicles')}
           </p>
         </div>
       )}
@@ -637,7 +640,7 @@ export const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             initialDescription={hodJobSummary || currentJob.issueDescription}
             onSchedulingSuccess={() => {
                setScheduleModalOpen(false);
-               alert("Appointment Secured & Calendared Locally.");
+               alert(t('appointmentSecured'));
             }}
          />
       )}

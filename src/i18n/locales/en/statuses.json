@@ -1,0 +1,19 @@
+{
+  "Awaiting_Approval": "Awaiting Approval",
+  "Diagnosis": "Diagnosis",
+  "In_Repair": "In Repair",
+  "Paused": "Paused",
+  "Pending_QC": "Pending QC",
+  "Ready_Released": "Ready/Released",
+  "Work_Done": "Work Done",
+  "cancelled": "Cancelled",
+  "completed": "Completed",
+  "customer_approved": "Approved",
+  "hod": "HOD",
+  "in_progress": "In Progress",
+  "owner": "Owner",
+  "paused": "Paused",
+  "pending": "Pending",
+  "scheduled": "Scheduled",
+  "worker": "Worker"
+}

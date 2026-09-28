@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ProfileSetupScreenProps {
   onComplete: () => void;
@@ -18,11 +19,12 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
   const [fullName, setFullName] = useState(initialName);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation('auth');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim()) {
-      setError('Please enter your full name.');
+      setError(t('enterFullNameError'));
       return;
     }
     
@@ -41,7 +43,7 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
       onComplete();
     } catch (err: any) {
       console.error('Error updating profile:', err);
-      setError(err.message || 'Failed to sync identity profile. Please verify your connection.');
+      setError(err.message || t('syncIdentityFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -61,13 +63,13 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
           </div>
           
           <h1 className="text-2xl font-black text-white uppercase tracking-wide mb-2">
-            {isEditing ? 'Update Identity' : 'Identity Setup Required'}
+            {isEditing ? t('updateIdentity') : t('identitySetupRequired')}
           </h1>
           
           <p className="text-sm text-stone-400 font-medium mb-8">
             {isEditing 
-              ? 'Update your displayed name that appears across the garage dashboards and rosters.' 
-              : 'Before accessing the workshop floor, please define your identity so the system can properly bind your profile.'}
+              ? t('updateIdentityDesc') 
+              : t('setupIdentityDesc')}
           </p>
 
           {error && (
@@ -80,13 +82,13 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
           <form onSubmit={handleSubmit} className="w-full space-y-6">
             <div className="space-y-2 text-left">
               <label className="text-xs font-bold text-stone-300 uppercase tracking-wider ml-1">
-                Your Full Name
+                {t('yourFullName')}
               </label>
               <input 
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. John Doe"
+                placeholder={t('placeholderJohnDoe')}
                 className="w-full bg-stone-950/60 border border-emerald-500/30 rounded-xl px-4 py-3.5 text-white placeholder:text-stone-500 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition font-medium"
                 autoFocus
                 disabled={isLoading}
@@ -100,11 +102,11 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
               >
                 {isLoading ? (
-                  <span className="animate-pulse">Syncing ID...</span>
+                  <span className="animate-pulse">{t('syncingID')}</span>
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    {isEditing ? 'Save Profile' : 'Lock Identity & Continue'}
+                    {isEditing ? t('saveProfile') : t('lockIdentity')}
                   </>
                 )}
               </button>
@@ -116,7 +118,7 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({
                   disabled={isLoading}
                   className="w-full bg-stone-800 hover:bg-stone-700 text-stone-300 py-3 rounded-xl font-bold transition active:scale-[0.98] text-sm"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               )}
             </div>

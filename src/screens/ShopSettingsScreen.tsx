@@ -3,12 +3,14 @@ import { supabase } from '../lib/supabase';
 import { Building2, MessageSquare, Image as ImageIcon, Save, CheckCircle2, AlertTriangle, Settings, Users, PlusCircle } from 'lucide-react';
 import { provisionDepartment, fetchDepartments } from '../lib/api';
 import { Department } from '../types';
+import { useTranslation } from 'react-i18next';
 
 export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { t } = useTranslation('owner');
 
   // Form State
   const [shopName, setShopName] = useState('');
@@ -61,9 +63,9 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
       setNewDeptName('');
       setNewDeptRole('');
       await loadDepartments();
-      alert("Department created successfully.");
+      alert(t('deptCreatedSuccess'));
     } catch (err: any) {
-      alert(err.message || "Failed to provision department");
+      alert(err.message || t('failedToProvisionDept'));
     } finally {
       setDeptLoading(false);
     }
@@ -137,7 +139,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
           .upload(`settings/${fileName}`, logoFile, { contentType: logoFile.type });
           
         if (uploadError) {
-          throw new Error(`Logo Upload Failed: ${uploadError.message}`);
+          throw new Error(`${t('logoUploadFailed')}: ${uploadError.message}`);
         }
         
         const { data: urlData } = supabase.storage
@@ -163,7 +165,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         .eq('id', 1);
 
       if (updateError) {
-        throw new Error(updateError.message || "Failed to update settings");
+        throw new Error(updateError.message || t('failedToUpdateSettings'));
       }
 
       // 3. Upload Watermark if staged
@@ -177,7 +179,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
           .upload(`settings/${fileName}`, watermarkFile, { contentType: watermarkFile.type });
           
         if (uploadError) {
-          throw new Error(`Watermark Upload Failed: ${uploadError.message}`);
+          throw new Error(`${t('watermarkUploadFailed')}: ${uploadError.message}`);
         }
         
         const { data: urlData } = supabase.storage
@@ -199,7 +201,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
           .eq('id', garageId);
           
         if (garageUpdateError) {
-          throw new Error(garageUpdateError.message || "Failed to update garage branding");
+          throw new Error(garageUpdateError.message || t('failedToUpdateBranding'));
         }
       }
 
@@ -213,7 +215,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
 
     } catch (err: any) {
       console.error("Mega-Submit Failed:", err);
-      setErrorMsg(err.message || "An unexpected error occurred");
+      setErrorMsg(err.message || t('unexpectedError'));
     } finally {
       setSaving(false);
     }
@@ -223,7 +225,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
     return (
       <div className="w-full h-full flex flex-col items-center justify-center p-8">
         <div className="w-10 h-10 border-4 border-stone-800 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <span className="text-stone-400 font-mono text-sm uppercase tracking-widest">Loading Settings...</span>
+        <span className="text-stone-400 font-mono text-sm uppercase tracking-widest">{t('loadingSettings')}</span>
       </div>
     );
   }
@@ -238,10 +240,10 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
       <div className="mb-8">
         <h1 className="text-2xl font-black text-white flex items-center gap-3">
           <Settings className="w-7 h-7 text-emerald-400" />
-          Garage Identity & Settings
+          {t('garageIdentitySettings')}
         </h1>
         <p className="text-stone-400 text-sm mt-2">
-          Manage your workshop's global appearance and automated messaging templates.
+          {t('manageAppearance')}
         </p>
       </div>
 
@@ -249,7 +251,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
-            <span className="font-bold text-rose-300 block mb-1">Settings Sync Failed</span>
+            <span className="font-bold text-rose-300 block mb-1">{t('settingsSyncFailed')}</span>
             <span className="text-rose-200/80">{errorMsg}</span>
           </div>
         </div>
@@ -259,8 +261,8 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
-            <span className="font-bold text-emerald-400 block">Configuration Saved</span>
-            <span className="text-emerald-200/80">Settings securely committed to database.</span>
+            <span className="font-bold text-emerald-400 block">{t('configSaved')}</span>
+            <span className="text-emerald-200/80">{t('settingsCommitted')}</span>
           </div>
         </div>
       )}
@@ -271,32 +273,32 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
           <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-stone-400" />
-            Core Brand Identity
+            {t('coreBrandIdentity')}
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                  Garage Name
+                  {t('garageName')}
                 </label>
                 <input
                   type="text"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
-                  placeholder="e.g. MOTOLOGA Douala"
+                  placeholder={t('shopNameEg', 'e.g. MOTOLOGA Douala')}
                   className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-medium"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                  Physical Address
+                  {t('physicalAddress')}
                 </label>
                 <textarea
                   value={shopAddress}
                   onChange={(e) => setShopAddress(e.target.value)}
-                  placeholder="Street name, City, Region..."
+                  placeholder={t('addressPlaceholder')}
                   rows={3}
                   className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all resize-none font-medium"
                 />
@@ -305,23 +307,23 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-stone-800/50">
                 <div>
                   <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                    Currency Symbol
+                    {t('currencySymbol')}
                   </label>
                   <select
                     value={currencySymbol}
                     onChange={(e) => setCurrencySymbol(e.target.value)}
                     className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all appearance-none cursor-pointer"
                   >
-                    <option value="FCFA">FCFA</option>
-                    <option value="$">$ (USD)</option>
-                    <option value="€">€ (EUR)</option>
-                    <option value="£">£ (GBP)</option>
-                    <option value="R">R (ZAR)</option>
+                    <option value="FCFA">{t('currency.fcfa', 'FCFA')}</option>
+                    <option value="$">{t('currency.usd', '$ (USD)')}</option>
+                    <option value="€">{t('currency.eur', '€ (EUR)')}</option>
+                    <option value="£">{t('currency.gbp', '£ (GBP)')}</option>
+                    <option value="R">{t('currency.zar', 'R (ZAR)')}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                    Standard Labor Rate
+                    {t('standardLaborRate')}
                   </label>
                   <input
                     type="number"
@@ -329,7 +331,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                     onChange={(e) => setStandardLaborRate(Number(e.target.value))}
                     min="0"
                     step="100"
-                    placeholder="e.g. 15000"
+                    placeholder={t('laborRateEg', 'e.g. 15000')}
                     className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-mono"
                   />
                 </div>
@@ -339,7 +341,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
             {/* Logo Upload */}
             <div className="flex flex-col">
               <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                Garage Logo (Receipts & Interface)
+                {t('garageLogoLabel')}
               </label>
               
               <div 
@@ -372,8 +374,8 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                 )}
                 
                 <div className="text-center">
-                  <p className="text-sm font-medium text-emerald-400 group-hover:text-emerald-300">Tap to upload new logo</p>
-                  <p className="text-xs text-stone-500 mt-1">Recommended: Square PNG, transparent background</p>
+                  <p className="text-sm font-medium text-emerald-400 group-hover:text-emerald-300">{t('tapToUploadLogo')}</p>
+                  <p className="text-xs text-stone-500 mt-1">{t('recommendedLogo')}</p>
                 </div>
               </div>
             </div>
@@ -384,19 +386,19 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
           <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
             <Users className="w-4 h-4 text-stone-400" />
-            Manage Departments
+            {t('manageDepartments')}
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Inline Creation Form */}
             <div>
               <p className="text-xs text-stone-400 mb-4 uppercase tracking-wider font-bold border-b border-stone-800/80 pb-2">
-                Provision New Department
+                {t('provisionNewDept')}
               </p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                    Department Name
+                    {t('departmentName')}
                   </label>
                   <input
                     type="text"
@@ -404,13 +406,13 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                     maxLength={50}
                     value={newDeptName}
                     onChange={(e) => setNewDeptName(e.target.value)}
-                    placeholder="e.g. Engine Repair"
+                    placeholder={t('engineRepairPlaceholder')}
                     className="w-full bg-stone-950/50 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-medium"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-1.5">
-                    Role / Function
+                    {t('roleFunction')}
                   </label>
                   <input
                     type="text"
@@ -418,7 +420,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                     maxLength={50}
                     value={newDeptRole}
                     onChange={(e) => setNewDeptRole(e.target.value)}
-                    placeholder="e.g. Diagnostics"
+                    placeholder={t('diagnosticsPlaceholder')}
                     className="w-full bg-stone-950/50 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-medium"
                   />
                 </div>
@@ -433,7 +435,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                   ) : (
                     <>
                       <PlusCircle className="w-4 h-4" />
-                      Add Department
+                      {t('addDepartmentBtn')}
                     </>
                   )}
                 </button>
@@ -443,12 +445,12 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
             {/* Active Departments List */}
             <div>
               <p className="text-xs text-stone-400 mb-4 uppercase tracking-wider font-bold border-b border-stone-800/80 pb-2">
-                Active Departments ({departments.length})
+                {t('activeDepartmentsCount')} ({departments.length})
               </p>
               
               {departments.length === 0 ? (
                 <div className="bg-stone-950/40 border border-stone-800 border-dashed rounded-xl p-4 text-center">
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">No departments listed</p>
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">{t('noDeptsListed', 'No departments listed')}</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
@@ -477,13 +479,13 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
           <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-stone-400" />
-            Inventory Automation Strategies
+            {t('inventoryAutomation')}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span>Low-Stock Warning Boundary</span>
+                <span>{t('lowStockBoundary')}</span>
               </label>
               <input
                 type="number"
@@ -491,17 +493,17 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                 onChange={(e) => setLowStockThreshold(Number(e.target.value))}
                 min="0"
                 step="1"
-                placeholder="e.g. 5"
+                placeholder={t('thresholdEg', 'e.g. 5')}
                 className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-mono"
               />
               <p className="text-xs text-stone-500 mt-2 font-medium leading-relaxed">
-                Automatically trigger a bright red badge globally across the Inventory system if physical limits equal or fall below this count.
+                {t('lowStockExplanation')}
               </p>
             </div>
             
             <div>
               <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <span>Global Markup Premium (%)</span>
+                <span>{t('globalMarkupPremium')}</span>
               </label>
               <input
                 type="number"
@@ -509,11 +511,11 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                 onChange={(e) => setInventoryMarkup(Number(e.target.value))}
                 min="0"
                 step="5"
-                placeholder="e.g. 15"
+                placeholder={t('markupEg', 'e.g. 15')}
                 className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all font-mono"
               />
               <p className="text-xs text-stone-500 mt-2 font-medium leading-relaxed">
-                Applies a strict percentage multiplication factor natively calculating profit premiums over base physical stock costs instantly on mechanic checkouts.
+                {t('markupExplanation')}
               </p>
             </div>
           </div>
@@ -523,23 +525,23 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
           <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-stone-400" />
-            Customer Communications
+            {t('customerCommunications')}
           </h2>
 
           <div>
              <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                WhatsApp Checkout Signature
+                {t('whatsappSignatureLabel')}
               </label>
               <textarea
                 value={whatsappTemplate}
                 onChange={(e) => setWhatsappTemplate(e.target.value)}
-                placeholder="Write the message that appears at the bottom of customer checkout receipts..."
+                placeholder={t('whatsappTemplatePlaceholder', 'Write the message that appears at the bottom of customer checkout receipts...')}
                 rows={5}
                 className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all resize-y font-mono"
               />
               <p className="text-xs text-stone-500 mt-3 font-medium flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-stone-600 flex-shrink-0" />
-                This message will automatically append to the bottom of all digital invoices sent to your customers when a job is marked paid. Use it for warranties, thank-yous, or operating hours.
+                {t('whatsappExplanation')}
               </p>
           </div>
         </div>
@@ -548,14 +550,14 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
         <div className="bg-stone-900/60 border border-stone-800 rounded-2xl p-5 sm:p-6 shadow-sm">
           <h2 className="text-sm font-bold text-stone-200 uppercase tracking-widest mb-6 flex items-center gap-2">
             <ImageIcon className="w-4 h-4 text-stone-400" />
-            Invoice Customization
+            {t('invoiceCustomization')}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                  Brand Theme Color
+                  {t('brandThemeColor')}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -576,17 +578,17 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
 
               <div>
                 <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                  Default Invoice Message
+                  {t('defaultInvoiceMsg')}
                 </label>
                 <textarea
                   value={invoiceMessage}
                   onChange={(e) => setInvoiceMessage(e.target.value)}
-                  placeholder="e.g. Quality service. Reliable repairs. Happier journeys."
+                  placeholder={t('invoiceMessageEg', 'e.g. Quality service. Reliable repairs. Happier journeys.')}
                   rows={3}
                   className="w-full bg-stone-950/50 border border-stone-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:bg-stone-900 transition-all resize-none font-medium"
                 />
                 <p className="text-[10px] text-stone-500 mt-1 uppercase tracking-wider">
-                  Appears directly under the "INVOICE" title.
+                  {t('invoiceMsgExplanation')}
                 </p>
               </div>
             </div>
@@ -594,7 +596,7 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
             {/* Watermark Upload */}
             <div className="flex flex-col">
               <label className="block text-xs font-bold text-stone-400 uppercase tracking-wider mb-2">
-                Garage Watermark (Invoices)
+                {t('garageWatermarkLabel')}
               </label>
               
               <div 
@@ -631,8 +633,8 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
                 )}
                 
                 <div className="text-center">
-                  <p className="text-sm font-medium text-emerald-400 group-hover:text-emerald-300">Tap to upload watermark</p>
-                  <p className="text-xs text-stone-500 mt-1">Rendered transparently behind A4 grids</p>
+                  <p className="text-sm font-medium text-emerald-400 group-hover:text-emerald-300">{t('tapToUploadWatermark')}</p>
+                  <p className="text-xs text-stone-500 mt-1">{t('watermarkExplanation')}</p>
                 </div>
               </div>
             </div>
@@ -649,12 +651,12 @@ export const ShopSettingsScreen: React.FC<{ garageId: string }> = ({ garageId })
             {saving ? (
               <>
                 <div className="w-5 h-5 border-2 border-emerald-900/20 border-t-emerald-950 rounded-full animate-spin" />
-                Syncing Settings...
+                {t('syncingSettings')}
               </>
             ) : (
               <>
                 <Save className="w-5 h-5 stroke-[2.5]" />
-                Commit Native Overrides
+                {t('commitNativeOverrides')}
               </>
             )}
           </button>

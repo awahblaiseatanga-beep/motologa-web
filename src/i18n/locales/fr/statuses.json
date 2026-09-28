@@ -1,0 +1,19 @@
+{
+  "Awaiting_Approval": "En attente de validation",
+  "Diagnosis": "Diagnostic",
+  "In_Repair": "En réparation",
+  "Paused": "En pause",
+  "Pending_QC": "Attente contrôle qualité",
+  "Ready_Released": "Prêt / Libéré",
+  "Work_Done": "Travail terminé",
+  "cancelled": "Annulé",
+  "completed": "Terminé",
+  "customer_approved": "Approuvé",
+  "hod": "Responsable",
+  "in_progress": "En cours",
+  "owner": "Patron",
+  "paused": "En pause",
+  "pending": "En attente",
+  "scheduled": "Programmé",
+  "worker": "Technicien"
+}
