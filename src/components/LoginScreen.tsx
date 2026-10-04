@@ -95,7 +95,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, invite
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#051112] relative overflow-x-hidden overflow-y-auto flex items-center justify-center p-4 sm:p-6 select-none">
+    <div className="min-h-[100dvh] w-full bg-[#051112] relative overflow-y-auto flex items-center justify-center p-4 sm:p-6 select-none">
       {/* Background gradient effect - MOTOLOGA Deep Teal Atmosphere */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#0E2829]/90 via-[#071A1B] to-[#030A0A] pointer-events-none" />
 

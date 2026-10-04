@@ -47,8 +47,8 @@ export const NotificationBell: React.FC<{
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-stone-900 border border-stone-700 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top-right animate-in fade-in zoom-in-95 duration-200">
-          <div className="p-4 border-b border-stone-800 bg-stone-950/80 flex items-center justify-between">
+        <div className="fixed left-2 right-2 top-[60px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 max-w-[calc(100vw-16px)] bg-stone-900 border border-stone-700 rounded-2xl shadow-2xl overflow-hidden z-50 origin-top sm:origin-top-right animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[80dvh]">
+          <div className="p-3 sm:p-4 border-b border-stone-800 bg-stone-950/80 flex items-center justify-between shrink-0">
             <h3 className="font-black text-white flex items-center gap-2">
               <Bell className="w-4 h-4 text-sky-400" />
               {t('notifications.title', 'Notifications')}
@@ -71,7 +71,7 @@ export const NotificationBell: React.FC<{
             </div>
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="overflow-y-auto flex-1 min-h-[100px]">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-stone-500 flex flex-col items-center">
                 <Bell className="w-8 h-8 opacity-20 mb-2" />
@@ -94,15 +94,15 @@ export const NotificationBell: React.FC<{
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <h4 className={`text-sm font-bold ${!notif.read_at ? 'text-white' : 'text-stone-300'}`}>
+                        <div className="flex items-start sm:items-center justify-between gap-2 mb-1 flex-col sm:flex-row">
+                          <h4 className={`text-sm font-bold ${!notif.read_at ? 'text-white' : 'text-stone-300'} break-words w-full`}>
                             {translator(notif).title}
                           </h4>
-                          <span className="text-[10px] font-mono text-stone-500 shrink-0">
+                          <span className="text-[10px] font-mono text-stone-500 shrink-0 self-start sm:self-auto">
                             {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className={`text-xs ${!notif.read_at ? 'text-sky-100/70' : 'text-stone-500'} leading-relaxed`}>
+                        <p className={`text-xs ${!notif.read_at ? 'text-sky-100/70' : 'text-stone-500'} leading-relaxed break-words`}>
                           {translator(notif).message}
                         </p>
                       </div>

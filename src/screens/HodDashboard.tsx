@@ -1,24 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { QueueScreen } from './QueueScreen';
 import { RosterScreen } from './RosterScreen';
 import { AppointmentsScreen } from './AppointmentsScreen';
 import { IntakeScreen } from '../components/IntakeScreen';
 import { CustomerOutboxScreen } from './CustomerOutboxScreen';
 import { LicensePlateBadge } from '../components/LicensePlateBadge';
-import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
-import { fetchGarageMembers, fetchDepartments, createJob, mapDbJobToUiJob, hasNarrativeContent } from '../lib/api';
-import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
-import { supabase } from '../lib/supabase';
-import { InvoiceGenerator } from '../components/InvoiceGenerator';
-import { VoiceRecorderField } from '../components/VoiceRecorderField';
-import { useTranslation } from 'react-i18next';
+import { fetchGarageMembers, fetchDepartments, createJob } from '../lib/api';
 import { GarageMember, Department, Job, DeferredRepair, JobStatus, AppointmentReservation } from '../types';
 import {
   Users,
   Wrench,
   PlusCircle,
   CheckCircle2,
-  Calendar,
+  Clock,
   Send,
   FileEdit,
   Check,
@@ -29,26 +23,21 @@ import {
   AlertCircle,
   RefreshCw,
   ShieldCheck,
-  Printer,
-  Mic,
-  Square,
-  FileAudio,
-  ShieldAlert,
-  MessageSquare,
-  AlertTriangle
+  Calendar,
 } from 'lucide-react';
+import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
 
 export interface HodDashboardProps {
   userId: string;
   garageId: string;
   departmentId?: string;
   departmentName?: string;
+  canIntake?: boolean;
   membership?: GarageMember | null;
-  garageName?: string;
   jobs?: Job[];
   deferredRepairs?: DeferredRepair[];
   onUpdateJob?: (job: Job) => void;
-  onAddJob?: (job: Job) => Promise<void> | void; // i18n-ignore
+  onAddJob?: (job: Job) => Promise<void> | void;
   onNavigateToCheckout?: (jobId?: string) => void;
   activeTab?: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue';
   onTabChange?: (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue') => void;
@@ -60,8 +49,8 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   garageId,
   departmentId,
   departmentName,
+  canIntake,
   membership,
-  garageName,
   jobs: passedJobs,
   deferredRepairs,
   onUpdateJob,
@@ -71,49 +60,26 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   onTabChange,
   hideTopNav = false,
 }) => {
-  const { t } = useTranslation('owner');
   const [internalTab, setInternalTab] = useState<'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue'>('queue');
   const activeTab = propActiveTab !== undefined ? propActiveTab : internalTab;
   const handleTabSelect = (tab: 'queue' | 'roster' | 'intake' | 'appointments' | 'outbox' | 'my-queue') => {
     setInternalTab(tab);
     if (onTabChange) onTabChange(tab);
   };
-
-  const HOD_TABS = useMemo(() => {
-    const tabs: TabItem[] = [
-      { id: 'queue', label: t('floorTab'), icon: <Wrench className="w-5 h-5" />, color: '#34d399' },
-      { id: 'my-queue', label: t('jobsTab'), icon: <Car className="w-5 h-5" />, color: '#10b981' },
-      { id: 'outbox', label: t('outboxTab'), icon: <Send className="w-5 h-5" />, color: '#38bdf8' },
-      { id: 'roster', label: t('staffTab'), icon: <Users className="w-5 h-5" />, color: '#a78bfa' },
-      { id: 'appointments', label: t('appointmentsTab'), icon: <Calendar className="w-5 h-5" />, color: '#fca5a5' },
-      { id: 'intake', label: t('registerTab'), icon: <PlusCircle className="w-5 h-5" />, color: '#fbbf24' },
-    ];
-    return tabs;
-  }, []);
-
-  const currentTabIndex = HOD_TABS.findIndex((t) => t.id === activeTab);
-
-  const [estimatingJob, setEstimatingJob] = useState<Job | null>(null);
-
   const [members, setMembers] = useState<GarageMember[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [successToast, setSuccessToast] = useState<string | null>(null);
-  
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [hodJobSummary, setHodJobSummary] = useState('');
-  const [hodRejectionNote, setHodRejectionNote] = useState('');
-  const [hodRejectionVoiceUrl, setHodRejectionVoiceUrl] = useState('');
 
   // Department & HOD Identity
-  const effectiveDeptName = departmentName || t('deptMechBay');
-  const hodName = membership?.full_name || t('unnamedStaff');
+  const effectiveDeptName = departmentName || 'Mechanical Bay & Diagnostics';
+  const hodName = membership?.full_name || membership?.email?.split('@')[0] || 'Marcus Vance';
 
   const todayKey = new Date().toISOString().split('T')[0];
   const storageKey = `motologa_hod_notes_${garageId}_${departmentId || 'dept'}_${todayKey}`;
 
-  // User-authored HOD Daily Notes State (now storing cloud URL)
-  const [savedAudioUrl, setSavedAudioUrl] = useState<string>(() => {
+  // User-authored HOD Daily Notes State
+  const [dailyNote, setDailyNote] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       return saved || '';
@@ -121,64 +87,16 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       return '';
     }
   });
-  
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(() => {
     try {
-      return localStorage.getItem(`${storageKey}_time`) || null;
+      const saved = localStorage.getItem(`${storageKey}_time`);
+      return saved || null;
     } catch {
       return null;
     }
   });
-
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isNoteSentToOwner, setIsNoteSentToOwner] = useState(false);
-  
-  // Media Recorder States
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const durationIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  const toggleRecording = async () => {
-    if (isRecording && mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
-        const chunks: BlobPart[] = [];
-        
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'audio/webm' });
-          setAudioBlob(blob);
-          stream.getTracks().forEach(t => t.stop());
-        };
-        
-        recorder.start();
-        mediaRecorderRef.current = recorder;
-        setIsRecording(true);
-        setRecordingDuration(0);
-        setAudioBlob(null);
-
-        durationIntervalRef.current = setInterval(() => {
-          setRecordingDuration(prev => prev + 1);
-        }, 1000);
-      } catch (err: any) {
-        console.error("Microphone error", err);
-        showToast(t('micAccessDenied'));
-      }
-    }
-  };
-
-  const formatDuration = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${mins}:${s.toString().padStart(2, '0')}`;
-  };
 
   // Initial floor jobs fallback
   const initialFloorJobs: Job[] = [
@@ -238,55 +156,24 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
     }
   }, [passedJobs]);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [memberList, deptList] = await Promise.all([
-        fetchGarageMembers(garageId),
-        fetchDepartments(garageId),
-      ]);
-      setMembers(memberList);
-      setDepartments(deptList);
-
-      if (departmentId) {
-        // Fetch all jobs and strictly filter locally based on the assigned mechanic's department_id mapping
-        const { data: jobsData } = await supabase
-          .from('jobs')
-          .select(`*, job_media(*), mechanic:garage_members!jobs_assigned_to_fkey(full_name, email, department_id)`)
-          .or('status.eq.IN_PROGRESS,and(status.eq.COMPLETED,hod_review_pending.eq.true)')
-          .order('created_at', { ascending: false });
-
-        let deptJobs: Record<string, unknown>[] = [];
-        if (jobsData) {
-          deptJobs = jobsData.filter((j: Record<string, unknown>) => {
-            const mech = j.mechanic as { department_id?: string } | null;
-            return mech?.department_id === departmentId;
-          });
-          setFloorJobs(deptJobs.map(mapDbJobToUiJob));
-        }
-
-        // Safe Department HOD Inbox Routing handled by CustomerOutboxScreen exclusively.
-      }
-    } catch (err) {
-      console.error('Failed to load HOD data', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
-
-    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, () => loadData());
-    const unsubMembers = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_MEMBERS, () => loadData());
-    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, () => loadData());
-
-    return () => {
-      unsubJobs();
-      unsubMembers();
-      unsubReconnect();
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [memberList, deptList] = await Promise.all([
+          fetchGarageMembers(garageId),
+          fetchDepartments(garageId),
+        ]);
+        setMembers(memberList);
+        setDepartments(deptList);
+      } catch (err) {
+        console.error('Failed to load HOD data', err);
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [garageId, departmentId]);
+    loadData();
+  }, [garageId]);
 
   // Dept members with friendly fallback
   const rawDeptMembers = departmentId
@@ -299,6 +186,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       garage_id: garageId || 'demo-garage',
       user_id: 'usr-01',
       role: 'worker',
+      is_hod: false,
       department_id: departmentId || 'dept-mech',
       full_name: 'Tariq Ahmed',
       email: 'tariq.ahmed@motologa.com',
@@ -308,6 +196,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       garage_id: garageId || 'demo-garage',
       user_id: 'usr-02',
       role: 'worker',
+      is_hod: false,
       department_id: departmentId || 'dept-mech',
       full_name: 'Alex Rivera',
       email: 'alex.rivera@motologa.com',
@@ -317,6 +206,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       garage_id: garageId || 'demo-garage',
       user_id: 'usr-03',
       role: 'worker',
+      is_hod: false,
       department_id: departmentId || 'dept-mech',
       full_name: 'Devonte Miller',
       email: 'devonte.m@motologa.com',
@@ -339,7 +229,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const handleMarkInspected = (job: Job) => {
     const isAlreadyInspected = (job.status === 'Ready/Released' || Boolean(job.inspectedByHod));
     if (isAlreadyInspected) {
-      showToast(t('alreadyInspectedToast', { plate: job.licensePlate }));
+      showToast(`${job.licensePlate} is already inspected and ready for release`);
       return;
     }
 
@@ -353,7 +243,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
     };
     setFloorJobs((prev) => prev.map((j) => (j.id === job.id ? updated : j)));
     onUpdateJob?.(updated);
-    showToast(t('inspectionCompleteToast', { plate: job.licensePlate }));
+    showToast(`Inspection Complete! ${job.licensePlate} is now in Ready for Release state.`);
   };
 
   const handleReopenJob = (job: Job) => {
@@ -366,50 +256,36 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
     };
     setFloorJobs((prev) => prev.map((j) => (j.id === job.id ? updated : j)));
     onUpdateJob?.(updated);
-    showToast(t('jobReopenedToast', { plate: job.licensePlate }));
+    showToast(`${job.licensePlate} reopened back to In Repair.`);
   };
 
-  const handleSendAudioReport = async () => {
-    if (!audioBlob) {
-      showToast(t('recordAudioFirstToast'));
-      return;
-    }
-
+  const handleSaveDailyNote = () => {
     setIsSavingNote(true);
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     try {
-      const fileName = `hod-reports/${garageId}/${departmentId}/${Date.now()}.webm`;
-      
-      const { data, error } = await supabase.storage
-        .from('garage-media')
-        .upload(fileName, audioBlob, { contentType: 'audio/webm' });
-
-      if (error) throw error;
-
-      const { data: publicUrlData } = supabase.storage
-        .from('garage-media')
-        .getPublicUrl(fileName);
-
-      const url = publicUrlData.publicUrl;
-
-      // Save to UI and localstorage
-      setSavedAudioUrl(url);
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      localStorage.setItem(storageKey, url);
+      localStorage.setItem(storageKey, dailyNote);
       localStorage.setItem(`${storageKey}_time`, now);
       setLastSavedTime(now);
-
-      setIsNoteSentToOwner(true);
-      showToast(t('audioReportSentToast'));
-    } catch (err: any) {
-      console.error('Error uploading report:', err);
-      showToast(t('audioReportFailToast'));
+      showToast('Daily note saved successfully');
+    } catch {
+      showToast('Note saved in current session');
     } finally {
       setIsSavingNote(false);
     }
   };
 
+  const handleSendNoteToOwner = () => {
+    if (!dailyNote.trim()) {
+      showToast('Please type your report notes first');
+      return;
+    }
+    handleSaveDailyNote();
+    setIsNoteSentToOwner(true);
+    showToast('Report sent to Workshop Owner');
+  };
+
   return (
-    <div className="flex flex-col flex-1 gap-4 w-full h-full max-w-full pb-32">
+    <div className="flex flex-col flex-1 gap-4 w-full h-full max-w-full pb-8">
       {/* Toast Alert */}
       {successToast && (
         <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 bg-emerald-900 border border-emerald-400 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in">
@@ -419,11 +295,11 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       )}
 
       {/* 1. CLEAN TOP HEADER */}
-      <div className="bg-stone-900/90 border border-stone-800/90 px-3.5 py-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-        <div className="min-w-0">
+      <div className="bg-stone-900/90 border border-stone-800/90 px-3.5 py-3 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+        <div className="min-w-0 w-full md:w-auto">
           <div className="flex items-center gap-2">
             <span className="text-[11px] uppercase font-mono tracking-wider text-[#34D399] font-bold">
-              {t('hodTitle')}
+              Head of Department
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
@@ -431,29 +307,44 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             {effectiveDeptName}
           </h1>
           <p className="text-xs text-stone-400 truncate">
-            {t('leadLabel')} <span className="text-stone-200 font-medium">{hodName}</span>
+            Lead: <span className="text-stone-200 font-medium">{hodName}</span>
           </p>
         </div>
-        <button
-          onClick={() => handleTabSelect('intake')}
-          className="flex-shrink-0 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400 flex items-center justify-center gap-2"
-        >
-          <PlusCircle className="w-5 h-5" />
-          <span>{t('registerNewVehicleBtn')}</span>
-        </button>
+
+        {/* TopNav removal left intentionally blank since bottom navbar controls it */}
       </div>
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center p-8 sm:p-12 text-stone-300 text-sm font-medium bg-stone-900 border border-stone-800 rounded-2xl">
           <RefreshCw className="w-5 h-5 text-[#34D399] animate-spin mr-2" />
-          {t('loadingDeptData')}
+          Loading department data...
         </div>
       ) : (
         <>
           {activeTab === 'outbox' && (
-            <CustomerOutboxScreen userRole="hod" garageId={garageId} departmentId={departmentId} garageName={garageName || 'MOTOLOGA GARAGE'} departmentName={effectiveDeptName} />
+            <div className="animate-in fade-in duration-200">
+              <CustomerOutboxScreen
+                userRole="hod"
+                garageId={garageId}
+                departmentId={departmentId}
+                garageName={'MOTOLOGA GARAGE'}
+                departmentName={effectiveDeptName}
+              />
+            </div>
           )}
           
+          {activeTab === 'my-queue' && (
+            <div className="animate-in fade-in duration-200">
+              <QueueScreen
+                userRole="worker"
+                garageId={garageId}
+                departmentId={departmentId}
+                departmentName={effectiveDeptName}
+                currentUserId={userId}
+              />
+            </div>
+          )}
+
           {/* APPOINTMENTS & FUTURE RESERVATIONS TAB */}
           {activeTab === 'appointments' && (
             <div className="animate-in fade-in duration-200">
@@ -465,10 +356,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             </div>
           )}
           {/* INTAKE TAB */}
-          {activeTab === 'intake' && (
+          {activeTab === 'intake' && canIntake && (
             <div className="animate-in fade-in duration-200">
               <IntakeScreen
-                garageId={garageId}
                 availableMechanics={deptMembers}
                 onNavigateToQueue={() => handleTabSelect('queue')}
                 onJobCreated={async (newJob) => {
@@ -476,7 +366,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   const assignedJob: Job = {
                     ...newJob,
                     id: jobId,
-                    status: newJob.mechanicAssigned && newJob.mechanicAssigned !== t('unassignedLabel') ? 'In Repair' : 'Diagnosis',
+                    status: newJob.mechanicAssigned && newJob.mechanicAssigned !== 'Unassigned' ? 'In Repair' : 'Diagnosis',
                     workerCompleted: false,
                     inspectedByHod: false,
                     released: false,
@@ -505,7 +395,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                     console.warn('createJob fallback:', e);
                   }
 
-                  showToast(t('jobCreatedToast', { plate: assignedJob.licensePlate, mechanic: assignedJob.mechanicAssigned }));
+                  showToast(`Job card created for ${assignedJob.licensePlate} on floor & assigned to ${assignedJob.mechanicAssigned}!`);
                   handleTabSelect('queue');
                 }}
               />
@@ -528,32 +418,19 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             </div>
           )}
 
-          {/* MY BAY (HOD AS WORKER) */}
-          {activeTab === 'my-queue' && (
-            <div className="animate-in fade-in duration-200">
-              <QueueScreen
-                userRole="worker"
-                garageId={garageId}
-                departmentId={departmentId}
-                departmentName={effectiveDeptName}
-                currentUserId={userId}
-              />
-            </div>
-          )}
-
-          {/* MAIN FLOOR (DEPARTMENT OVERVIEW) & HOD NOTES */}
+          {/* MAIN FLOOR & HOD NOTES */}
           {activeTab === 'queue' && (
             <div className="flex flex-col gap-3.5 sm:gap-4 animate-in fade-in duration-200">
               {/* 2. AT-A-GLANCE NUMBERS (Clean, High Contrast, Large Text) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    {t('jobsTab')}
+                    In Bays
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 sm:mt-1 font-mono">
                     {inBayCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('repairsActiveDesc')}</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">Repairs active</span>
                 </div>
 
                 <div className={`border p-2.5 sm:p-3.5 rounded-xl transition-all ${awaitingInspectionCount > 0
@@ -562,7 +439,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   }`}>
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                      {t('needInspectionTab')}
+                      Need Inspection
                     </span>
                     {awaitingInspectionCount > 0 && (
                       <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
@@ -571,27 +448,27 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-indigo-400 mt-0.5 sm:mt-1 font-mono">
                     {awaitingInspectionCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-indigo-300/80 block truncate">{t('workerDoneLabel')}</span>
+                  <span className="text-[10px] sm:text-xs text-indigo-300/80 block truncate">Worker done ✓</span>
                 </div>
 
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    {t('readyStatusLabel')}
+                    Ready
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-[#34D399] mt-0.5 sm:mt-1 font-mono">
                     {readyCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('inspectedReleaseDesc')}</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">Inspected / release</span>
                 </div>
 
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    {t('mechanicsTab')}
+                    Mechanics
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-white mt-0.5 sm:mt-1 font-mono">
                     {deptMembers.length}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('onShiftDesc')}</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">On shift today</span>
                 </div>
               </div>
 
@@ -602,105 +479,91 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                     <FileEdit className="w-5 h-5 text-[#34D399] shrink-0" />
                     <div>
                       <h2 className="text-sm sm:text-base font-bold text-white leading-tight">
-                        {t('hodDailyWorkLogTitle')}
+                        HOD Daily Work Log & Summary
                       </h2>
                       <p className="text-[11px] sm:text-xs text-stone-400">
-                        {t('hodDailyWorkLogDesc')}
+                        Write notes, issues encountered, or handovers for the day
                       </p>
                     </div>
                   </div>
                   {lastSavedTime && (
                     <span className="text-[10px] sm:text-xs text-stone-400 bg-stone-950 px-2 sm:px-2.5 py-1 rounded-lg border border-stone-800 font-mono shrink-0">
-                      {t('savedAtLabel')} {lastSavedTime}
+                      Saved {lastSavedTime}
                     </span>
                   )}
                 </div>
 
-                {/* HOD Audio Recorder */}
-                <div className="space-y-4">
-                  {savedAudioUrl ? (
-                    <div className="bg-stone-950 border border-stone-800 p-4 rounded-xl flex flex-col gap-3">
-                      <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-wider">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                        {t('todayReportSecured')}
-                      </div>
-                      <audio controls src={savedAudioUrl} className="w-full h-10 filter sepia hue-rotate-180 brightness-90 saturate-200" />
-                      <button
-                        onClick={() => {
-                          setSavedAudioUrl('');
-                          setAudioBlob(null);
-                          setIsNoteSentToOwner(false);
-                        }}
-                        className="text-stone-500 hover:text-stone-300 text-xs text-left underline"
-                      >
-                        {t('recordNewReportLink')}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-3">
-                      {audioBlob ? (
-                        <div className="bg-indigo-950/30 border border-indigo-900/50 p-4 rounded-xl flex flex-col gap-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2"><FileAudio className="w-4 h-4"/> {t('reportPreviewTitle')}</span>
-                            <span className="text-xs text-stone-400 font-mono">{formatDuration(recordingDuration)}</span>
-                          </div>
-                          <audio controls src={URL.createObjectURL(audioBlob)} className="w-full h-10 filter sepia hue-rotate-180 brightness-90 saturate-200" />
-                          <button
-                            onClick={() => { setAudioBlob(null); setRecordingDuration(0); }}
-                            className="text-rose-400 hover:text-rose-300 text-xs text-left underline"
-                          >
-                            {t('discardRerecordLink')}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={toggleRecording}
-                          className={`w-full h-24 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all shadow-md ${
-                            isRecording
-                              ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/20 shadow-xl border-2 border-rose-400 scale-[1.01]'
-                              : 'bg-stone-800 text-stone-300 hover:bg-stone-700 border border-stone-700 active:scale-95'
-                          }`}
-                        >
-                          {isRecording ? (
-                            <>
-                              <Square className="w-8 h-8" />
-                              <span className="font-bold text-sm tracking-widest break-all px-2 text-center">{t('recordingStatus')} {formatDuration(recordingDuration)}</span>
-                              <span className="text-[10px] text-rose-200 uppercase tracking-widest font-black">{t('tapToStop')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="w-8 h-8 opacity-80 text-sky-400" />
-                              <span className="font-bold text-sm text-white">{t('startVoiceReport')}</span>
-                              <span className="text-[10px] text-stone-500 uppercase tracking-widest font-black">{t('tapToRecord')}</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                {/* HOD Text Area */}
+                <div className="space-y-2">
+                  <textarea
+                    id="hod-daily-log-input"
+                    value={dailyNote}
+                    onChange={(e) => {
+                      setDailyNote(e.target.value);
+                      setIsNoteSentToOwner(false);
+                    }}
+                    placeholder="Write your notes for today's work here... e.g. 'Completed 3 brake services. Waiting on alternator part for CE 915 CD. Alex Rivera covered bay 2. All equipment cleaned and secured.'"
+                    rows={4}
+                    className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 sm:p-3.5 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-[#34D399] transition leading-relaxed resize-y"
+                  />
 
-                  {/* Action Buttons */}
-                  {!savedAudioUrl && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-stone-800">
-                      <button
-                        type="button"
-                        onClick={handleSendAudioReport}
-                        disabled={isSavingNote || !audioBlob}
-                        className={`h-10 sm:h-11 px-4 sm:flex-1 font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md ${
-                          audioBlob 
-                            ? 'bg-[#34D399] hover:bg-emerald-400 text-stone-950 cursor-pointer active:scale-95' 
-                            : 'bg-stone-800 text-stone-500 cursor-not-allowed border border-stone-700'
-                        }`}
-                      >
-                        {isSavingNote ? (
-                          <><RefreshCw className="w-5 h-5 animate-spin" /> {t('uploadingStatus')}</>
-                        ) : (
-                          <><Send className="w-5 h-5" /> {isNoteSentToOwner ? t('sentToOwnerStatus') : t('sendAudioReportBtn')}</>
-                        )}
-                      </button>
-                    </div>
-                  )}
+                  {/* Quick suggestion chips to help HOD quickly insert common notes */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const addition = 'All daily safety and tool checks completed with zero issues.';
+                        setDailyNote((prev) => (prev ? `${prev}\n${addition}` : addition));
+                      }}
+                      className="text-[11px] sm:text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 px-2.5 py-1.5 rounded-lg border border-stone-700 transition active:scale-95 min-h-[32px] cursor-pointer"
+                    >
+                      + Tool checks done
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const addition = 'Parts requested for vehicles currently in repair.';
+                        setDailyNote((prev) => (prev ? `${prev}\n${addition}` : addition));
+                      }}
+                      className="text-[11px] sm:text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 px-2.5 py-1.5 rounded-lg border border-stone-700 transition active:scale-95 min-h-[32px] cursor-pointer"
+                    >
+                      + Parts requested
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const addition = 'All assigned jobs completed on schedule.';
+                        setDailyNote((prev) => (prev ? `${prev}\n${addition}` : addition));
+                      }}
+                      className="text-[11px] sm:text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 px-2.5 py-1.5 rounded-lg border border-stone-700 transition active:scale-95 min-h-[32px] cursor-pointer"
+                    >
+                      + Completed on schedule
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action Buttons for HOD Note */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-stone-800">
+                  <button
+                    type="button"
+                    onClick={handleSaveDailyNote}
+                    disabled={isSavingNote}
+                    className="h-10 sm:h-11 px-4 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 border border-stone-700 cursor-pointer active:scale-95"
+                  >
+                    <Save className="w-4 h-4 text-stone-400" />
+                    <span>Save Note</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSendNoteToOwner}
+                    className="h-10 sm:h-11 px-4 sm:flex-1 bg-[#34D399] hover:bg-emerald-400 text-stone-950 font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>
+                      {isNoteSentToOwner ? 'Sent to Owner ✓' : 'Send Daily Report to Owner'}
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -709,268 +572,164 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <Car className="w-4 h-4 sm:w-5 sm:h-5 text-[#34D399]" />
-                    <span>JOBS ({floorJobs.length})</span>
+                    <span>Vehicles on Floor ({floorJobs.length})</span>
                   </h2>
                   <span className="text-[11px] sm:text-xs text-stone-400">
-                    Tap to expand details
+                    Tap to update status
                   </span>
                 </div>
 
                 <div className="space-y-2.5">
                   {floorJobs.map((job) => {
-                    const isPendingQC = job.status === 'Pending QC';
-                    const isExpanded = expandedJobId === job.id;
+                    const isReady = job.status === 'Ready/Released' || Boolean(job.inspectedByHod);
+                    const isDoneByWorker = (job.status === 'Work Done' || Boolean(job.workerCompleted)) && !isReady;
+                    const isInRepair = !isReady && !isDoneByWorker;
 
                     return (
                       <div
                         key={job.id}
-                        className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${isPendingQC
-                            ? 'bg-emerald-950/20 border-emerald-500/40 shadow-sm'
-                            : 'bg-stone-900 border-stone-800'
+                        className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${isDoneByWorker
+                            ? 'bg-indigo-950/30 border-indigo-500/50 shadow-sm ring-1 ring-indigo-500/30'
+                            : isReady
+                              ? 'bg-emerald-950/20 border-emerald-500/40'
+                              : 'bg-stone-900 border-stone-800'
                           }`}
                       >
-                        <div className="flex flex-col gap-2">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="flex flex-col gap-1.5 min-w-0">
-                              <LicensePlateBadge plate={job.licensePlate} size="md" />
-                              <div className="mt-1">
-                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest block mb-0.5">{t('registerIssueLabel', 'Register Issue:')}</span>
-                                <p className="text-xs sm:text-sm text-stone-300 font-medium whitespace-pre-wrap">
-                                  {job.issueDescription || t('diagnosticMaintenanceDesc')}
-                                </p>
-                              </div>
-                            </div>
+                        {/* Plate & Status Row - Mobile Optimized */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center flex-wrap gap-2 min-w-0">
+                            <LicensePlateBadge plate={job.licensePlate} size="sm" className="sm:hidden" />
+                            <LicensePlateBadge plate={job.licensePlate} size="md" className="hidden sm:inline-flex" />
 
-                            <div className="shrink-0 flex flex-col items-end gap-2">
-                              {isPendingQC ? (
-                                <span className="text-[10px] sm:text-xs font-black px-2.5 py-1 rounded-full border bg-blue-500/20 text-blue-300 border-blue-500/40 flex items-center gap-1.5 shadow-sm">
-                                  <ShieldAlert className="w-3.5 h-3.5" /> Ready for QC Inspection
-                                </span>
-                              ) : (
-                                <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full border bg-stone-800 text-stone-400 border-stone-700">
-                                  Waiting for Job Completion
-                                </span>
-                              )}
-                              
-                              <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                                <UserCheck className="w-3 h-3 text-stone-500" /> {job.mechanicAssigned || t('unassignedLabel')}
+                            {isReady ? (
+                              <span className="text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shrink-0 flex items-center gap-1">
+                                <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+                                Ready for Release
                               </span>
-                            </div>
+                            ) : isDoneByWorker ? (
+                              <span className="text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-indigo-500/25 text-indigo-200 border-indigo-500/50 shrink-0 flex items-center gap-1.5 shadow-sm animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                                Work Done • Needs Inspection
+                              </span>
+                            ) : (
+                              <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-amber-500/20 text-amber-300 border-amber-500/40 shrink-0">
+                                In Repair
+                              </span>
+                            )}
                           </div>
 
-                          {isPendingQC && (
+                          {/* "Inspected" Action Button Requested by User */}
+                          {!isReady ? (
                             <button
+                              id={`btn-inspected-${job.id}`}
                               type="button"
-                              onClick={() => {
-                                setExpandedJobId(isExpanded ? null : job.id);
-                                setHodJobSummary(job.hodJobSummary || job.issueDescription || '');
-                                setHodRejectionNote(job.hod_rejection_note || '');
-                                setHodRejectionVoiceUrl(job.hod_voice_note_url || '');
-                              }}
-                              className={`mt-2 w-full min-h-[44px] rounded-xl ${isExpanded ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300' : 'bg-stone-800 hover:bg-stone-700 text-[#34D399] border-stone-700'} font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm border transition-all`}
+                              onClick={() => handleMarkInspected(job)}
+                              className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer active:scale-95 ${isDoneByWorker
+                                  ? 'bg-[#34D399] hover:bg-emerald-400 text-stone-950 ring-2 ring-emerald-300/60 shadow-emerald-950/50'
+                                  : 'bg-stone-800 hover:bg-stone-700 text-emerald-400 border border-emerald-500/30'
+                                }`}
+                              title="Inspect vehicle and approve for Ready for Release"
                             >
-                              <ShieldAlert className="w-4 h-4 stroke-[2.5]" />
-                              <span>{isExpanded ? t('closeInspectionBtn') : t('inspectJobBtn')}</span>
+                              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
+                              <span>Inspected</span>
                             </button>
-                          )}
-                          {!isPendingQC && (
-                            <button
-                               type="button"
-                               onClick={async () => {
-                                 if (isExpanded) {
-                                   setExpandedJobId(null);
-                                 } else {
-                                   setExpandedJobId(job.id);
-                                 }
-                               }}
-                               className={`mt-2 w-full min-h-[44px] rounded-xl ${isExpanded ? 'bg-slate-200 text-slate-700 hover:bg-slate-300 border-slate-300' : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-700'} font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm border transition-all`}
-                            >
-                               <Wrench className="w-4 h-4 stroke-[2.5]" />
-                               <span>{isExpanded ? t('hideDetailsBtn') : t('viewReassignBtn')}</span>
-                            </button>
-                          )}
-
-                          {isExpanded && !isPendingQC && (
-                            <div className="mt-3 pt-4 border-t border-stone-800/60 animate-in slide-in-from-top-2 duration-200 flex flex-col gap-3">
-                              <h4 className="text-[11px] font-black uppercase text-stone-400">{t('manageActiveRepair', 'Manage Active Repair')}</h4>
-                              
-                              <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || t('noRegisterDesc')}</p>
-                              
+                          ) : (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-xl text-xs sm:text-sm font-black bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
+                                <span>Inspected ✓</span>
+                              </span>
                               <button
-                                onClick={async () => {
-                                  // Assign to self
-                                  const { error } = await supabase.from('jobs').update({ assigned_to: userId }).eq('id', job.id);
-                                  if (!error) {
-                                    setFloorJobs(prev => prev.map(j => j.id === job.id ? { ...j, mechanicAssigned: userId, status: 'In Repair' } : j));
-                                    setExpandedJobId(null);
-                                    showToast(t('jobClaimedSuccess'));
-                                    setTimeout(() => handleTabSelect('my-queue'), 1000); // Redirect to their Queue
-                                  } else {
-                                    alert('Failed to claim job: ' + error.message);
-                                  }
-                                }}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-2"
+                                type="button"
+                                onClick={() => handleReopenJob(job)}
+                                className="h-9 sm:h-10 px-2 sm:px-2.5 rounded-xl text-xs font-bold bg-stone-800 text-stone-400 hover:text-white border border-stone-700 flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                                title="Reopen vehicle for more repair work"
                               >
-                                <CheckCircle2 className="w-4 h-4" /> Claim Job to Work
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">Reopen</span>
                               </button>
                             </div>
                           )}
+                        </div>
 
-                          {isExpanded && isPendingQC && (
-                            <div className="mt-3 pt-4 border-t border-stone-800/60 animate-in slide-in-from-top-2 duration-200">
-                              <h4 className="text-[11px] font-black uppercase text-stone-400 mb-3 flex items-center gap-1.5">
-                                <ShieldAlert className="w-3.5 h-3.5 text-blue-400" /> Mechanic Proof of Work
-                              </h4>
-                              
-                              <div className="space-y-4 mb-4 bg-stone-950/50 p-3 rounded-xl border border-stone-800/80">
-                                <div className="bg-gray-800/50 p-3 rounded-md mb-2 border border-gray-700/50">
-                                  <span className="text-[10px] font-black uppercase tracking-wider block mb-1 text-orange-400">{t('customerReportedProblem', 'Customer Reported Problem')}</span>
-                                  <p className="text-sm font-medium text-stone-200 whitespace-pre-wrap">{job.issueDescription || t('noRegisterDesc')}</p>
-                                  {job.voiceNoteUrl && (
-                                    <div className="mt-3">
-                                      <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">{t('registerVoiceNoteLabel', 'Register Voice Note')}</span>
-                                      <audio src={job.voiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">{t('workerNotesLabel', 'Worker Notes')}</span>
-                                  <p className="text-sm font-medium text-stone-200 mt-1.5 whitespace-pre-wrap">{job.workerNotes || t('noManualNotes')}</p>
-                                </div>
-
-                                {job.workerVoiceNoteUrl ? (
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider">{t('voiceMemoLabel', 'Voice Memo')}</span>
-                                    <audio src={job.workerVoiceNoteUrl} controls className="w-full h-10 mt-1.5 rounded-lg opacity-90" />
-                                  </div>
-                                ) : null}
-
-                                {(job.oldPartPhotoUrl || job.newPartPhotoUrl) && (
-                                  <div className="grid grid-cols-2 gap-3 mt-3">
-                                      {job.oldPartPhotoUrl && (
-                                        <div className="space-y-1">
-                                          <span className="text-[9px] font-black uppercase text-stone-500">{t('oldPartLabel', 'Old Part')}</span>
-                                          <img src={job.oldPartPhotoUrl} alt="Before" className="w-full h-24 object-cover rounded-md border border-stone-800" />
-                                        </div>
-                                      )}
-                                      {job.newPartPhotoUrl && (
-                                        <div className="space-y-1">
-                                          <span className="text-[9px] font-black uppercase text-stone-500">{t('newPartLabel', 'New Part')}</span>
-                                          <img src={job.newPartPhotoUrl} alt="After" className="w-full h-24 object-cover rounded-md border border-emerald-900/40" />
-                                        </div>
-                                      )}
-                                  </div>
-                                )}
-                                {job.generalJobPhotoUrl && (
-                                  <div className="space-y-1 mt-3">
-                                    <span className="text-[9px] font-black uppercase text-stone-500">{t('generalPhotoLabel', 'General Photo')}</span>
-                                    <img src={job.generalJobPhotoUrl} alt="General" className="w-full h-32 object-cover rounded-md border border-stone-800" />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="space-y-4 mb-5 border-t border-stone-800/80 pt-4">
-                                <div className="space-y-2">
-                                  <span className="text-[10px] font-black uppercase text-stone-400 tracking-wider flex items-center gap-1">
-                                    <MessageSquare className="w-3.5 h-3.5 text-indigo-400" /> HOD Notes (Invoice Summary or Rejection Reason)
-                                  </span>
-                                  <textarea
-                                    value={isExpanded ? (hodRejectionNote || hodJobSummary) : ''}
-                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                                      setHodJobSummary(e.target.value);
-                                      setHodRejectionNote(e.target.value);
-                                    }}
-                                    placeholder={t('hodNotesPlaceholder')}
-                                    className="w-full rounded-xl bg-stone-950 border border-stone-700 p-3 text-sm font-medium text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all min-h-[90px]"
-                                  />
-                                </div>
-                                <div className="bg-stone-900/50 p-1 rounded-xl">
-                                  <VoiceRecorderField
-                                    audioUrl={hodRejectionVoiceUrl}
-                                    durationSeconds={0}
-                                    onAudioChange={(url) => setHodRejectionVoiceUrl(url)}
-                                    label={t('hodVoiceFeedbackLabel')}
-                                    promptTitle={t('recordVoiceFeedbackPrompt')}
-                                    promptSubtitle={t('speakReasonPrompt')}
-                                    buttonId={`record-hod-voice-${job.id}`}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <button
-                                  onClick={async () => {
-                                    const { error } = await supabase.from('jobs').update({ hod_review_pending: false, hod_job_summary: hodJobSummary, hod_name: hodName, completed_at: new Date().toISOString() }).eq('id', job.id);
-                                    if (!error) {
-                                      const nextJob = { ...job, status: 'Ready/Released' as JobStatus, hodJobSummary };
-                                      setFloorJobs(prev => prev.filter(j => j.id !== job.id)); 
-                                      onUpdateJob?.(nextJob);
-                                      setExpandedJobId(null);
-                                      setHodJobSummary('');
-                                      setHodRejectionNote('');
-                                      setHodRejectionVoiceUrl('');
-                                      setSuccessToast(t('jobApprovedToast'));
-                                      setTimeout(() => setSuccessToast(null), 3500);
-                                    } else {
-                                      console.error(error);
-                                      alert("DB Error: " + error.message);
-                                    }
-                                  }}
-                                  className="bg-emerald-500 active:scale-95 hover:bg-emerald-600 border border-emerald-600 text-white font-black text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all shadow-sm flex items-center justify-center gap-1.5"
-                                >
-                                  <span>{t('approveToOwnerBtn', 'Approve to Owner')}</span>
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    if (!hasNarrativeContent(hodRejectionNote, hodRejectionVoiceUrl)) {
-                                       alert(t('mustProvideRejectionReason'));
-                                       return;
-                                    }
-                                    let finalHodVoiceUrl = hodRejectionVoiceUrl;
-                                    if (finalHodVoiceUrl && (finalHodVoiceUrl.startsWith('data:') || finalHodVoiceUrl.startsWith('blob:'))) {
-                                      try {
-                                        const res = await fetch(finalHodVoiceUrl);
-                                        const blob = await res.blob();
-                                        const filePath = `${job.id}/hod_reject_voice_${Date.now()}.webm`; 
-                                        const { error: uploadErr } = await supabase.storage.from('garage-media').upload(filePath, blob, { contentType: blob.type });
-                                        if (!uploadErr) {
-                                          const { data } = supabase.storage.from('garage-media').getPublicUrl(filePath);
-                                          finalHodVoiceUrl = data.publicUrl;
-                                        }
-                                      } catch(e) {}
-                                    }
-
-                                    const { error } = await supabase.from('jobs').update({ 
-                                      status: 'IN_PROGRESS', 
-                                      hod_review_pending: false,
-                                      hod_rejection_note: hodRejectionNote,
-                                      hod_voice_note_url: finalHodVoiceUrl,
-                                      hod_name: hodName
-                                    }).eq('id', job.id);
-                                    
-                                    if (!error) {
-                                      const nextJob = { ...job, status: 'In Repair' as JobStatus, hod_rejection_note: hodRejectionNote, hod_voice_note_url: finalHodVoiceUrl };
-                                      setFloorJobs(prev => prev.map(j => j.id === job.id ? nextJob : j));
-                                      onUpdateJob?.(nextJob);
-                                      setExpandedJobId(null);
-                                      setHodRejectionNote('');
-                                      setHodRejectionVoiceUrl('');
-                                      setHodJobSummary('');
-                                      setSuccessToast(t('jobRejectedToast'));
-                                      setTimeout(() => setSuccessToast(null), 3500);
-                                    } else {
-                                      console.error(error);
-                                      alert("DB Error: " + error.message);
-                                    }
-                                  }}
-                                  className="bg-stone-800 active:scale-95 border border-rose-900 hover:bg-rose-950 hover:border-rose-800 text-rose-500 font-extrabold text-xs md:text-sm min-h-[44px] rounded-xl w-full transition-all flex items-center justify-center gap-1.5"
-                                >
-                                  <AlertTriangle className="w-4 h-4 stroke-[2.5]" />
-                                  <span>{t('rejectToWorkBtn', 'Reject to Work')}</span>
-                                </button>
-                              </div>
-                            </div>
+                        {/* Vehicle & Customer Details */}
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
+                          <div className="text-sm sm:text-base font-bold text-white truncate">
+                            {job.vehicleModel}
+                          </div>
+                          {job.customerPhone && (
+                            <a
+                              href={`tel:${job.customerPhone}`}
+                              className="text-xs text-stone-400 hover:text-white flex items-center gap-1 font-mono transition"
+                            >
+                              <Phone className="w-3 h-3 text-[#34D399] shrink-0" />
+                              <span>{job.customerPhone}</span>
+                            </a>
                           )}
+                        </div>
+
+                        {/* Issue Description */}
+                        <p className="text-xs sm:text-sm text-stone-300 mb-2 leading-snug line-clamp-2">
+                          {job.issueDescription || 'Diagnostic & maintenance procedure'}
+                        </p>
+
+                        {/* Workflow Status Banner */}
+                        {isDoneByWorker && (
+                          <div className="mb-2.5 p-2 sm:p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 text-xs text-indigo-200 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                              <span><strong>{job.mechanicAssigned}</strong> marked work done. Please inspect and click <strong>Inspected</strong>.</span>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-indigo-300 shrink-0 uppercase tracking-wider">Awaiting HOD</span>
+                          </div>
+                        )}
+
+                        {isReady && (
+                          <div className="mb-2.5 p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-300 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>Inspected by <strong>{job.inspectedBy || hodName}</strong>. Vehicle is ready for release!</span>
+                            </div>
+                            {onNavigateToCheckout && (
+                              <button
+                                type="button"
+                                onClick={() => onNavigateToCheckout(job.id)}
+                                className="text-[11px] font-bold text-emerald-300 hover:text-white underline shrink-0 cursor-pointer"
+                              >
+                                Release / Checkout →
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {isInRepair && (
+                          <div className="mb-2.5 p-1.5 sm:p-2 rounded-xl bg-stone-950/60 border border-stone-800 text-xs text-stone-300 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span>Work ongoing with <strong>{job.mechanicAssigned || 'Technician'}</strong></span>
+                            </div>
+                            <span className="text-[11px] text-stone-400 font-mono">{job.timeElapsedMinutes || 45} mins</span>
+                          </div>
+                        )}
+
+                        {/* Footer: Assigned Mechanic & Labor Fee */}
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-800/80 text-xs text-stone-400">
+                          <div className="flex items-center gap-1.5 text-stone-300 truncate">
+                            <UserCheck className="w-3.5 h-3.5 text-[#34D399] shrink-0" />
+                            <span className="truncate">Mechanic: <strong className="text-white">{job.mechanicAssigned || 'Unassigned'}</strong></span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs text-stone-400 shrink-0">
+                            {job.laborFeeFcfa !== undefined && (
+                              <span className="font-mono text-[#34D399] font-bold">
+                                {job.laborFeeFcfa.toLocaleString()} FCFA
+                              </span>
+                            )}
+                            <div className="flex items-center gap-1 text-stone-400 font-mono shrink-0">
+                              <Clock className="w-3.5 h-3.5 text-stone-500" />
+                              <span>{job.timeElapsedMinutes || 45}m</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -992,9 +751,9 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
                 <div className="space-y-2">
                   {deptMembers.map((m, index) => {
-                    const name = m.full_name || 'Unnamed Staff';
+                    const name = m.full_name || m.email?.split('@')[0] || `Technician ${index + 1}`;
                     const isHod = m.is_hod;
-                    const bay = `JOBS ${index + 1}`;
+                    const bay = `Bay ${index + 1}`;
 
                     return (
                       <div
@@ -1038,42 +797,24 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
       {/* FIXED BOTTOM COMPONENT ISLAND */}
       {!hideTopNav && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-full sm:w-[95%] max-w-lg px-2">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100vw-32px)] max-w-[420px] pb-[env(safe-area-inset-bottom)] pointer-events-auto">
           <AnimatedTabBar 
-            items={HOD_TABS}
-            activeIndex={currentTabIndex >= 0 ? currentTabIndex : 0}
-            onTabChange={(index) => handleTabSelect(HOD_TABS[index].id as any)}
+            items={[
+              { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5 shrink-0" />, color: '#34D399' },
+              { id: 'my-queue', label: 'Jobs', icon: <Car className="w-5 h-5 shrink-0" />, color: '#10b981' },
+              { id: 'outbox', label: 'Outbox', icon: <Send className="w-5 h-5 shrink-0" />, color: '#38bdf8' },
+              { id: 'roster', label: 'Staff', icon: <Users className="w-5 h-5 shrink-0" />, color: '#c084fc' },
+              { id: 'appointments', label: 'Bookings', icon: <Calendar className="w-5 h-5 shrink-0" />, color: '#fca5a5' },
+              { id: 'intake', label: 'Intake', icon: <PlusCircle className="w-5 h-5 shrink-0" />, color: '#fbbf24' }
+            ]}
+            activeIndex={['queue', 'my-queue', 'outbox', 'roster', 'appointments', 'intake'].indexOf(activeTab || 'queue')}
+            onTabChange={(index) => {
+              const staticTabs = ['queue', 'my-queue', 'outbox', 'roster', 'appointments', 'intake'] as const;
+              handleTabSelect(staticTabs[index] as any);
+            }}
           />
         </div>
-      )}
-
-      {/* ESTIMATE MODAL */}
-      {estimatingJob && (
-        <InvoiceGenerator
-          garageName={garageName || 'MOTOLOGA GARAGE'}
-          departmentName={effectiveDeptName}
-          job={estimatingJob}
-          documentType="ESTIMATE"
-          onClose={() => setEstimatingJob(null)}
-          onConfirmPrint={() => {
-            const waText = `Hello, our technicians have found additional work required on your vehicle. Please review the attached estimate and reply 'APPROVED' so we can proceed with the repair.`;
-            let cleanPhone = estimatingJob.customerPhone.replace(/\D/g, '');
-            if (cleanPhone.startsWith('237')) cleanPhone = cleanPhone.slice(3);
-            if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.slice(1);
-            const waUrl = `https://wa.me/237${cleanPhone}?text=${encodeURIComponent(waText)}`;
-            
-            try {
-              window.open(waUrl, '_blank', 'noopener,noreferrer');
-            } catch (e) {
-              console.log('Unable to auto-open window', e);
-            }
-            
-            // Close WITHOUT triggering any database updates, per the strict safeguard rule
-            setEstimatingJob(null);
-          }}
-        />
       )}
     </div>
   );
 };
-

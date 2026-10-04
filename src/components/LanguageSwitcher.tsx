@@ -75,7 +75,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-stone-900 border border-stone-800 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+        <div className="fixed top-[60px] right-2 sm:absolute sm:top-full sm:right-0 sm:mt-2 w-48 max-w-[calc(100vw-16px)] bg-stone-900 border border-stone-800 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
           <button
             onClick={() => handleSelect('en')}
             className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-stone-800 transition text-sm font-medium text-stone-200"

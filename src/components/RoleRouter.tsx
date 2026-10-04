@@ -376,75 +376,90 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
 
   // Header Bar with Role Badges & Navigation Switcher
   const renderHeader = () => (
-    <header className="bg-stone-900/90 border-b border-emerald-950/60 sticky top-0 z-40 backdrop-blur-md px-4 py-3">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <MotologaLogo className="w-7 h-7 text-[#34D399]" />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-white font-extrabold text-sm tracking-wide">
-                {garage.name || 'MOTOLOGA WORKSHOP'}
-              </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                role === 'owner'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  : role === 'hod'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                  : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
-              }`}>
-                {role === 'owner' ? 'Owner / Admin' : role === 'hod' ? `HOD • ${department?.name || 'Dept'}` : `Technician`}
-              </span>
+    <header className="bg-stone-900/90 border-b border-emerald-950/60 sticky top-0 z-40 backdrop-blur-md px-3 sm:px-4 py-2.5 sm:py-3">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Top/Primary Row: Branding & Essential Utilities */}
+        <div className="flex items-center justify-between w-full min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <MotologaLogo className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 text-[#34D399]" />
+            <div className="min-w-0 flex flex-col justify-center">
+              <div className="flex items-center gap-2">
+                <span className="text-white font-extrabold text-xs sm:text-sm tracking-wide truncate">
+                  {garage.name || 'MOTOLOGA WORKSHOP'}
+                </span>
+                <span className={`hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                  role === 'owner'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : role === 'hod'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                }`}>
+                  {role === 'owner' ? 'Owner' : role === 'hod' ? 'HOD' : 'Technician'}
+                </span>
+              </div>
+              {department && (
+                <p className="text-[10px] sm:text-[11px] text-stone-400 flex items-center gap-1 min-w-0">
+                  <Building2 className="w-3 h-3 text-stone-500 shrink-0" />
+                  <span className="truncate">Dept: <span className="text-stone-300">{department.name}</span></span>
+                </p>
+              )}
             </div>
-            {department && (
-              <p className="text-[11px] text-stone-400 flex items-center gap-1">
-                <Building2 className="w-3 h-3 text-stone-500" />
-                Department: <span className="text-stone-300">{department.name}</span>
-              </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <NotificationBell />
+            {membership && (
+              <LanguageSwitcher
+                currentPreference={membership.profiles?.language_preference ?? null}
+                garageDefault={(garage.default_language as 'en' | 'fr') || 'en'}
+                onPreferenceChange={(pref) => {
+                  setMembership(prev => prev ? { ...prev, profiles: { ...prev.profiles, language_preference: pref } } : prev);
+                }}
+              />
             )}
+            <button
+              onClick={onSignOut}
+              className="p-1.5 sm:p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition shrink-0"
+              title={t('signOutTooltip', 'Sign Out')}
+            >
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Secondary Row (Visible mainly if there are extra desktop/admin controls) */}
+        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-0.5 md:pb-0 scrollbar-none shrink-0 border-t border-stone-800/50 pt-2 md:border-0 md:pt-0 mt-0.5 md:mt-0">
           {/* Dual Role Switcher Toggle */}
-          {role === 'owner' ? (
-            department && membership && membership.role === 'hod' ? (
-              <button
-                onClick={() => setActiveOwnerHat(prev => prev === 'owner' ? 'hod' : 'owner')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all active:scale-95 ${
-                  activeOwnerHat === 'owner' 
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
-                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                }`}
-                title={t('toggleViewTooltip', 'Toggle Dashboard View')}
-              >
-                {activeOwnerHat === 'owner' ? (
-                  <>{t('switchToHodViewBtn', '👔 Switch to HOD View')}</>
-                ) : (
-                  <>{t('switchToOwnerViewBtn', '👑 Switch to Owner View')}</>
-                )}
-              </button>
-            ) : (
-               <div className="hidden sm:flex text-[10px] text-stone-500 bg-stone-800 px-2 py-1 rounded">
-                 (Not HOD assigned in Roster)
-               </div>
-            )
-          ) : null}
+          {role === 'owner' && department && membership && membership.role === 'hod' && (
+            <button
+              onClick={() => setActiveOwnerHat(prev => prev === 'owner' ? 'hod' : 'owner')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-lg border transition-all active:scale-95 shrink-0 ${
+                activeOwnerHat === 'owner' 
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30' 
+                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+              }`}
+              title={t('toggleViewTooltip', 'Toggle Dashboard View')}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {activeOwnerHat === 'owner' ? t('switchToHodViewBtn', 'View as HOD') : t('switchToOwnerViewBtn', 'View as Owner')}
+            </button>
+          )}
 
           {role === 'owner' && isPastDue && (
             <button
               onClick={() => setShowBillingModal(true)}
-              className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse"
+              className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-[11px] sm:text-xs font-bold rounded-lg flex items-center gap-1.5 animate-pulse shrink-0"
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>{t('subscriptionPastDue', 'Subscription Past Due')}</span>
+              <span>{t('subscriptionPastDue', 'Past Due')}</span>
             </button>
           )}
 
           {role === 'owner' && (
             <button
               onClick={() => setShowBillingModal(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
-              title={t('billingSubscriptionAria', 'Billing & Subscription')}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700 shrink-0"
+              title={t('billingSubscriptionAria', 'Billing')}
             >
               <CreditCard className="w-3.5 h-3.5 text-stone-400" />
               <span>{t('billingBtn', 'Billing')}</span>
@@ -453,34 +468,16 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
 
           <button
             onClick={() => setIsEditingProfile(true)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium rounded-lg border border-stone-700"
-            title={t('editIdentityProfile', 'Edit Identity Profile')}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 text-[11px] sm:text-xs font-medium rounded-lg border border-stone-700 shrink-0"
+            title={t('editIdentityProfile', 'Profile')}
           >
             <User className="w-3.5 h-3.5 text-stone-400" />
-            <span>{t('profileBtn', 'Profile')}</span>
+            <span className="hidden sm:inline">{t('profileBtn', 'Profile')}</span>
           </button>
 
-          <NotificationBell />
-          
-          {membership && (
-            <LanguageSwitcher
-              currentPreference={membership.profiles?.language_preference ?? null}
-              garageDefault={(garage.default_language as 'en' | 'fr') || 'en'}
-              onPreferenceChange={(pref) => {
-                setMembership(prev => prev ? { ...prev, profiles: { ...prev.profiles, language_preference: pref } } : prev);
-              }}
-            />
-          )}
-
-          <InstallAppButton variant="header" />
-
-          <button
-            onClick={onSignOut}
-            className="p-2 text-stone-400 hover:text-rose-400 hover:bg-stone-800 rounded-lg transition"
-            title={t('signOutTooltip', 'Sign Out')}
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="shrink-0">
+            <InstallAppButton variant="header" />
+          </div>
         </div>
       </div>
     </header>
@@ -702,7 +699,6 @@ export const RoleRouter: React.FC<RoleRouterProps> = ({
           <HodDashboard
             userId={userId}
             garageId={garage.id}
-            garageName={garage.name}
             departmentId={department?.id}
             departmentName={department?.name}
             membership={membership}

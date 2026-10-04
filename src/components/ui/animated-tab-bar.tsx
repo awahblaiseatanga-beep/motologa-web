@@ -95,10 +95,12 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
             onClick={() => handleItemClick(index)}
             aria-label={item.label}
           >
-            <div className="menu__item-icon-wrapper">
+            <div className="menu__item-icon-wrapper shrink-0">
               {item.icon}
             </div>
-            <span className="menu__item-label text-xs sm:text-sm md:text-base font-semibold tracking-tight whitespace-nowrap px-2 sm:px-4">{item.label}</span>
+            <span className="menu__item-label text-[10px] xs:text-xs sm:text-sm md:text-base font-semibold tracking-tight whitespace-nowrap px-0.5 sm:px-2 overflow-hidden text-ellipsis w-full text-center block">
+              {item.label}
+            </span>
           </button>
         ))}
         <div className="menu__border" ref={menuBorderRef}></div>
