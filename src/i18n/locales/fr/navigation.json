@@ -8,5 +8,11 @@
   "outbox": "Travaux Additionnels",
   "queue": "Travaux",
   "roster": "Équipe",
-  "settings": "Paramètres"
+  "settings": "Paramètres",
+  "hod_floor": "Atelier",
+  "hod_jobs": "Tâches",
+  "hod_outbox": "Extras",
+  "hod_staff": "Équipe",
+  "hod_bookings": "RDV",
+  "hod_intake": "Entrée"
 }

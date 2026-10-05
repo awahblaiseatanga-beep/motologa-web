@@ -159,6 +159,52 @@ export const fetchJobsForMechanic = async (mechanicUserId: string) => {
   return data.map((d: Record<string, unknown>) => mapDbJobToUiJob(d));
 };
 
+// ==========================================
+// Relational Autocomplete Search APIs
+// ==========================================
+
+export const searchCustomers = async (searchTerm: string) => {
+  const cleanTerm = searchTerm.trim();
+  if (cleanTerm.length < 2) return [];
+  
+  const { data, error } = await supabase
+    .from('customers')
+    .select('id, name, phone')
+    .or(`phone.ilike.%${cleanTerm}%,name.ilike.%${cleanTerm}%`)
+    .limit(10);
+    
+  if (error) {
+    console.error('Error searching customers', error);
+    return [];
+  }
+  return data || [];
+};
+
+export const searchVehicles = async (searchTerm: string, customerId?: string) => {
+  const cleanTerm = searchTerm.trim();
+  if (cleanTerm.length < 2 && !customerId) return [];
+  
+  let query = supabase
+    .from('vehicles')
+    .select('id, plate, make, model')
+    .limit(10);
+    
+  if (cleanTerm.length >= 2) {
+     query = query.ilike('plate', `%${cleanTerm}%`);
+  }
+  
+  // Natively Motologa vehicles are related via jobs, but we pull matching plates purely by pattern matching and validating later if customer bound
+  
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error searching vehicles', error);
+    return [];
+  }
+  
+  return data || [];
+};
+
+
 export const fetchCompletedInvoicesToday = async (garageId: string) => {
   const { data, error } = await supabase
     .from('jobs')
@@ -185,38 +231,54 @@ export const fetchCompletedInvoicesToday = async (garageId: string) => {
 
 export const createJob = async (job: Partial<Job>, garageId: string, assignedToUserId: string) => {
   let dbStatus = 'pending';
+  // ... maps dbStatus correctly below
   if (job.status === 'In Repair') dbStatus = 'in_progress';
   if (job.status === 'Ready/Released') dbStatus = 'pending_checkout';
   if (job.status === 'Paused') dbStatus = 'paused';
 
   const finalAssignedTarget = assignedToUserId || null;
 
-  // 1. Relational Upsert: Customers table
-  const { data: customerRecord } = await supabase
-    .from('customers')
-    .upsert(
-      { 
-        phone: job.customerPhone || 'Unknown', 
-        name: job.customerName || 'Walk-in Client' 
-      }, 
-      { onConflict: 'phone' }
-    )
-    .select('id')
-    .single();
+  let finalCustomerId = job.customerId || null;
+  let finalVehicleId = job.vehicleId || null;
 
-  // 1.5. Relational Upsert: Vehicles table
-  const { data: vehicleRecord } = await supabase
-    .from('vehicles')
-    .upsert(
-      { 
-        plate: job.licensePlate || 'UNKNOWN', 
-        model: job.vehicleModel || 'Unspecified',
-        make: 'Unknown' // Derived from unspecified form state
-      }, 
-      { onConflict: 'plate' }
-    )
-    .select('id')
-    .single();
+  // 1. Relational Upsert fallback if no explicit customer ID provided
+  if (!finalCustomerId) {
+    const { data: customerRecord } = await supabase
+      .from('customers')
+      .upsert(
+        { 
+          phone: job.customerPhone || 'Unknown', 
+          name: job.customerName || 'Walk-in Client' 
+        }, 
+        { onConflict: 'phone' }
+      )
+      .select('id')
+      .single();
+    finalCustomerId = customerRecord?.id || null;
+  } else {
+    // Attempt silently updating canonical customer metadata
+    await supabase.from('customers').update({ name: job.customerName }).eq('id', finalCustomerId).select('id');
+  }
+
+  // 1.5. Relational Upsert fallback if no explicit vehicle ID provided
+  if (!finalVehicleId) {
+    const { data: vehicleRecord } = await supabase
+      .from('vehicles')
+      .upsert(
+        { 
+          plate: job.licensePlate || 'UNKNOWN', 
+          model: job.vehicleModel || 'Unspecified',
+          make: 'Unknown'
+        }, 
+        { onConflict: 'plate' }
+      )
+      .select('id')
+      .single();
+    finalVehicleId = vehicleRecord?.id || null;
+  } else {
+    // Attempt silently updating canonical vehicle metadata
+    await supabase.from('vehicles').update({ model: job.vehicleModel }).eq('id', finalVehicleId).select('id');
+  }
 
   const { data, error } = await supabase
     .from('jobs')
@@ -226,8 +288,8 @@ export const createJob = async (job: Partial<Job>, garageId: string, assignedToU
       status: dbStatus,
       description: job.issueDescription || '',
       labor_fee: job.laborFeeFcfa || 0,
-      customer_id: customerRecord?.id || null,
-      vehicle_id: vehicleRecord?.id || null,
+      customer_id: finalCustomerId,
+      vehicle_id: finalVehicleId,
       ...(dbStatus === 'in_progress' ? { started_at: new Date().toISOString() } : {})
     })
     .select()

@@ -4,14 +4,11 @@ import { Job, JobStatus, GarageMember, Department } from '../types';
 import { PhotoCaptureModal } from './PhotoCaptureModal';
 import { MotologaLogo } from './MotologaLogo';
 import { VoiceRecorderField } from './VoiceRecorderField';
-import { fetchDepartments, fetchGarageMembers, hasNarrativeContent } from '../lib/api';
-import { domainEmitter, DOMAIN_EVENTS } from '../lib/invalidationEmitter';
+import { fetchDepartments, fetchGarageMembers } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { CustomerVehicleIdentity } from './CustomerVehicleIdentity';
-import { useTranslation } from 'react-i18next';
 
 interface IntakeScreenProps {
-  onJobCreated: (newJob: Job, assignedToId: string) => Promise<void>; // i18n-ignore
+  onJobCreated: (newJob: Job, assignedToId: string) => Promise<void>;
   onNavigateToQueue: () => void;
   availableMechanics?: GarageMember[];
   garageId?: string;
@@ -37,9 +34,8 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
   const [fetchedMembers, setFetchedMembers] = useState<GarageMember[]>(availableMechanics);
   const [fetchedDepartments, setFetchedDepartments] = useState<Department[]>([]);
   const [busyMechanicIds, setBusyMechanicIds] = useState<string[]>([]);
-  const { t } = useTranslation('intake');
 
-  const loadData = () => {
+  useEffect(() => {
     if (garageId) {
       Promise.all([
         fetchDepartments(garageId),
@@ -54,20 +50,6 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
         }
       }).catch(err => console.error('Failed to fetch garage context for intake:', err));
     }
-  };
-
-  useEffect(() => {
-    loadData();
-
-    const unsubJobs = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_JOBS, loadData);
-    const unsubMembers = domainEmitter.subscribe(DOMAIN_EVENTS.REFETCH_MEMBERS, loadData);
-    const unsubReconnect = domainEmitter.subscribe(DOMAIN_EVENTS.RECONNECT_SYNC, loadData);
-
-    return () => {
-      unsubJobs();
-      unsubMembers();
-      unsubReconnect();
-    };
   }, [garageId]);
 
   // Derived state to group staff by department ID
@@ -92,9 +74,6 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
   const [customerName, setCustomerName] = useState<string>('');
   const [vehicleModel, setVehicleModel] = useState<string>('');
   
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [vehicleId, setVehicleId] = useState<string | null>(null);
-  
   // Store the UUID of the selected mechanic ('unassigned' by default)
   const [assignedMechanic, setAssignedMechanic] = useState<string>('');
   
@@ -114,27 +93,20 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
 
     const trimmedPlate = licensePlate.trim().toUpperCase();
     if (!trimmedPlate) {
-      alert(t('enterLicensePlate'));
+      alert('Please enter a vehicle license plate');
       return;
     }
 
     if (!assignedMechanic || assignedMechanic === 'unassigned') {
-      alert(t('stopSelectMechanic'));
-      return;
-    }
-    
-    if (!hasNarrativeContent(issueDescription, voiceNoteUrl)) {
-      alert(t('logIssueRequired'));
+      alert("STOP: You must select a mechanic before dispatching.");
       return;
     }
 
     const newJob: Job = {
       id: '', // UUID is assigned by Supabase backend
       licensePlate: trimmedPlate,
-      vehicleId: vehicleId || undefined,
       customerPhone: customerPhone.startsWith('+237') ? customerPhone : `+237 ${customerPhone.trim()}`,
       customerName: customerName.trim() || 'Walk-in Client',
-      customerId: customerId || undefined,
       vehicleModel: vehicleModel.trim() || 'Unspecified Vehicle',
       assigned_to: assignedMechanic,
       status: 'Diagnosis' as JobStatus,
@@ -146,7 +118,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       newPartPhotoUrl: '',
       partSource: 'Garage Stock',
       laborFeeFcfa: 15000,
-      issueDescription: issueDescription.trim() || undefined,
+      issueDescription: issueDescription.trim() || 'General mechanical servicing',
       voiceNoteUrl: voiceNoteUrl || undefined,
       voiceNoteDurationSeconds: voiceNoteDuration || undefined,
       deferredRepair: {
@@ -163,15 +135,15 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       if (!navigator.onLine && garageId) {
         const { saveToOfflineQueue } = await import('../services/offlineSync');
         await saveToOfflineQueue(newJob, assignedMechanic, garageId);
-        setToastMessage(t('networkDisconnected'));
+        setToastMessage('Network disconnected. Job saved offline and will sync automatically.');
       } else {
         // Direct hard pass with no fallbacks
         await onJobCreated(newJob, assignedMechanic);
         
         const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
-        const mechName = m?.full_name || t('unnamedStaff');
+        const mechName = m?.full_name || 'Unnamed Staff';
         
-        setToastMessage(t('vehicleLogged', { plate: trimmedPlate, mechanic: mechName }));
+        setToastMessage(`Vehicle ${trimmedPlate} logged & assigned to ${mechName}!`);
       }
 
       // Reset inputs for next car
@@ -179,8 +151,6 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
       setCustomerPhone('');
       setCustomerName('');
       setVehicleModel('');
-      setCustomerId(null);
-      setVehicleId(null);
       setDashboardPhoto('');
       setExteriorPhoto('');
       setIssueDescription('');
@@ -191,7 +161,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
         setToastMessage(null);
       }, 4000);
     } catch (err: any) {
-      alert(err.message || t('jobInsertFailed'));
+      alert(err.message || 'Job insertion failed from database error.');
     }
   };
 
@@ -209,7 +179,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
             onClick={onNavigateToQueue}
             className="px-3 py-1.5 bg-white text-emerald-900 rounded-lg font-black text-xs uppercase tracking-wider shrink-0 hover:bg-emerald-100 active:scale-95"
           >
-            {t('viewQueue')}
+            View Queue
           </button>
         </div>
       )}
@@ -222,10 +192,10 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
-                {t('newVehicleRegister')}
+                New Vehicle Intake
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                {t('doualaYaoundeTerminal')}
+                Douala & Yaoundé Garage Terminal • Offline Active
               </p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-[#0E2829] border-l-4 border-[#34D399] flex items-center justify-center p-1 text-white shadow-xs shrink-0">
@@ -233,26 +203,121 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
             </div>
           </div>
 
-          <CustomerVehicleIdentity 
-             licensePlate={licensePlate} setLicensePlate={setLicensePlate}
-             customerPhone={customerPhone} setCustomerPhone={setCustomerPhone}
-             customerName={customerName} setCustomerName={setCustomerName}
-             vehicleModel={vehicleModel} setVehicleModel={setVehicleModel}
-             customerId={customerId} setCustomerId={setCustomerId}
-             vehicleId={vehicleId} setVehicleId={setVehicleId}
-          />
+          {/* INPUT 1: License Plate (Direct Text Input) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="license-plate-input"
+                className="text-xs font-black uppercase tracking-wider text-slate-700"
+              >
+                1. Vehicle License Plate
+              </label>
+              <span className="text-[10px] sm:text-[11px] font-mono font-bold text-slate-500">
+                e.g. LT 7249 D, CE 8492 C
+              </span>
+            </div>
+
+            <div className="relative">
+              <input
+                id="license-plate-input"
+                type="text"
+                placeholder="e.g. LT 7249 D or CE 8492 C"
+                value={licensePlate}
+                onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-900 font-mono font-black text-base sm:text-lg tracking-wider px-3.5 py-3 rounded-xl border-2 border-slate-300 focus:border-[#34D399] focus:ring-2 focus:ring-emerald-400/20 focus:outline-none min-h-[48px] uppercase transition-all shadow-2xs placeholder:text-slate-400 placeholder:font-normal"
+                maxLength={15}
+                required
+              />
+            </div>
+          </div>
+
+          {/* INPUT 2: Customer Phone Number (+237 prefix placeholder) */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <Phone className="w-3.5 h-3.5 text-slate-500" />
+              2. Customer WhatsApp / Phone
+            </label>
+            <div className="flex items-center rounded-xl border-2 border-slate-300 bg-white overflow-hidden focus-within:border-emerald-600 transition-colors shadow-xs">
+              <div className="bg-stone-200 px-3.5 py-3 text-slate-800 font-black font-mono text-base border-r border-slate-300 select-none flex items-center gap-1.5 min-h-[48px]">
+                <span className="text-sm">🇨🇲</span>
+                <span>+237</span>
+              </div>
+              <input
+                id="customer-phone-input"
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="e.g. 699451288"
+                maxLength={20}
+                className="flex-1 px-3 py-3 font-mono font-bold text-slate-900 text-lg focus:outline-none min-h-[48px] placeholder:text-slate-400 placeholder:font-normal"
+                required
+              />
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Orange Money / MTN Mobile Money & WhatsApp ready
+            </p>
+          </div>
+
+          {/* INPUT 3: Customer Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-slate-500" />
+              3. Customer Name
+            </label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="e.g. Jean Dupont"
+              maxLength={50}
+              className="w-full px-3.5 py-3 rounded-xl border-2 border-slate-300 bg-white font-semibold text-slate-800 text-base focus:border-emerald-600 focus:outline-none min-h-[48px]"
+            />
+          </div>
+
+          {/* Vehicle Make & Model Helper */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              Vehicle Model & Specification
+            </label>
+            <input
+              id="vehicle-model-input"
+              type="text"
+              value={vehicleModel}
+              onChange={(e) => setVehicleModel(e.target.value)}
+              placeholder="e.g. Toyota Hilux 4x4 or Peugeot Partner"
+              maxLength={50}
+              className="w-full px-3.5 py-3 rounded-xl border-2 border-slate-300 bg-white font-semibold text-slate-800 text-base focus:border-emerald-600 focus:outline-none min-h-[48px]"
+            />
+            {/* Quick common garage models in Cameroon */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {COMMON_VEHICLES.slice(0, 4).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setVehicleModel(m)}
+                  className={`min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                    vehicleModel === m
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
+                      : 'bg-stone-50 text-slate-600 border-slate-200 hover:bg-stone-100'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Issue or Servicing Notes */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              {t('reportedFault')}
+              Reported Fault / Diagnostic Request
             </label>
             <textarea
               id="issue-description-input"
               rows={2}
               value={issueDescription}
               onChange={(e) => setIssueDescription(e.target.value)}
-              placeholder={t('issuePlaceholder')}
+              placeholder="e.g. Engine knocking at 2000 RPM, clutch replacement, oil leak"
               maxLength={500}
               className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 bg-white font-medium text-slate-800 text-sm focus:border-emerald-600 focus:outline-none"
             />
@@ -271,7 +336,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
           {/* ACTION AREA: Two massive, prominent buttons for "Capture Dashboard Photo" and "Capture Exterior Photo" */}
           <div className="space-y-2 pt-1 border-t border-slate-100">
             <span className="text-xs font-black uppercase tracking-wider text-slate-700">
-              {t('inspectionEvidence')}
+              Inspection Evidence (Condition Logging)
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Dashboard Button */}
@@ -303,7 +368,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                 <div className="text-left flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-extrabold text-sm sm:text-base leading-tight">
-                      {t('captureDashboard')}
+                      Capture Dashboard Photo
                     </span>
                     {dashboardPhoto && (
                       <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -312,7 +377,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                     )}
                   </div>
                   <span className="text-[11px] sm:text-xs text-slate-500 block leading-tight mt-0.5 line-clamp-2">
-                    {dashboardPhoto ? t('photoAttached') : t('dashboardTips')}
+                    {dashboardPhoto ? 'Photo Attached (Tap to re-capture)' : 'Odometer, warning lights, fuel level'}
                   </span>
                 </div>
                 <Camera className="w-5 h-5 text-slate-400 shrink-0" />
@@ -347,7 +412,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                 <div className="text-left flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-extrabold text-sm sm:text-base leading-tight">
-                      {t('captureExterior')}
+                      Capture Exterior Photo
                     </span>
                     {exteriorPhoto && (
                       <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -356,7 +421,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                     )}
                   </div>
                   <span className="text-[11px] sm:text-xs text-slate-500 block leading-tight mt-0.5 line-clamp-2">
-                    {exteriorPhoto ? t('photoAttached') : t('exteriorTips')}
+                    {exteriorPhoto ? 'Photo Attached (Tap to re-capture)' : 'Scratches, bumper, body pre-checks'}
                   </span>
                 </div>
                 <Camera className="w-5 h-5 text-slate-400 shrink-0" />
@@ -369,15 +434,15 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Wrench className="w-4 h-4 text-emerald-600" />
-                {t('dispatchAssignment')}
+                Dispatch & Mechanic Assignment
               </label>
               <span className="text-[11px] font-bold text-slate-500 bg-stone-100 px-2 py-1 rounded-md border border-slate-200">
-                {t('selected')} <strong className="text-slate-900 ml-1">
+                Selected: <strong className="text-slate-900 ml-1">
                   {assignedMechanic === 'unassigned' || !assignedMechanic
-                    ? t('unassigned')
+                    ? 'Unassigned'
                     : (() => {
                         const m = fetchedMembers.find(m => m.user_id === assignedMechanic);
-                      {return m?.full_name || t('unnamedStaff');}
+                      {return m?.full_name || 'Unnamed Staff';}
                       })()}
                 </strong>
               </span>
@@ -418,11 +483,11 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                             }`}
                           >
                             {!isBusy && <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`}></span>}
-                          <span>{member.full_name || t('unnamedStaff')}</span>
-                            {member.role === 'hod' && <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-amber-300/50">{t('lead')}</span>}
+                          <span>{member.full_name || 'Unnamed Staff'}</span>
+                            {member.role === 'hod' && <span className="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-amber-300/50">Lead</span>}
                             {isBusy 
-                              ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">{t('inBay')}</span>
-                              : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">{t('available')}</span>
+                              ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">In Bay</span>
+                              : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">Available</span>
                             }
                           </button>
                         );
@@ -436,7 +501,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
               {mechanicsByDept.unassigned.length > 0 && (
                 <div className="space-y-2.5">
                   <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-widest pl-1 border-l-2 border-slate-300 ml-1">
-                    {t('unallocatedStaff')}
+                    Unallocated Staff
                   </h4>
                   <div className="flex flex-wrap items-center gap-2.5">
                     {mechanicsByDept.unassigned.map((member) => {
@@ -460,10 +525,10 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
                           }`}
                         >
                           {!isBusy && <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`}></span>}
-                          <span>{member.full_name || t('unnamedStaff')}</span>
+                          <span>{member.full_name || 'Unnamed Staff'}</span>
                           {isBusy 
-                            ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">{t('inBay')}</span>
-                            : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">{t('available')}</span>
+                            ? <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-red-300">In Bay</span>
+                            : <span className="text-[9px] bg-green-100 text-green-700 px-1 py-0.5 rounded font-bold uppercase ml-1 block border border-green-300">Available</span>
                           }
                         </button>
                       );
@@ -482,7 +547,7 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
               className="w-full min-h-[54px] rounded-xl bg-[#0E2829] hover:bg-[#142F30] active:scale-[0.99] text-white font-black text-lg uppercase tracking-wider flex items-center justify-center gap-3 shadow-md border-2 border-emerald-500/40 cursor-pointer transition-all"
             >
               <Check className="w-6 h-6 text-[#34D399] stroke-[3]" />
-              <span>{t('logAndDispatch')}</span>
+              <span>Log & Dispatch</span>
             </button>
           </div>
         </div>
@@ -495,8 +560,8 @@ export const IntakeScreen: React.FC<IntakeScreenProps> = ({
           onClose={() => setActivePhotoModal(null)}
           title={
             activePhotoModal === 'dashboard'
-              ? t('captureDashboardTitle')
-              : t('captureExteriorTitle')
+              ? 'Capture Dashboard & Mileage'
+              : 'Capture Exterior Vehicle Body'
           }
           category={activePhotoModal}
           currentPhotoUrl={activePhotoModal === 'dashboard' ? dashboardPhoto : exteriorPhoto}

@@ -8,5 +8,11 @@
   "outbox": "Additional JOBS",
   "queue": "JOBS",
   "roster": "Roster",
-  "settings": "Shop Settings"
+  "settings": "Shop Settings",
+  "hod_floor": "Floor",
+  "hod_jobs": "Jobs",
+  "hod_outbox": "Outbox",
+  "hod_staff": "Staff",
+  "hod_bookings": "Bookings",
+  "hod_intake": "Intake"
 }

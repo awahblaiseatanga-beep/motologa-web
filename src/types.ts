@@ -24,8 +24,10 @@ export interface DeferredRepair {
 export interface Job {
   id: string;
   licensePlate: string;
+  vehicleId?: string;
   customerPhone: string;
   customerName?: string;
+  customerId?: string;
   vehicleModel: string;
   assigned_to?: string;
   mechanic?: { full_name?: string; email?: string };

@@ -26,6 +26,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { AnimatedTabBar, TabItem } from '../components/ui/animated-tab-bar';
+import { useTranslation } from 'react-i18next';
 
 export interface HodDashboardProps {
   userId: string;
@@ -49,7 +50,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   garageId,
   departmentId,
   departmentName,
-  canIntake,
+  canIntake = true,
   membership,
   jobs: passedJobs,
   deferredRepairs,
@@ -70,10 +71,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  
+  const { t } = useTranslation(['owner', 'navigation', 'common']);
 
   // Department & HOD Identity
-  const effectiveDeptName = departmentName || 'Mechanical Bay & Diagnostics';
-  const hodName = membership?.full_name || membership?.email?.split('@')[0] || 'Marcus Vance';
+  const effectiveDeptName = departmentName || t('owner:deptMechBay', 'Mechanical Bay & Diagnostics');
+  const hodName = membership?.full_name || membership?.email?.split('@')[0] || t('common:unnamedStaff', 'Marcus Vance');
 
   const todayKey = new Date().toISOString().split('T')[0];
   const storageKey = `motologa_hod_notes_${garageId}_${departmentId || 'dept'}_${todayKey}`;
@@ -299,7 +302,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         <div className="min-w-0 w-full md:w-auto">
           <div className="flex items-center gap-2">
             <span className="text-[11px] uppercase font-mono tracking-wider text-[#34D399] font-bold">
-              Head of Department
+              {t('owner:hodTitle', 'Head of Department')}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
@@ -307,7 +310,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
             {effectiveDeptName}
           </h1>
           <p className="text-xs text-stone-400 truncate">
-            Lead: <span className="text-stone-200 font-medium">{hodName}</span>
+            {t('owner:leadLabel', 'Lead:')} <span className="text-stone-200 font-medium">{hodName}</span>
           </p>
         </div>
 
@@ -317,7 +320,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
       {loading ? (
         <div className="flex-1 flex items-center justify-center p-8 sm:p-12 text-stone-300 text-sm font-medium bg-stone-900 border border-stone-800 rounded-2xl">
           <RefreshCw className="w-5 h-5 text-[#34D399] animate-spin mr-2" />
-          Loading department data...
+          {t('owner:loadingDeptData', 'Loading department data...')}
         </div>
       ) : (
         <>
@@ -425,12 +428,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    In Bays
+                    {t('owner:bays', 'In Bays')}
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 mt-0.5 sm:mt-1 font-mono">
                     {inBayCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">Repairs active</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('owner:repairsActiveDesc', 'Repairs active')}</span>
                 </div>
 
                 <div className={`border p-2.5 sm:p-3.5 rounded-xl transition-all ${awaitingInspectionCount > 0
@@ -439,7 +442,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   }`}>
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                      Need Inspection
+                      {t('owner:needInspectionTab', 'Need Inspection')}
                     </span>
                     {awaitingInspectionCount > 0 && (
                       <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
@@ -448,27 +451,27 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-indigo-400 mt-0.5 sm:mt-1 font-mono">
                     {awaitingInspectionCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-indigo-300/80 block truncate">Worker done ✓</span>
+                  <span className="text-[10px] sm:text-xs text-indigo-300/80 block truncate">{t('owner:workerDoneLabel', 'Worker done ✓')}</span>
                 </div>
 
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    Ready
+                    {t('owner:readyStatusLabel', 'Ready')}
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-[#34D399] mt-0.5 sm:mt-1 font-mono">
                     {readyCount}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">Inspected / release</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('owner:inspectedReleaseDesc', 'Inspected / release')}</span>
                 </div>
 
                 <div className="bg-stone-900 border border-stone-800 p-2.5 sm:p-3.5 rounded-xl">
                   <span className="text-[11px] sm:text-xs text-stone-400 font-medium block truncate">
-                    Mechanics
+                    {t('owner:mechanicsTab', 'Mechanics')}
                   </span>
                   <div className="text-xl sm:text-2xl md:text-3xl font-black text-white mt-0.5 sm:mt-1 font-mono">
                     {deptMembers.length}
                   </div>
-                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">On shift today</span>
+                  <span className="text-[10px] sm:text-xs text-stone-400 block truncate">{t('owner:onShiftDesc', 'On shift today')}</span>
                 </div>
               </div>
 
@@ -479,10 +482,10 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                     <FileEdit className="w-5 h-5 text-[#34D399] shrink-0" />
                     <div>
                       <h2 className="text-sm sm:text-base font-bold text-white leading-tight">
-                        HOD Daily Work Log & Summary
+                        {t('owner:hodDailyWorkLogTitle', 'HOD Daily Work Log & Summary')}
                       </h2>
                       <p className="text-[11px] sm:text-xs text-stone-400">
-                        Write notes, issues encountered, or handovers for the day
+                        {t('owner:hodDailyWorkLogDesc', 'Write notes, issues encountered, or handovers for the day')}
                       </p>
                     </div>
                   </div>
@@ -502,7 +505,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                       setDailyNote(e.target.value);
                       setIsNoteSentToOwner(false);
                     }}
-                    placeholder="Write your notes for today's work here... e.g. 'Completed 3 brake services. Waiting on alternator part for CE 915 CD. Alex Rivera covered bay 2. All equipment cleaned and secured.'"
+                    placeholder={t('owner:hodNotesPlaceholder', 'Write your notes for today\'s work here...')}
                     rows={4}
                     className="w-full bg-stone-950 border border-stone-700 rounded-xl p-3 sm:p-3.5 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-[#34D399] transition leading-relaxed resize-y"
                   />
@@ -561,7 +564,7 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                   >
                     <Send className="w-4 h-4" />
                     <span>
-                      {isNoteSentToOwner ? 'Sent to Owner ✓' : 'Send Daily Report to Owner'}
+                      {isNoteSentToOwner ? t('owner:sentToOwnerStatus', 'Sent to Owner ✓') : t('owner:sendAudioReportBtn', 'Send Report to Owner')}
                     </span>
                   </button>
                 </div>
@@ -572,10 +575,10 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                 <div className="flex items-center justify-between px-1">
                   <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <Car className="w-4 h-4 sm:w-5 sm:h-5 text-[#34D399]" />
-                    <span>Vehicles on Floor ({floorJobs.length})</span>
+                    <span>{t('owner:vehicle', 'Vehicles')} - {t('owner:floorTab', 'Floor')} ({floorJobs.length})</span>
                   </h2>
                   <span className="text-[11px] sm:text-xs text-stone-400">
-                    Tap to update status
+                    {t('owner:toggleStatusTooltip', 'Tap to update status')}
                   </span>
                 </div>
 
@@ -604,16 +607,16 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                             {isReady ? (
                               <span className="text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shrink-0 flex items-center gap-1">
                                 <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
-                                Ready for Release
+                                {t('owner:readyQcInspection', 'Ready for Release')}
                               </span>
                             ) : isDoneByWorker ? (
                               <span className="text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-indigo-500/25 text-indigo-200 border-indigo-500/50 shrink-0 flex items-center gap-1.5 shadow-sm animate-pulse">
                                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
-                                Work Done • Needs Inspection
+                                {t('owner:workerDoneLabel', 'Work Done')} • {t('owner:needInspectionTab', 'Needs Inspection')}
                               </span>
                             ) : (
                               <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border bg-amber-500/20 text-amber-300 border-amber-500/40 shrink-0">
-                                In Repair
+                                {t('owner:currentlyInService', 'In Repair')}
                               </span>
                             )}
                           </div>
@@ -628,10 +631,10 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                                   ? 'bg-[#34D399] hover:bg-emerald-400 text-stone-950 ring-2 ring-emerald-300/60 shadow-emerald-950/50'
                                   : 'bg-stone-800 hover:bg-stone-700 text-emerald-400 border border-emerald-500/30'
                                 }`}
-                              title="Inspect vehicle and approve for Ready for Release"
+                              title={t('owner:inspectQualityBtn', 'Inspect vehicle and approve')}
                             >
                               <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
-                              <span>Inspected</span>
+                              <span>{t('common:approveBtn', 'Inspected')}</span>
                             </button>
                           ) : (
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -676,11 +679,11 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                         {/* Workflow Status Banner */}
                         {isDoneByWorker && (
                           <div className="mb-2.5 p-2 sm:p-2.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 text-xs text-indigo-200 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 text-left">
                               <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />
-                              <span><strong>{job.mechanicAssigned}</strong> marked work done. Please inspect and click <strong>Inspected</strong>.</span>
+                              <span className="line-clamp-2"><strong>{job.mechanicAssigned}</strong> {t('owner:workerDoneLabel', 'marked work done.')}</span>
                             </div>
-                            <span className="text-[10px] font-mono font-bold text-indigo-300 shrink-0 uppercase tracking-wider">Awaiting HOD</span>
+                            <span className="text-[10px] font-mono font-bold text-indigo-300 shrink-0 uppercase tracking-wider">{t('owner:hodBadge', 'HOD')}</span>
                           </div>
                         )}
 
@@ -704,11 +707,11 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
 
                         {isInRepair && (
                           <div className="mb-2.5 p-1.5 sm:p-2 rounded-xl bg-stone-950/60 border border-stone-800 text-xs text-stone-300 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 truncate">
                               <Wrench className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                              <span>Work ongoing with <strong>{job.mechanicAssigned || 'Technician'}</strong></span>
+                              <span className="truncate">{t('owner:currentlyInService', 'Work ongoing with')} <strong>{job.mechanicAssigned || t('owner:technicianDefault', 'Technician')}</strong></span>
                             </div>
-                            <span className="text-[11px] text-stone-400 font-mono">{job.timeElapsedMinutes || 45} mins</span>
+                            <span className="text-[11px] text-stone-400 font-mono shrink-0">{job.timeElapsedMinutes || 45} {t('common:mins', 'mins')}</span>
                           </div>
                         )}
 
@@ -740,12 +743,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
               {/* 5. MECHANICS ON SHIFT (Clean & Simple) */}
               <div className="bg-stone-900 border border-stone-800 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl space-y-3 shadow-md">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2 truncate">
                     <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#34D399]" />
-                    <span>Mechanics in {effectiveDeptName}</span>
+                    <span className="truncate">{t('owner:mechanicsInDeptTitle', 'Mechanics in')} {effectiveDeptName}</span>
                   </h2>
-                  <span className="text-xs text-[#34D399] font-medium">
-                    {deptMembers.length} Active
+                  <span className="text-xs text-[#34D399] font-medium shrink-0 ml-2">
+                    {deptMembers.length} {t('owner:active', 'Active')}
                   </span>
                 </div>
 
@@ -774,15 +777,15 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
                               )}
                             </div>
                             <span className="text-[11px] sm:text-xs text-stone-400 block truncate">
-                              {bay} • {isHod ? 'Lead Diagnostic' : 'Service Mechanic'}
+                              {bay} • {isHod ? t('owner:leadDiagnosticRole', 'Lead Diagnostic') : t('owner:serviceMechanicRole', 'Service Mechanic')}
                             </span>
                           </div>
                         </div>
 
                         <div className="shrink-0 text-right">
-                          <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-emerald-400 bg-emerald-950/60 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-900 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                            Active
+                          <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-emerald-400 bg-emerald-950/60 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-900 font-medium max-w-[80px] sm:max-w-none truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                            <span className="truncate">{t('owner:active', 'Active')}</span>
                           </span>
                         </div>
                       </div>
@@ -800,12 +803,12 @@ export const HodDashboard: React.FC<HodDashboardProps> = ({
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100vw-32px)] max-w-[420px] pb-[env(safe-area-inset-bottom)] pointer-events-auto">
           <AnimatedTabBar 
             items={[
-              { id: 'queue', label: 'Floor', icon: <Wrench className="w-5 h-5 shrink-0" />, color: '#34D399' },
-              { id: 'my-queue', label: 'Jobs', icon: <Car className="w-5 h-5 shrink-0" />, color: '#10b981' },
-              { id: 'outbox', label: 'Outbox', icon: <Send className="w-5 h-5 shrink-0" />, color: '#38bdf8' },
-              { id: 'roster', label: 'Staff', icon: <Users className="w-5 h-5 shrink-0" />, color: '#c084fc' },
-              { id: 'appointments', label: 'Bookings', icon: <Calendar className="w-5 h-5 shrink-0" />, color: '#fca5a5' },
-              { id: 'intake', label: 'Intake', icon: <PlusCircle className="w-5 h-5 shrink-0" />, color: '#fbbf24' }
+              { id: 'queue', label: t('navigation:hod_floor', 'Floor'), icon: <Wrench className="w-5 h-5 shrink-0" />, color: '#34D399' },
+              { id: 'my-queue', label: t('navigation:hod_jobs', 'Jobs'), icon: <Car className="w-5 h-5 shrink-0" />, color: '#10b981' },
+              { id: 'outbox', label: t('navigation:hod_outbox', 'Outbox'), icon: <Send className="w-5 h-5 shrink-0" />, color: '#38bdf8' },
+              { id: 'roster', label: t('navigation:hod_staff', 'Staff'), icon: <Users className="w-5 h-5 shrink-0" />, color: '#c084fc' },
+              { id: 'appointments', label: t('navigation:hod_bookings', 'Bookings'), icon: <Calendar className="w-5 h-5 shrink-0" />, color: '#fca5a5' },
+              { id: 'intake', label: t('navigation:hod_intake', 'Intake'), icon: <PlusCircle className="w-5 h-5 shrink-0" />, color: '#fbbf24' }
             ]}
             activeIndex={['queue', 'my-queue', 'outbox', 'roster', 'appointments', 'intake'].indexOf(activeTab || 'queue')}
             onTabChange={(index) => {

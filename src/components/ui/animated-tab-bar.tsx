@@ -98,7 +98,7 @@ export const AnimatedTabBar: React.FC<AnimatedTabBarProps> = ({
             <div className="menu__item-icon-wrapper shrink-0">
               {item.icon}
             </div>
-            <span className="menu__item-label text-[10px] xs:text-xs sm:text-sm md:text-base font-semibold tracking-tight whitespace-nowrap px-0.5 sm:px-2 overflow-hidden text-ellipsis w-full text-center block">
+            <span className="menu__item-label text-[9px] min-[360px]:text-[10px] sm:text-xs md:text-sm font-bold tracking-tight sm:tracking-normal whitespace-nowrap px-0.5 sm:px-2 overflow-hidden text-ellipsis w-full text-center block">
               {item.label}
             </span>
           </button>
